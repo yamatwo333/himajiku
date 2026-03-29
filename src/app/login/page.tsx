@@ -95,18 +95,18 @@ function LoginContent() {
           </div>
         </div>
 
-        <div className="flex gap-6 text-center text-xs" style={{ color: "var(--color-text-secondary)" }}>
-          <div>
-            <div className="mb-1 text-xl">&#x1F4C5;</div>
-            <p>ヒマをシェア</p>
+        <div className="flex gap-4 text-center text-xs" style={{ color: "var(--color-text-secondary)" }}>
+          <div className="flex-1 rounded-xl p-3" style={{ backgroundColor: "var(--color-surface)" }}>
+            <p className="font-bold" style={{ color: "var(--color-text)" }}>ヒマをシェア</p>
+            <p className="mt-0.5">時間帯ごとにサクッと</p>
           </div>
-          <div>
-            <div className="mb-1 text-xl">&#x1F44B;</div>
-            <p>友達と共有</p>
+          <div className="flex-1 rounded-xl p-3" style={{ backgroundColor: "var(--color-surface)" }}>
+            <p className="font-bold" style={{ color: "var(--color-text)" }}>友達と共有</p>
+            <p className="mt-0.5">グループでまとめて</p>
           </div>
-          <div>
-            <div className="mb-1 text-xl">&#x1F514;</div>
-            <p>LINEに通知</p>
+          <div className="flex-1 rounded-xl p-3" style={{ backgroundColor: "var(--color-surface)" }}>
+            <p className="font-bold" style={{ color: "var(--color-text)" }}>LINEに通知</p>
+            <p className="mt-0.5">集まれそうな日を</p>
           </div>
         </div>
       </div>

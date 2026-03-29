@@ -105,7 +105,6 @@ export default function CalendarPage() {
           </div>
         ) : groups.length === 0 ? (
           <div className="px-4 py-16 text-center">
-            <div className="mb-4 text-4xl">&#x1F44B;</div>
             <p className="text-sm font-medium" style={{ color: "var(--color-text)" }}>
               まだグループに参加していません
             </p>

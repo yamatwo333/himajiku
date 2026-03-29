@@ -193,7 +193,6 @@ export default function GroupsPage() {
           </div>
         ) : groups.length === 0 ? (
           <div className="py-16 text-center">
-            <div className="mb-4 text-4xl">&#x1F465;</div>
             <p className="text-sm font-medium" style={{ color: "var(--color-text)" }}>
               まだグループに参加していません
             </p>
