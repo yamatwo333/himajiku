@@ -173,7 +173,7 @@ export default function CalendarGrid({ availabilities, onMonthChange, groupId, n
           友達がヒマ
         </span>
         <span className="flex items-center gap-1">
-          <span className="flex h-4 w-4 items-center justify-center rounded-full text-[9px] font-bold text-white" style={{ backgroundColor: "var(--color-hot)" }}>3</span>
+          <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ backgroundColor: "var(--color-hot)" }} />
           集まったっていい
         </span>
       </div>
