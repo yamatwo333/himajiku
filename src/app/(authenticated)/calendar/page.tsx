@@ -11,8 +11,10 @@ export default function CalendarPage() {
     []
   );
   const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [loading, setLoading] = useState(true);
 
   const fetchAvailabilities = useCallback(async () => {
+    setLoading(true);
     const supabase = createClient();
     const monthStart = format(startOfMonth(currentMonth), "yyyy-MM-dd");
     const monthEnd = format(endOfMonth(currentMonth), "yyyy-MM-dd");
@@ -39,6 +41,7 @@ export default function CalendarPage() {
         }))
       );
     }
+    setLoading(false);
   }, [currentMonth]);
 
   useEffect(() => {
@@ -60,10 +63,19 @@ export default function CalendarPage() {
       </header>
 
       <div className="pt-4">
-        <CalendarGrid
-          availabilities={availabilities}
-          onMonthChange={setCurrentMonth}
-        />
+        {loading ? (
+          <div className="flex items-center justify-center py-20">
+            <div
+              className="h-8 w-8 animate-spin rounded-full border-2 border-t-transparent"
+              style={{ borderColor: "var(--color-border)", borderTopColor: "transparent" }}
+            />
+          </div>
+        ) : (
+          <CalendarGrid
+            availabilities={availabilities}
+            onMonthChange={setCurrentMonth}
+          />
+        )}
       </div>
     </div>
   );

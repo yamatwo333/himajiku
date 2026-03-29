@@ -1,8 +1,25 @@
 "use client";
 
-export default function LoginPage() {
+import { useSearchParams } from "next/navigation";
+import { Suspense } from "react";
+
+function LoginContent() {
+  const searchParams = useSearchParams();
+  const error = searchParams.get("error");
+
+  const errorMessages: Record<string, string> = {
+    invalid_state: "認証エラーが発生しました。もう一度お試しください。",
+    no_code: "認証がキャンセルされました。",
+    token_failed: "LINEとの連携に失敗しました。",
+    profile_failed: "プロフィールの取得に失敗しました。",
+    create_failed: "アカウントの作成に失敗しました。",
+    session_failed: "ログインセッションの作成に失敗しました。",
+    verify_failed: "認証の確認に失敗しました。",
+    unknown: "予期しないエラーが発生しました。",
+    auth_failed: "認証に失敗しました。",
+  };
+
   const handleLineLogin = () => {
-    // LINE OAuth flow via our API route
     window.location.href = "/auth/line";
   };
 
@@ -18,6 +35,12 @@ export default function LoginPage() {
       </div>
 
       <div className="w-full max-w-xs space-y-4">
+        {error && (
+          <div className="rounded-lg bg-red-50 px-4 py-3 text-center text-sm text-red-600">
+            {errorMessages[error] ?? errorMessages.unknown}
+          </div>
+        )}
+
         <button
           onClick={handleLineLogin}
           className="flex w-full items-center justify-center gap-3 rounded-xl px-6 py-4 text-base font-bold text-white transition-transform active:scale-[0.97]"
@@ -37,5 +60,13 @@ export default function LoginPage() {
         </p>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense>
+      <LoginContent />
+    </Suspense>
   );
 }

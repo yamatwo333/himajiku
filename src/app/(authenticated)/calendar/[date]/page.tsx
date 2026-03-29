@@ -20,8 +20,11 @@ export default function DayDetailPage() {
   const [selectedSlots, setSelectedSlots] = useState<TimeSlot[]>([]);
   const [comment, setComment] = useState("");
   const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [hasExisting, setHasExisting] = useState(false);
 
   const fetchData = useCallback(async () => {
+    setLoading(true);
     const supabase = createClient();
     const {
       data: { user },
@@ -52,8 +55,10 @@ export default function DayDetailPage() {
       if (myAvail) {
         setSelectedSlots(myAvail.timeSlots);
         setComment(myAvail.comment);
+        setHasExisting(true);
       }
     }
+    setLoading(false);
   }, [dateStr]);
 
   useEffect(() => {
@@ -66,15 +71,13 @@ export default function DayDetailPage() {
 
     const supabase = createClient();
 
-    if (selectedSlots.length === 0) {
-      // 登録解除
+    if (selectedSlots.length === 0 && hasExisting) {
       await supabase
         .from("availability")
         .delete()
         .eq("user_id", currentUserId)
         .eq("date", dateStr);
-    } else {
-      // upsert
+    } else if (selectedSlots.length > 0) {
       await supabase.from("availability").upsert(
         {
           user_id: currentUserId,
@@ -84,6 +87,25 @@ export default function DayDetailPage() {
         },
         { onConflict: "user_id,date" }
       );
+
+      // 3人以上の通知チェック
+      const { data: dayData } = await supabase
+        .from("availability")
+        .select("user_id")
+        .eq("date", dateStr);
+
+      if (dayData && dayData.length >= 3) {
+        // LINE通知を送信（バックエンドAPI経由）
+        try {
+          await fetch("/api/notify", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ date: dateStr }),
+          });
+        } catch {
+          // 通知失敗は無視（登録自体は成功しているので）
+        }
+      }
     }
 
     setSaving(false);
@@ -95,6 +117,38 @@ export default function DayDetailPage() {
   const friendCount = dayAvails.filter(
     (a) => a.userId !== currentUserId
   ).length;
+
+  if (loading) {
+    return (
+      <div>
+        <header
+          className="sticky top-0 z-10 flex items-center border-b px-4 py-3"
+          style={{
+            backgroundColor: "var(--color-surface)",
+            borderColor: "var(--color-border)",
+          }}
+        >
+          <button
+            onClick={() => router.back()}
+            className="mr-3 rounded-lg p-1 active:bg-gray-100"
+          >
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <polyline points="15,6 9,12 15,18" />
+            </svg>
+          </button>
+          <h1 className="text-lg font-bold">
+            {format(date, "M月d日 (E)", { locale: ja })}
+          </h1>
+        </header>
+        <div className="flex items-center justify-center py-20">
+          <div
+            className="h-8 w-8 animate-spin rounded-full border-2 border-t-transparent"
+            style={{ borderColor: "var(--color-border)", borderTopColor: "transparent" }}
+          />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -140,7 +194,7 @@ export default function DayDetailPage() {
         )}
       </header>
 
-      <div className="space-y-6 px-4 pt-5">
+      <div className="space-y-6 px-4 pt-5 pb-8">
         {/* Toggle free */}
         <section>
           <h2
@@ -181,22 +235,24 @@ export default function DayDetailPage() {
         </section>
 
         {/* Save button */}
-        <button
-          onClick={handleSave}
-          disabled={saving}
-          className="w-full rounded-xl py-3.5 text-base font-bold text-white transition-transform active:scale-[0.97] disabled:opacity-50"
-          style={{
-            backgroundColor: isFree
-              ? "var(--color-primary)"
-              : "var(--color-text-secondary)",
-          }}
-        >
-          {saving
-            ? "保存中..."
-            : isFree
-              ? "ヒマを登録する"
-              : "ヒマを解除する"}
-        </button>
+        {(isFree || hasExisting) && (
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="w-full rounded-xl py-3.5 text-base font-bold text-white transition-transform active:scale-[0.97] disabled:opacity-50"
+            style={{
+              backgroundColor: isFree
+                ? "var(--color-primary)"
+                : "var(--color-text-secondary)",
+            }}
+          >
+            {saving
+              ? "保存中..."
+              : isFree
+                ? "ヒマを登録する"
+                : "ヒマを解除する"}
+          </button>
+        )}
 
         {/* Friends */}
         <section>
