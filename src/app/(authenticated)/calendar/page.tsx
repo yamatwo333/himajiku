@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { startOfMonth, endOfMonth, format } from "date-fns";
 import CalendarGrid from "@/components/CalendarGrid";
 import { AvailabilityWithUser } from "@/lib/types";
@@ -12,6 +13,7 @@ interface GroupInfo {
 }
 
 export default function CalendarPage() {
+  const router = useRouter();
   const [availabilities, setAvailabilities] = useState<AvailabilityWithUser[]>([]);
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [loading, setLoading] = useState(true);
@@ -103,12 +105,20 @@ export default function CalendarPage() {
           </div>
         ) : groups.length === 0 ? (
           <div className="px-4 py-16 text-center">
-            <p className="text-sm" style={{ color: "var(--color-text-secondary)" }}>
+            <div className="mb-4 text-4xl">&#x1F44B;</div>
+            <p className="text-sm font-medium" style={{ color: "var(--color-text)" }}>
               まだグループに参加していません
             </p>
             <p className="mt-1 text-xs" style={{ color: "var(--color-text-secondary)" }}>
-              「グループ」タブからグループを作成or参加してください
+              グループを作って友達を招待しよう
             </p>
+            <button
+              onClick={() => router.push("/groups")}
+              className="mt-4 rounded-xl px-6 py-2.5 text-sm font-bold text-white"
+              style={{ backgroundColor: "var(--color-primary)" }}
+            >
+              グループを作成・参加
+            </button>
           </div>
         ) : (
           <CalendarGrid

@@ -84,28 +84,23 @@ export default function ProfilePage() {
             </div>
           </section>
 
-          {/* Settings */}
-          <section className="space-y-2">
-            <h2
-              className="text-sm font-bold"
-              style={{ color: "var(--color-text-secondary)" }}
+          {/* App info */}
+          <section className="rounded-xl border p-4" style={{ backgroundColor: "var(--color-surface)", borderColor: "var(--color-border)" }}>
+            <p className="text-sm font-bold" style={{ color: "var(--color-text)" }}>シェアヒマとは？</p>
+            <p className="mt-1 text-xs leading-relaxed" style={{ color: "var(--color-text-secondary)" }}>
+              ヒマな時間をシェアして、なんとなく集まれるアプリ。グループを作って友達を招待し、ヒマな日をシェアしよう。
+            </p>
+          </section>
+
+          {/* Logout */}
+          <section>
+            <button
+              onClick={handleLogout}
+              className="w-full rounded-xl border py-3 text-sm text-red-500"
+              style={{ borderColor: "var(--color-border)" }}
             >
-              設定
-            </h2>
-            <div
-              className="overflow-hidden rounded-xl border"
-              style={{
-                backgroundColor: "var(--color-surface)",
-                borderColor: "var(--color-border)",
-              }}
-            >
-              <button
-                onClick={handleLogout}
-                className="flex w-full items-center justify-between px-4 py-3.5 text-left text-sm text-red-500"
-              >
-                <span>ログアウト</span>
-              </button>
-            </div>
+              ログアウト
+            </button>
           </section>
         </div>
       )}

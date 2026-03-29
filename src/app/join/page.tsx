@@ -73,11 +73,11 @@ function JoinContent() {
             {groupName ? `「${groupName}」に参加しました！` : "すでに参加済みです"}
           </h1>
           <button
-            onClick={() => router.push("/groups")}
+            onClick={() => router.push("/calendar")}
             className="mt-6 rounded-xl px-8 py-3 text-sm font-bold text-white"
             style={{ backgroundColor: "var(--color-primary)" }}
           >
-            グループを見る
+            カレンダーを見る
           </button>
         </div>
       )}
