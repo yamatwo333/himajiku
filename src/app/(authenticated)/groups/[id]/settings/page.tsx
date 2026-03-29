@@ -1,0 +1,201 @@
+"use client";
+
+import { useState, useEffect, useCallback } from "react";
+import { useParams, useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
+
+export default function GroupSettingsPage() {
+  const params = useParams();
+  const router = useRouter();
+  const groupId = params.id as string;
+
+  const [name, setName] = useState("");
+  const [notifyThreshold, setNotifyThreshold] = useState(3);
+  const [lineGroupId, setLineGroupId] = useState("");
+  const [lineAccessToken, setLineAccessToken] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [showDelete, setShowDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  const fetchData = useCallback(async () => {
+    const supabase = createClient();
+    const { data } = await supabase
+      .from("groups")
+      .select("*")
+      .eq("id", groupId)
+      .single();
+
+    if (data) {
+      setName(data.name);
+      setNotifyThreshold(data.notify_threshold);
+      setLineGroupId(data.line_group_id || "");
+      setLineAccessToken(data.line_channel_access_token || "");
+    }
+    setLoading(false);
+  }, [groupId]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  const handleSave = async () => {
+    setSaving(true);
+    const supabase = createClient();
+
+    await supabase
+      .from("groups")
+      .update({
+        name: name.trim(),
+        notify_threshold: notifyThreshold,
+        line_group_id: lineGroupId.trim() || null,
+        line_channel_access_token: lineAccessToken.trim() || null,
+      })
+      .eq("id", groupId);
+
+    setSaving(false);
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2000);
+  };
+
+  const handleDelete = async () => {
+    setDeleting(true);
+    const supabase = createClient();
+    await supabase.from("groups").delete().eq("id", groupId);
+    router.push("/groups");
+  };
+
+  if (loading) {
+    return (
+      <div>
+        <header className="sticky top-0 z-10 flex items-center border-b px-4 py-3" style={{ backgroundColor: "var(--color-surface)", borderColor: "var(--color-border)" }}>
+          <button onClick={() => router.back()} className="mr-3 rounded-lg p-1 active:bg-gray-100">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="15,6 9,12 15,18" /></svg>
+          </button>
+          <h1 className="text-lg font-bold">グループ設定</h1>
+        </header>
+        <div className="flex items-center justify-center py-20">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-t-transparent" style={{ borderColor: "var(--color-border)", borderTopColor: "transparent" }} />
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <header className="sticky top-0 z-10 flex items-center border-b px-4 py-3" style={{ backgroundColor: "var(--color-surface)", borderColor: "var(--color-border)" }}>
+        <button onClick={() => router.back()} className="mr-3 rounded-lg p-1 active:bg-gray-100">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="15,6 9,12 15,18" /></svg>
+        </button>
+        <h1 className="text-lg font-bold">グループ設定</h1>
+      </header>
+
+      <div className="px-4 pt-5 pb-8 space-y-6">
+        {/* Group name */}
+        <section>
+          <h2 className="mb-2 text-sm font-bold" style={{ color: "var(--color-text-secondary)" }}>グループ名</h2>
+          <input
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            maxLength={30}
+            className="w-full rounded-xl border px-4 py-3 text-sm outline-none focus:border-[var(--color-primary)]"
+            style={{ backgroundColor: "var(--color-surface)", borderColor: "var(--color-border)" }}
+          />
+        </section>
+
+        {/* Notification threshold */}
+        <section>
+          <h2 className="mb-2 text-sm font-bold" style={{ color: "var(--color-text-secondary)" }}>LINE通知の条件</h2>
+          <div className="flex items-center gap-3">
+            <select
+              value={notifyThreshold}
+              onChange={(e) => setNotifyThreshold(Number(e.target.value))}
+              className="rounded-xl border px-4 py-3 text-sm outline-none"
+              style={{ backgroundColor: "var(--color-surface)", borderColor: "var(--color-border)" }}
+            >
+              {[2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => (
+                <option key={n} value={n}>{n}人以上</option>
+              ))}
+            </select>
+            <span className="text-sm" style={{ color: "var(--color-text-secondary)" }}>
+              がヒマな日に通知
+            </span>
+          </div>
+        </section>
+
+        {/* LINE Group ID */}
+        <section>
+          <h2 className="mb-2 text-sm font-bold" style={{ color: "var(--color-text-secondary)" }}>LINE通知先グループID</h2>
+          <input
+            type="text"
+            value={lineGroupId}
+            onChange={(e) => setLineGroupId(e.target.value)}
+            placeholder="C1234567890abcdef..."
+            className="w-full rounded-xl border px-4 py-3 text-sm font-mono outline-none focus:border-[var(--color-primary)]"
+            style={{ backgroundColor: "var(--color-surface)", borderColor: "var(--color-border)" }}
+          />
+          <p className="mt-1 text-xs" style={{ color: "var(--color-text-secondary)" }}>
+            LINE Messaging APIで取得したグループIDを入力
+          </p>
+        </section>
+
+        {/* LINE Channel Access Token */}
+        <section>
+          <h2 className="mb-2 text-sm font-bold" style={{ color: "var(--color-text-secondary)" }}>LINEチャネルアクセストークン</h2>
+          <input
+            type="password"
+            value={lineAccessToken}
+            onChange={(e) => setLineAccessToken(e.target.value)}
+            placeholder="トークンを入力"
+            className="w-full rounded-xl border px-4 py-3 text-sm font-mono outline-none focus:border-[var(--color-primary)]"
+            style={{ backgroundColor: "var(--color-surface)", borderColor: "var(--color-border)" }}
+          />
+          <p className="mt-1 text-xs" style={{ color: "var(--color-text-secondary)" }}>
+            LINE Developers → Messaging API → チャネルアクセストークン
+          </p>
+        </section>
+
+        {/* Save button */}
+        <button
+          onClick={handleSave}
+          disabled={saving || !name.trim()}
+          className="w-full rounded-xl py-3.5 text-base font-bold text-white transition-transform active:scale-[0.97] disabled:opacity-50"
+          style={{ backgroundColor: saved ? "var(--color-free-friend)" : "var(--color-primary)" }}
+        >
+          {saving ? "保存中..." : saved ? "保存しました" : "設定を保存"}
+        </button>
+
+        {/* Delete group */}
+        <section className="pt-4">
+          {showDelete ? (
+            <div className="rounded-xl border border-red-200 bg-red-50 p-4 space-y-3">
+              <p className="text-sm text-red-600">グループを削除すると、全メンバーがグループから外れます。元に戻せません。</p>
+              <div className="flex gap-2">
+                <button onClick={() => setShowDelete(false)} className="flex-1 rounded-lg border py-2 text-sm" style={{ borderColor: "var(--color-border)" }}>
+                  キャンセル
+                </button>
+                <button
+                  onClick={handleDelete}
+                  disabled={deleting}
+                  className="flex-1 rounded-lg bg-red-500 py-2 text-sm font-bold text-white disabled:opacity-50"
+                >
+                  {deleting ? "削除中..." : "削除する"}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button
+              onClick={() => setShowDelete(true)}
+              className="w-full rounded-xl border py-3 text-sm text-red-500"
+              style={{ borderColor: "var(--color-border)" }}
+            >
+              グループを削除
+            </button>
+          )}
+        </section>
+      </div>
+    </div>
+  );
+}

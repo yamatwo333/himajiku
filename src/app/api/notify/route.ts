@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createServerClient } from "@supabase/ssr";
+import { createClient } from "@supabase/supabase-js";
 import { format, parse } from "date-fns";
 import { ja } from "date-fns/locale";
 
@@ -11,48 +11,59 @@ const TIME_SLOT_LABELS: Record<string, string> = {
 };
 
 export async function POST(request: NextRequest) {
-  const { date } = await request.json();
+  const { date, group_id } = await request.json();
 
-  if (!date) {
-    return NextResponse.json({ error: "date is required" }, { status: 400 });
+  if (!date || !group_id) {
+    return NextResponse.json({ error: "date and group_id are required" }, { status: 400 });
   }
 
-  const accessToken = process.env.LINE_MESSAGING_CHANNEL_ACCESS_TOKEN;
-  const groupId = process.env.LINE_NOTIFY_GROUP_ID;
-
-  if (!accessToken || !groupId) {
-    return NextResponse.json(
-      { error: "LINE notification not configured" },
-      { status: 200 }
-    );
-  }
-
-  const supabase = createServerClient(
+  const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    {
-      cookies: {
-        getAll: () => [],
-        setAll: () => {},
-      },
-    }
+    { auth: { autoRefreshToken: false, persistSession: false } }
   );
 
-  // Get all availabilities for this date with profiles
+  // Get group settings
+  const { data: group } = await supabase
+    .from("groups")
+    .select("*")
+    .eq("id", group_id)
+    .single();
+
+  if (!group || !group.line_group_id || !group.line_channel_access_token) {
+    return NextResponse.json({ sent: false, reason: "LINE not configured for this group" });
+  }
+
+  // Get group members
+  const { data: members } = await supabase
+    .from("group_members")
+    .select("user_id")
+    .eq("group_id", group_id);
+
+  if (!members) {
+    return NextResponse.json({ sent: false, reason: "no members" });
+  }
+
+  const memberIds = members.map((m) => m.user_id);
+
+  // Get availabilities for this date from group members
   const { data: avails } = await supabase
     .from("availability")
     .select("*, user:profiles(*)")
-    .eq("date", date);
+    .eq("date", date)
+    .in("user_id", memberIds);
 
-  if (!avails || avails.length < 3) {
-    return NextResponse.json({ sent: false, reason: "less than 3 people" });
+  if (!avails || avails.length < group.notify_threshold) {
+    return NextResponse.json({
+      sent: false,
+      reason: `less than ${group.notify_threshold} people (${avails?.length ?? 0} free)`,
+    });
   }
 
-  // Format the date nicely
+  // Format message
   const parsedDate = parse(date, "yyyy-MM-dd", new Date());
   const dateLabel = format(parsedDate, "M/d (E)", { locale: ja });
 
-  // Build message
   const lines = avails.map((a) => {
     const slots = (a.time_slots as string[])
       .map((s) => TIME_SLOT_LABELS[s] || s)
@@ -62,7 +73,7 @@ export async function POST(request: NextRequest) {
   });
 
   const message = [
-    `🎉 ${dateLabel} に${avails.length}人がヒマです！`,
+    `🎉 [${group.name}] ${dateLabel} に${avails.length}人がヒマです！`,
     "",
     ...lines,
     "",
@@ -75,10 +86,10 @@ export async function POST(request: NextRequest) {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${accessToken}`,
+        Authorization: `Bearer ${group.line_channel_access_token}`,
       },
       body: JSON.stringify({
-        to: groupId,
+        to: group.line_group_id,
         messages: [{ type: "text", text: message }],
       }),
     });
@@ -86,18 +97,12 @@ export async function POST(request: NextRequest) {
     if (!res.ok) {
       const errorBody = await res.text();
       console.error("LINE push error:", errorBody);
-      return NextResponse.json(
-        { sent: false, error: "LINE API error" },
-        { status: 500 }
-      );
+      return NextResponse.json({ sent: false, error: "LINE API error" }, { status: 500 });
     }
 
     return NextResponse.json({ sent: true, count: avails.length });
   } catch (error) {
     console.error("LINE notify error:", error);
-    return NextResponse.json(
-      { sent: false, error: "network error" },
-      { status: 500 }
-    );
+    return NextResponse.json({ sent: false, error: "network error" }, { status: 500 });
   }
 }

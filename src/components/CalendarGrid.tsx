@@ -23,9 +23,10 @@ const WEEKDAYS = ["月", "火", "水", "木", "金", "土", "日"];
 interface Props {
   availabilities: AvailabilityWithUser[];
   onMonthChange: (month: Date) => void;
+  groupId?: string;
 }
 
-export default function CalendarGrid({ availabilities, onMonthChange }: Props) {
+export default function CalendarGrid({ availabilities, onMonthChange, groupId }: Props) {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const router = useRouter();
@@ -116,7 +117,7 @@ export default function CalendarGrid({ availabilities, onMonthChange }: Props) {
           return (
             <button
               key={dateStr}
-              onClick={() => router.push(`/calendar/${dateStr}`)}
+              onClick={() => router.push(`/calendar/${dateStr}${groupId ? `?group=${groupId}` : ""}`)}
               className="relative flex flex-col items-center rounded-lg py-2 transition-colors active:bg-gray-100"
               style={{
                 opacity: inMonth ? 1 : 0.3,
