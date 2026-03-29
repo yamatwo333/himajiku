@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, Suspense } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { format, parse } from "date-fns";
+import { format, parse, isValid } from "date-fns";
 import { ja } from "date-fns/locale";
 import { TimeSlot, AvailabilityWithUser } from "@/lib/types";
 import TimeSlotPicker from "@/components/TimeSlotPicker";
@@ -12,9 +12,8 @@ function DayDetailContent() {
   const params = useParams();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const dateStr = params.date as string;
+  const dateStr = (params.date as string) || "";
   const groupId = searchParams.get("group") || "";
-  const date = parse(dateStr, "yyyy-MM-dd", new Date());
 
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [dayAvails, setDayAvails] = useState<AvailabilityWithUser[]>([]);
@@ -24,7 +23,13 @@ function DayDetailContent() {
   const [loading, setLoading] = useState(true);
   const [hasExisting, setHasExisting] = useState(false);
 
+  // 日付のパースを安全に行う
+  const date = dateStr ? parse(dateStr, "yyyy-MM-dd", new Date()) : new Date();
+  const dateValid = isValid(date);
+  const dateLabel = dateValid ? format(date, "M月d日 (E)", { locale: ja }) : dateStr;
+
   const fetchData = useCallback(async () => {
+    if (!dateStr) return;
     setLoading(true);
     try {
       const groupParam = groupId ? `?group=${groupId}` : "";
@@ -88,7 +93,7 @@ function DayDetailContent() {
           <button onClick={() => router.back()} className="mr-3 rounded-lg p-1 active:bg-gray-100">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="15,6 9,12 15,18" /></svg>
           </button>
-          <h1 className="text-lg font-bold">{format(date, "M月d日 (E)", { locale: ja })}</h1>
+          <h1 className="text-lg font-bold">{dateLabel}</h1>
         </header>
         <div className="flex items-center justify-center py-20">
           <div className="h-8 w-8 animate-spin rounded-full border-2 border-t-transparent" style={{ borderColor: "var(--color-border)", borderTopColor: "transparent" }} />
@@ -103,7 +108,7 @@ function DayDetailContent() {
         <button onClick={() => router.back()} className="mr-3 rounded-lg p-1 active:bg-gray-100">
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="15,6 9,12 15,18" /></svg>
         </button>
-        <h1 className="text-lg font-bold">{format(date, "M月d日 (E)", { locale: ja })}</h1>
+        <h1 className="text-lg font-bold">{dateLabel}</h1>
         {friendCount > 0 && (
           <span
             className="ml-2 rounded-full px-2 py-0.5 text-xs font-bold"
@@ -164,7 +169,11 @@ function DayDetailContent() {
 
 export default function DayDetailPage() {
   return (
-    <Suspense>
+    <Suspense fallback={
+      <div className="flex items-center justify-center py-20">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-t-transparent" style={{ borderColor: "#E2E8F0", borderTopColor: "transparent" }} />
+      </div>
+    }>
       <DayDetailContent />
     </Suspense>
   );

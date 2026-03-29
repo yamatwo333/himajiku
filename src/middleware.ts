@@ -30,20 +30,30 @@ export async function middleware(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   const pathname = request.nextUrl.pathname;
+  const isPublicPath = pathname.startsWith("/login") || pathname.startsWith("/auth") || pathname.startsWith("/api") || pathname.startsWith("/join");
 
-  // 未ログインでログインページ以外にアクセス → ログインページへ（リダイレクト先を保存）
-  if (!user && !pathname.startsWith("/login") && !pathname.startsWith("/auth") && !pathname.startsWith("/api") && !pathname.startsWith("/join")) {
+  // 未ログインで保護ページにアクセス → ログインページへ
+  if (!user && !isPublicPath) {
     const url = request.nextUrl.clone();
     const redirectTo = pathname + request.nextUrl.search;
     url.pathname = "/login";
+    url.search = "";
     url.searchParams.set("redirect", redirectTo);
     return NextResponse.redirect(url);
   }
 
-  // ログイン済みでログインページにアクセス → カレンダーへ
-  if (user && pathname.startsWith("/login")) {
+  // ログイン済みでログインページにアクセス → リダイレクト先 or カレンダーへ
+  if (user && pathname === "/login") {
+    const redirect = request.nextUrl.searchParams.get("redirect");
     const url = request.nextUrl.clone();
-    url.pathname = "/calendar";
+    if (redirect && redirect.startsWith("/") && !redirect.startsWith("/login")) {
+      url.pathname = redirect.split("?")[0];
+      const redirectSearch = redirect.includes("?") ? redirect.substring(redirect.indexOf("?")) : "";
+      url.search = redirectSearch;
+    } else {
+      url.pathname = "/calendar";
+      url.search = "";
+    }
     return NextResponse.redirect(url);
   }
 
