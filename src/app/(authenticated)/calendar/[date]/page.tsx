@@ -144,12 +144,12 @@ function DayDetailContent() {
             disabled={saving}
             className="w-full rounded-xl py-3.5 text-base font-bold transition-transform active:scale-[0.97] disabled:opacity-50"
             style={{
-              backgroundColor: isFree ? "#0F172A" : "transparent",
+              backgroundColor: isFree ? "var(--color-free-self)" : "transparent",
               color: isFree ? "white" : "var(--color-hot)",
               border: isFree ? "none" : "1px solid var(--color-border)",
             }}
           >
-            {saving ? "保存中..." : isFree ? "ヒマを登録する" : "ヒマを解除する"}
+            {saving ? "保存中..." : isFree ? "ヒマを登録する ☀️" : "ヒマを解除する"}
           </button>
         )}
 

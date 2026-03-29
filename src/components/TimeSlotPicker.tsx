@@ -28,9 +28,9 @@ export default function TimeSlotPicker({ selected, onChange }: Props) {
             onClick={() => toggle(slot)}
             className="flex-1 rounded-lg border px-2 py-2.5 text-sm font-medium transition-all active:scale-95"
             style={{
-              backgroundColor: isSelected ? "#0F172A" : "var(--color-surface)",
+              backgroundColor: isSelected ? "var(--color-free-self)" : "var(--color-surface)",
               color: isSelected ? "white" : "var(--color-text)",
-              borderColor: isSelected ? "#0F172A" : "var(--color-border)",
+              borderColor: isSelected ? "var(--color-free-self)" : "var(--color-border)",
             }}
           >
             {TIME_SLOT_LABELS[slot]}
