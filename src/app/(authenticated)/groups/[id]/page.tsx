@@ -43,7 +43,7 @@ export default function GroupDetailPage() {
       if (user) setCurrentUserId(user.id);
 
       // Fetch group via API
-      const res = await fetch(`/api/groups/${groupId}`);
+      const res = await fetch(`/api/groups/${groupId}`, { cache: "no-store" });
       if (res.ok) {
         const data = await res.json();
         setGroup(data.group);

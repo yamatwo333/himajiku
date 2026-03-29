@@ -21,13 +21,19 @@ export default function CalendarPage() {
   useEffect(() => {
     const fetchGroups = async () => {
       try {
-        const res = await fetch("/api/groups/mine");
+        const res = await fetch("/api/groups/mine", { cache: "no-store" });
         if (res.ok) {
           const data = await res.json();
           const groupsList = data.groups || [];
           if (groupsList.length > 0) {
             setGroups(groupsList);
-            setSelectedGroupId(groupsList[0].id);
+            // Restore previously selected group from sessionStorage
+            const savedGroupId = sessionStorage.getItem("selectedGroupId");
+            if (savedGroupId && groupsList.some((g: GroupInfo) => g.id === savedGroupId)) {
+              setSelectedGroupId(savedGroupId);
+            } else {
+              setSelectedGroupId(groupsList[0].id);
+            }
           }
         }
       } catch {
@@ -38,19 +44,20 @@ export default function CalendarPage() {
     fetchGroups();
   }, []);
 
-  const fetchAvailabilities = useCallback(async () => {
+  const fetchAvailabilities = useCallback(async (showLoading = true) => {
     if (!selectedGroupId) {
       setAvailabilities([]);
       return;
     }
 
-    setLoading(true);
+    if (showLoading) setLoading(true);
     const monthStart = format(startOfMonth(currentMonth), "yyyy-MM-dd");
     const monthEnd = format(endOfMonth(currentMonth), "yyyy-MM-dd");
 
     try {
       const res = await fetch(
-        `/api/availability/month?group=${selectedGroupId}&start=${monthStart}&end=${monthEnd}`
+        `/api/availability/month?group=${selectedGroupId}&start=${monthStart}&end=${monthEnd}`,
+        { cache: "no-store" }
       );
       if (res.ok) {
         const data = await res.json();
@@ -59,13 +66,23 @@ export default function CalendarPage() {
     } catch {
       // ignore
     }
-    setLoading(false);
+    if (showLoading) setLoading(false);
   }, [currentMonth, selectedGroupId]);
 
   useEffect(() => {
     if (selectedGroupId) {
+      sessionStorage.setItem("selectedGroupId", selectedGroupId);
       fetchAvailabilities();
     }
+  }, [fetchAvailabilities, selectedGroupId]);
+
+  // 30秒ごとに自動リフレッシュ（他ユーザーの更新を反映）
+  useEffect(() => {
+    if (!selectedGroupId) return;
+    const interval = setInterval(() => {
+      fetchAvailabilities(false);
+    }, 30000);
+    return () => clearInterval(interval);
   }, [fetchAvailabilities, selectedGroupId]);
 
   return (
