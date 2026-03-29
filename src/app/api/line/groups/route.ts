@@ -2,13 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { createServerClient } from "@supabase/ssr";
 
-export async function PUT(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function GET(request: NextRequest) {
   try {
-    const { id: groupId } = await params;
-
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -31,31 +26,14 @@ export async function PUT(
       { auth: { autoRefreshToken: false, persistSession: false } }
     );
 
-    // Verify ownership
-    const { data: group } = await supabaseAdmin
-      .from("groups")
-      .select("created_by")
-      .eq("id", groupId)
-      .single();
+    const { data: lineGroups } = await supabaseAdmin
+      .from("line_bot_groups")
+      .select("line_group_id, group_name")
+      .order("created_at", { ascending: false });
 
-    if (!group || group.created_by !== user.id) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
-
-    const body = await request.json();
-
-    await supabaseAdmin
-      .from("groups")
-      .update({
-        name: body.name?.trim() || undefined,
-        notify_threshold: body.notify_threshold,
-        line_group_id: body.line_group_id || null,
-      })
-      .eq("id", groupId);
-
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ lineGroups: lineGroups || [] });
   } catch (err) {
-    console.error("Settings update error:", err);
+    console.error("LINE groups fetch error:", err);
     return NextResponse.json({ error: "Failed" }, { status: 500 });
   }
 }

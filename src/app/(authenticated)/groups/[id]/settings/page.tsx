@@ -10,6 +10,8 @@ export default function GroupSettingsPage() {
 
   const [name, setName] = useState("");
   const [notifyThreshold, setNotifyThreshold] = useState(3);
+  const [lineGroupId, setLineGroupId] = useState<string>("");
+  const [lineGroups, setLineGroups] = useState<{ line_group_id: string; group_name: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -18,11 +20,19 @@ export default function GroupSettingsPage() {
 
   const fetchData = useCallback(async () => {
     try {
-      const res = await fetch(`/api/groups/${groupId}`);
-      if (res.ok) {
-        const data = await res.json();
+      const [groupRes, lineRes] = await Promise.all([
+        fetch(`/api/groups/${groupId}`),
+        fetch("/api/line/groups"),
+      ]);
+      if (groupRes.ok) {
+        const data = await groupRes.json();
         setName(data.group.name);
         setNotifyThreshold(data.group.notify_threshold);
+        setLineGroupId(data.group.line_group_id || "");
+      }
+      if (lineRes.ok) {
+        const data = await lineRes.json();
+        setLineGroups(data.lineGroups || []);
       }
     } catch {
       // ignore
@@ -43,6 +53,7 @@ export default function GroupSettingsPage() {
       body: JSON.stringify({
         name: name.trim(),
         notify_threshold: notifyThreshold,
+        line_group_id: lineGroupId || null,
       }),
     });
 
@@ -112,9 +123,37 @@ export default function GroupSettingsPage() {
             </select>
             <span className="text-sm" style={{ color: "var(--color-text-secondary)" }}>が同じ時間帯にヒマなとき</span>
           </div>
-          <p className="mt-2 text-xs" style={{ color: "var(--color-text-secondary)" }}>
-            ※ 通知機能は今後対応予定です
-          </p>
+        </section>
+
+        {/* LINE Group Link */}
+        <section>
+          <h2 className="mb-2 text-sm font-bold" style={{ color: "var(--color-text-secondary)" }}>LINE通知連携</h2>
+          {lineGroups.length > 0 ? (
+            <>
+              <select
+                value={lineGroupId}
+                onChange={(e) => setLineGroupId(e.target.value)}
+                className="w-full rounded-xl border px-4 py-3 text-sm outline-none"
+                style={{ backgroundColor: "var(--color-surface)", borderColor: "var(--color-border)" }}
+              >
+                <option value="">連携しない</option>
+                {lineGroups.map((lg) => (
+                  <option key={lg.line_group_id} value={lg.line_group_id}>
+                    {lg.group_name}
+                  </option>
+                ))}
+              </select>
+              <p className="mt-2 text-xs" style={{ color: "var(--color-text-secondary)" }}>
+                条件を満たすとLINEグループに通知が届きます
+              </p>
+            </>
+          ) : (
+            <div className="rounded-xl border p-4" style={{ borderColor: "var(--color-border)" }}>
+              <p className="text-sm" style={{ color: "var(--color-text-secondary)" }}>
+                LINEグループにシェアヒマ通知Botを追加すると、ここで連携できます
+              </p>
+            </div>
+          )}
         </section>
 
         {/* Save */}

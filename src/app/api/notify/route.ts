@@ -36,8 +36,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ sent: false, reason: "group not found" });
   }
 
-  // LINE not configured - just log and return (notification feature is pending)
-  if (!group.line_group_id || !group.line_channel_access_token) {
+  const lineToken = process.env.LINE_MESSAGING_CHANNEL_ACCESS_TOKEN;
+
+  // LINE not configured
+  if (!group.line_group_id || !lineToken) {
     // Check for time-slot matches for future notification support
     const { data: members } = await supabase
       .from("group_members")
@@ -147,7 +149,7 @@ export async function POST(request: NextRequest) {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${group.line_channel_access_token}`,
+        Authorization: `Bearer ${lineToken}`,
       },
       body: JSON.stringify({
         to: group.line_group_id,
