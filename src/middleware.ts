@@ -13,7 +13,7 @@ export async function middleware(request: NextRequest) {
           return request.cookies.getAll();
         },
         setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) =>
+          cookiesToSet.forEach(({ name, value }) =>
             request.cookies.set(name, value)
           );
           supabaseResponse = NextResponse.next({ request });
@@ -29,15 +29,19 @@ export async function middleware(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // 未ログインでログインページ以外にアクセス → ログインページへ
-  if (!user && !request.nextUrl.pathname.startsWith("/login") && !request.nextUrl.pathname.startsWith("/auth") && !request.nextUrl.pathname.startsWith("/api") && !request.nextUrl.pathname.startsWith("/join")) {
+  const pathname = request.nextUrl.pathname;
+
+  // 未ログインでログインページ以外にアクセス → ログインページへ（リダイレクト先を保存）
+  if (!user && !pathname.startsWith("/login") && !pathname.startsWith("/auth") && !pathname.startsWith("/api") && !pathname.startsWith("/join")) {
     const url = request.nextUrl.clone();
+    const redirectTo = pathname + request.nextUrl.search;
     url.pathname = "/login";
+    url.searchParams.set("redirect", redirectTo);
     return NextResponse.redirect(url);
   }
 
   // ログイン済みでログインページにアクセス → カレンダーへ
-  if (user && request.nextUrl.pathname.startsWith("/login")) {
+  if (user && pathname.startsWith("/login")) {
     const url = request.nextUrl.clone();
     url.pathname = "/calendar";
     return NextResponse.redirect(url);

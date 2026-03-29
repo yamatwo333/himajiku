@@ -145,28 +145,18 @@ export default function CalendarGrid({ availabilities, onMonthChange, groupId }:
                     style={{ backgroundColor: "var(--color-free-self)" }}
                   />
                 )}
-                {friendCount > 0 && (
+                {totalCount >= 2 ? (
                   <div
                     className="h-2 w-2 rounded-full"
-                    style={{
-                      backgroundColor:
-                        totalCount >= 2
-                          ? "var(--color-hot)"
-                          : "var(--color-free-friend)",
-                    }}
+                    style={{ backgroundColor: "var(--color-hot)" }}
                   />
-                )}
+                ) : friendCount > 0 && !selfFree ? (
+                  <div
+                    className="h-2 w-2 rounded-full"
+                    style={{ backgroundColor: "var(--color-free-friend)" }}
+                  />
+                ) : null}
               </div>
-
-              {/* Hot badge for 2+ */}
-              {totalCount >= 2 && inMonth && (
-                <span
-                  className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full text-[10px] font-bold text-white"
-                  style={{ backgroundColor: "var(--color-hot)" }}
-                >
-                  {totalCount}
-                </span>
-              )}
             </button>
           );
         })}
@@ -184,7 +174,7 @@ export default function CalendarGrid({ availabilities, onMonthChange, groupId }:
         </span>
         <span className="flex items-center gap-1">
           <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ backgroundColor: "var(--color-hot)" }} />
-          2人以上
+          集まれる！
         </span>
       </div>
     </div>

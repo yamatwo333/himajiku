@@ -87,7 +87,9 @@ export async function GET(request: NextRequest) {
     }
 
     // 6. Verify OTP to create session cookie
-    let supabaseResponse = NextResponse.redirect(`${origin}/calendar`);
+    // Check for redirect cookie (set before login)
+    const redirectTo = request.cookies.get("login_redirect")?.value || "/calendar";
+    let supabaseResponse = NextResponse.redirect(`${origin}${redirectTo}`);
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -140,10 +142,8 @@ export async function GET(request: NextRequest) {
         .eq("id", userId);
     }
 
-    supabaseResponse.cookies.set("line_oauth_state", "", {
-      maxAge: 0,
-      path: "/",
-    });
+    supabaseResponse.cookies.set("line_oauth_state", "", { maxAge: 0, path: "/" });
+    supabaseResponse.cookies.set("login_redirect", "", { maxAge: 0, path: "/" });
 
     return supabaseResponse;
   } catch (error) {

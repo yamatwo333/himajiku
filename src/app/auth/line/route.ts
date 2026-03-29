@@ -26,5 +26,17 @@ export async function GET(request: NextRequest) {
     path: "/",
   });
 
+  // ログイン後のリダイレクト先をcookieに保存
+  const redirect = request.nextUrl.searchParams.get("redirect");
+  if (redirect) {
+    response.cookies.set("login_redirect", redirect, {
+      httpOnly: true,
+      secure: true,
+      sameSite: "none",
+      maxAge: 600,
+      path: "/",
+    });
+  }
+
   return response;
 }

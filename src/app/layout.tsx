@@ -3,7 +3,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "シェアヒマ - ヒマを友達とシェアしよう",
-  description: "友達と暇な日を共有して、なんとなく集まれるアプリ",
+  description: "友達とヒマな日を共有して、なんとなく集まれるアプリ",
 };
 
 export const viewport: Viewport = {

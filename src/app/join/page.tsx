@@ -30,7 +30,7 @@ function JoinContent() {
 
         if (res.status === 401) {
           // Not logged in - redirect to login, then back here
-          router.push(`/login?redirect=/join?code=${code}`);
+          router.push(`/login?redirect=${encodeURIComponent(`/join?code=${code}`)}`);
           return;
         }
 
