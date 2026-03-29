@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, Suspense } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { format, parse, isValid } from "date-fns";
 import { ja } from "date-fns/locale";
@@ -8,7 +8,7 @@ import { TimeSlot, AvailabilityWithUser } from "@/lib/types";
 import TimeSlotPicker from "@/components/TimeSlotPicker";
 import FriendAvailabilityList from "@/components/FriendAvailabilityList";
 
-function DayDetailContent() {
+export default function DayDetailPage() {
   const params = useParams();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -22,11 +22,15 @@ function DayDetailContent() {
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
   const [hasExisting, setHasExisting] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
-  // 日付のパースを安全に行う
   const date = dateStr ? parse(dateStr, "yyyy-MM-dd", new Date()) : new Date();
   const dateValid = isValid(date);
   const dateLabel = dateValid ? format(date, "M月d日 (E)", { locale: ja }) : dateStr;
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const fetchData = useCallback(async () => {
     if (!dateStr) return;
@@ -55,8 +59,10 @@ function DayDetailContent() {
   }, [dateStr, groupId]);
 
   useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+    if (mounted) {
+      fetchData();
+    }
+  }, [fetchData, mounted]);
 
   const handleSave = async () => {
     if (!currentUserId) return;
@@ -86,7 +92,7 @@ function DayDetailContent() {
     (a) => a.userId !== currentUserId
   ).length;
 
-  if (loading) {
+  if (!mounted || loading) {
     return (
       <div>
         <header className="sticky top-0 z-10 flex items-center border-b px-4 py-3" style={{ backgroundColor: "var(--color-surface)", borderColor: "var(--color-border)" }}>
@@ -164,17 +170,5 @@ function DayDetailContent() {
         </section>
       </div>
     </div>
-  );
-}
-
-export default function DayDetailPage() {
-  return (
-    <Suspense fallback={
-      <div className="flex items-center justify-center py-20">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-t-transparent" style={{ borderColor: "#E2E8F0", borderTopColor: "transparent" }} />
-      </div>
-    }>
-      <DayDetailContent />
-    </Suspense>
   );
 }
