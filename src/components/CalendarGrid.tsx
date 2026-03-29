@@ -128,7 +128,7 @@ export default function CalendarGrid({ availabilities, onMonthChange, groupId }:
                 className="flex h-7 w-7 items-center justify-center rounded-full text-sm"
                 style={{
                   backgroundColor: isToday(day)
-                    ? "var(--color-primary)"
+                    ? "#1a1a1a"
                     : "transparent",
                   color: isToday(day) ? "white" : undefined,
                   fontWeight: isToday(day) ? 700 : 400,

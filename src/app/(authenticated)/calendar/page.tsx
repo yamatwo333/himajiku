@@ -3,7 +3,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { startOfMonth, endOfMonth, format } from "date-fns";
 import CalendarGrid from "@/components/CalendarGrid";
-import { createClient } from "@/lib/supabase/client";
 import { AvailabilityWithUser } from "@/lib/types";
 
 interface GroupInfo {
@@ -46,46 +45,19 @@ export default function CalendarPage() {
     }
 
     setLoading(true);
-    const supabase = createClient();
     const monthStart = format(startOfMonth(currentMonth), "yyyy-MM-dd");
     const monthEnd = format(endOfMonth(currentMonth), "yyyy-MM-dd");
 
-    // Get members of the selected group
-    const { data: members } = await supabase
-      .from("group_members")
-      .select("user_id")
-      .eq("group_id", selectedGroupId);
-
-    if (!members || members.length === 0) {
-      setAvailabilities([]);
-      setLoading(false);
-      return;
-    }
-
-    const memberIds = members.map((m) => m.user_id);
-
-    const { data } = await supabase
-      .from("availability")
-      .select("*, user:profiles(*)")
-      .in("user_id", memberIds)
-      .gte("date", monthStart)
-      .lte("date", monthEnd);
-
-    if (data) {
-      setAvailabilities(
-        data.map((row) => ({
-          id: row.id,
-          userId: row.user_id,
-          date: row.date,
-          timeSlots: row.time_slots,
-          comment: row.comment,
-          user: {
-            id: row.user.id,
-            displayName: row.user.display_name,
-            avatarUrl: row.user.avatar_url,
-          },
-        }))
+    try {
+      const res = await fetch(
+        `/api/availability/month?group=${selectedGroupId}&start=${monthStart}&end=${monthEnd}`
       );
+      if (res.ok) {
+        const data = await res.json();
+        setAvailabilities(data.availabilities || []);
+      }
+    } catch {
+      // ignore
     }
     setLoading(false);
   }, [currentMonth, selectedGroupId]);

@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
 
 interface GroupDetail {
   id: string;
@@ -10,8 +9,6 @@ interface GroupDetail {
   invite_code: string;
   created_by: string;
   notify_threshold: number;
-  line_group_id: string | null;
-  line_channel_access_token: string | null;
 }
 
 interface Member {
@@ -33,34 +30,26 @@ export default function GroupDetailPage() {
   const [copied, setCopied] = useState(false);
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
   const [leaving, setLeaving] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const fetchData = useCallback(async () => {
-    const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) setCurrentUserId(user.id);
+    try {
+      // Get current user
+      const { createClient } = await import("@/lib/supabase/client");
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) setCurrentUserId(user.id);
 
-    const { data: groupData } = await supabase
-      .from("groups")
-      .select("*")
-      .eq("id", groupId)
-      .single();
-
-    if (groupData) setGroup(groupData);
-
-    const { data: membersData } = await supabase
-      .from("group_members")
-      .select("user_id, joined_at, profile:profiles(display_name, avatar_url)")
-      .eq("group_id", groupId);
-
-    if (membersData) {
-      setMembers(
-        membersData.map((m: any) => ({
-          user_id: m.user_id,
-          display_name: m.profile.display_name,
-          avatar_url: m.profile.avatar_url,
-          joined_at: m.joined_at,
-        }))
-      );
+      // Fetch group via API
+      const res = await fetch(`/api/groups/${groupId}`);
+      if (res.ok) {
+        const data = await res.json();
+        setGroup(data.group);
+        setMembers(data.members || []);
+      }
+    } catch {
+      // ignore
     }
     setLoading(false);
   }, [groupId]);
@@ -73,32 +62,27 @@ export default function GroupDetailPage() {
     if (!group) return;
     try {
       await navigator.clipboard.writeText(group.invite_code);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
     } catch {
-      // Fallback
       const input = document.createElement("input");
       input.value = group.invite_code;
       document.body.appendChild(input);
       input.select();
       document.execCommand("copy");
       document.body.removeChild(input);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
     }
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
   const handleLeave = async () => {
-    if (!currentUserId) return;
     setLeaving(true);
+    await fetch(`/api/groups/${groupId}/leave`, { method: "POST" });
+    router.push("/groups");
+  };
 
-    const supabase = createClient();
-    await supabase
-      .from("group_members")
-      .delete()
-      .eq("group_id", groupId)
-      .eq("user_id", currentUserId);
-
+  const handleDelete = async () => {
+    setDeleting(true);
+    await fetch(`/api/groups/${groupId}`, { method: "DELETE" });
     router.push("/groups");
   };
 
@@ -142,10 +126,7 @@ export default function GroupDetailPage() {
           <h1 className="text-lg font-bold">{group.name}</h1>
         </div>
         {isOwner && (
-          <button
-            onClick={() => router.push(`/groups/${groupId}/settings`)}
-            className="rounded-lg p-1 active:bg-gray-100"
-          >
+          <button onClick={() => router.push(`/groups/${groupId}/settings`)} className="rounded-lg p-1 active:bg-gray-100">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="12" cy="12" r="3" />
               <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z" />
@@ -171,23 +152,15 @@ export default function GroupDetailPage() {
               {copied ? "コピー済み" : "コピー"}
             </button>
           </div>
-          <p className="mt-2 text-xs" style={{ color: "var(--color-text-secondary)" }}>
-            友達にこのコードを共有して招待しましょう
-          </p>
+          <p className="mt-2 text-xs" style={{ color: "var(--color-text-secondary)" }}>友達にこのコードを共有して招待しましょう</p>
         </section>
 
         {/* Members */}
         <section>
-          <h2 className="mb-3 text-sm font-bold" style={{ color: "var(--color-text-secondary)" }}>
-            メンバー ({members.length}人)
-          </h2>
+          <h2 className="mb-3 text-sm font-bold" style={{ color: "var(--color-text-secondary)" }}>メンバー ({members.length}人)</h2>
           <div className="space-y-2">
             {members.map((m) => (
-              <div
-                key={m.user_id}
-                className="flex items-center gap-3 rounded-xl border p-3"
-                style={{ backgroundColor: "var(--color-surface)", borderColor: "var(--color-border)" }}
-              >
+              <div key={m.user_id} className="flex items-center gap-3 rounded-xl border p-3" style={{ backgroundColor: "var(--color-surface)", borderColor: "var(--color-border)" }}>
                 {m.avatar_url ? (
                   <img src={m.avatar_url} alt={m.display_name} className="h-10 w-10 rounded-full object-cover" />
                 ) : (
@@ -209,31 +182,39 @@ export default function GroupDetailPage() {
           </div>
         </section>
 
-        {/* Leave group */}
-        {!isOwner && (
+        {/* Leave / Delete */}
+        {isOwner ? (
+          <section>
+            {showDeleteConfirm ? (
+              <div className="rounded-xl border border-red-200 bg-red-50 p-4 space-y-3">
+                <p className="text-sm text-red-600">グループを削除すると全メンバーが外れます。元に戻せません。</p>
+                <div className="flex gap-2">
+                  <button onClick={() => setShowDeleteConfirm(false)} className="flex-1 rounded-lg border py-2 text-sm" style={{ borderColor: "var(--color-border)" }}>キャンセル</button>
+                  <button onClick={handleDelete} disabled={deleting} className="flex-1 rounded-lg bg-red-500 py-2 text-sm font-bold text-white disabled:opacity-50">
+                    {deleting ? "削除中..." : "削除する"}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button onClick={() => setShowDeleteConfirm(true)} className="w-full rounded-xl border py-3 text-sm text-red-500" style={{ borderColor: "var(--color-border)" }}>
+                グループを削除
+              </button>
+            )}
+          </section>
+        ) : (
           <section>
             {showLeaveConfirm ? (
               <div className="rounded-xl border border-red-200 bg-red-50 p-4 space-y-3">
                 <p className="text-sm text-red-600">本当にこのグループを退出しますか？</p>
                 <div className="flex gap-2">
-                  <button onClick={() => setShowLeaveConfirm(false)} className="flex-1 rounded-lg border py-2 text-sm" style={{ borderColor: "var(--color-border)" }}>
-                    キャンセル
-                  </button>
-                  <button
-                    onClick={handleLeave}
-                    disabled={leaving}
-                    className="flex-1 rounded-lg bg-red-500 py-2 text-sm font-bold text-white disabled:opacity-50"
-                  >
+                  <button onClick={() => setShowLeaveConfirm(false)} className="flex-1 rounded-lg border py-2 text-sm" style={{ borderColor: "var(--color-border)" }}>キャンセル</button>
+                  <button onClick={handleLeave} disabled={leaving} className="flex-1 rounded-lg bg-red-500 py-2 text-sm font-bold text-white disabled:opacity-50">
                     {leaving ? "退出中..." : "退出する"}
                   </button>
                 </div>
               </div>
             ) : (
-              <button
-                onClick={() => setShowLeaveConfirm(true)}
-                className="w-full rounded-xl border py-3 text-sm text-red-500"
-                style={{ borderColor: "var(--color-border)" }}
-              >
+              <button onClick={() => setShowLeaveConfirm(true)} className="w-full rounded-xl border py-3 text-sm text-red-500" style={{ borderColor: "var(--color-border)" }}>
                 グループを退出
               </button>
             )}
