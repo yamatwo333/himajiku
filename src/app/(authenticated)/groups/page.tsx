@@ -64,51 +64,33 @@ export default function GroupsPage() {
     fetchGroups();
   }, [fetchGroups]);
 
-  const generateCode = () => {
-    const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-    let code = "";
-    for (let i = 0; i < 6; i++) {
-      code += chars[Math.floor(Math.random() * chars.length)];
-    }
-    return code;
-  };
-
   const handleCreate = async () => {
     if (!newGroupName.trim()) return;
     setCreating(true);
     setError("");
 
-    const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+    try {
+      const res = await fetch("/api/groups", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: newGroupName.trim() }),
+      });
 
-    const code = generateCode();
+      if (!res.ok) {
+        const data = await res.json();
+        setError(data.error || "グループの作成に失敗しました");
+        setCreating(false);
+        return;
+      }
 
-    const { data: group, error: createError } = await supabase
-      .from("groups")
-      .insert({
-        name: newGroupName.trim(),
-        invite_code: code,
-        created_by: user.id,
-      })
-      .select()
-      .single();
-
-    if (createError) {
+      setShowCreate(false);
+      setNewGroupName("");
+      setCreating(false);
+      fetchGroups();
+    } catch {
       setError("グループの作成に失敗しました");
       setCreating(false);
-      return;
     }
-
-    await supabase.from("group_members").insert({
-      group_id: group.id,
-      user_id: user.id,
-    });
-
-    setShowCreate(false);
-    setNewGroupName("");
-    setCreating(false);
-    fetchGroups();
   };
 
   const handleJoin = async () => {
@@ -116,51 +98,29 @@ export default function GroupsPage() {
     setCreating(true);
     setError("");
 
-    const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+    try {
+      const res = await fetch("/api/groups/join", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ invite_code: inviteCode.trim().toUpperCase() }),
+      });
 
-    const { data: found } = await supabase.rpc("find_group_by_invite_code", {
-      code: inviteCode.trim().toUpperCase(),
-    });
+      const data = await res.json();
 
-    if (!found || found.length === 0) {
-      setError("招待コードが見つかりません");
+      if (!res.ok) {
+        setError(data.error || "参加に失敗しました");
+        setCreating(false);
+        return;
+      }
+
+      setShowJoin(false);
+      setInviteCode("");
       setCreating(false);
-      return;
-    }
-
-    const group = found[0];
-
-    // Check if already a member
-    const { data: existing } = await supabase
-      .from("group_members")
-      .select("*")
-      .eq("group_id", group.id)
-      .eq("user_id", user.id)
-      .single();
-
-    if (existing) {
-      setError("すでにこのグループに参加しています");
-      setCreating(false);
-      return;
-    }
-
-    const { error: joinError } = await supabase.from("group_members").insert({
-      group_id: group.id,
-      user_id: user.id,
-    });
-
-    if (joinError) {
+      fetchGroups();
+    } catch {
       setError("参加に失敗しました");
       setCreating(false);
-      return;
     }
-
-    setShowJoin(false);
-    setInviteCode("");
-    setCreating(false);
-    fetchGroups();
   };
 
   return (
@@ -206,7 +166,7 @@ export default function GroupsPage() {
             />
             {error && <p className="text-xs text-red-500">{error}</p>}
             <div className="flex gap-2">
-              <button onClick={() => setShowCreate(false)} className="flex-1 rounded-lg border py-2 text-sm" style={{ borderColor: "var(--color-border)" }}>
+              <button onClick={() => { setShowCreate(false); setError(""); }} className="flex-1 rounded-lg border py-2 text-sm" style={{ borderColor: "var(--color-border)" }}>
                 キャンセル
               </button>
               <button
@@ -236,7 +196,7 @@ export default function GroupsPage() {
             />
             {error && <p className="text-xs text-red-500">{error}</p>}
             <div className="flex gap-2">
-              <button onClick={() => setShowJoin(false)} className="flex-1 rounded-lg border py-2 text-sm" style={{ borderColor: "var(--color-border)" }}>
+              <button onClick={() => { setShowJoin(false); setError(""); }} className="flex-1 rounded-lg border py-2 text-sm" style={{ borderColor: "var(--color-border)" }}>
                 キャンセル
               </button>
               <button
