@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import {
   format,
@@ -16,7 +16,6 @@ import {
 } from "date-fns";
 import { ja } from "date-fns/locale";
 import { AvailabilityWithUser } from "@/lib/types";
-import { createClient } from "@/lib/supabase/client";
 
 const WEEKDAYS = ["日", "月", "火", "水", "木", "金", "土"];
 
@@ -25,21 +24,19 @@ interface Props {
   onMonthChange: (month: Date) => void;
   groupId?: string;
   notifyThreshold?: number;
+  currentUserId?: string | null;
 }
 
-export default function CalendarGrid({ availabilities, onMonthChange, groupId, notifyThreshold = 2 }: Props) {
+export default function CalendarGrid({ availabilities, onMonthChange, groupId, notifyThreshold = 2, currentUserId = null }: Props) {
   const [currentMonth, setCurrentMonth] = useState(new Date());
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const router = useRouter();
 
-  useEffect(() => {
-    const supabase = createClient();
-    supabase.auth.getUser().then(({ data }) => {
-      setCurrentUserId(data.user?.id ?? null);
-    });
-  }, []);
-
   const changeMonth = (next: Date) => {
+    // 前後3ヶ月に制限
+    const now = new Date();
+    const minMonth = subMonths(now, 3);
+    const maxMonth = addMonths(now, 3);
+    if (next < startOfMonth(minMonth) || next > endOfMonth(maxMonth)) return;
     setCurrentMonth(next);
     onMonthChange(next);
   };

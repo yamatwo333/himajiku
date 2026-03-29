@@ -64,6 +64,14 @@ export default function DayDetailPage() {
     }
   }, [fetchData, mounted]);
 
+  const handleBack = () => {
+    if (window.history.length > 1) {
+      router.back();
+    } else {
+      router.push("/calendar");
+    }
+  };
+
   const handleSave = async () => {
     if (!currentUserId) return;
     setSaving(true);
@@ -96,7 +104,7 @@ export default function DayDetailPage() {
     return (
       <div>
         <header className="sticky top-0 z-10 flex items-center border-b px-4 py-3" style={{ backgroundColor: "var(--color-surface)", borderColor: "var(--color-border)" }}>
-          <button onClick={() => router.back()} className="mr-3 rounded-lg p-1 active:bg-gray-100">
+          <button onClick={handleBack} className="mr-3 rounded-lg p-1 active:bg-gray-100">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="15,6 9,12 15,18" /></svg>
           </button>
           <h1 className="text-lg font-bold">{dateLabel}</h1>
@@ -111,7 +119,7 @@ export default function DayDetailPage() {
   return (
     <div>
       <header className="sticky top-0 z-10 flex items-center border-b px-4 py-3" style={{ backgroundColor: "var(--color-surface)", borderColor: "var(--color-border)" }}>
-        <button onClick={() => router.back()} className="mr-3 rounded-lg p-1 active:bg-gray-100">
+        <button onClick={handleBack} className="mr-3 rounded-lg p-1 active:bg-gray-100">
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="15,6 9,12 15,18" /></svg>
         </button>
         <h1 className="text-lg font-bold">{dateLabel}</h1>

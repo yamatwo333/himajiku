@@ -19,6 +19,7 @@ export default function CalendarPage() {
   const [loading, setLoading] = useState(true);
   const [groups, setGroups] = useState<GroupInfo[]>([]);
   const [selectedGroupId, setSelectedGroupId] = useState<string>("");
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
   // Fetch groups the user belongs to
   useEffect(() => {
@@ -58,6 +59,7 @@ export default function CalendarPage() {
       if (res.ok) {
         const data = await res.json();
         setAvailabilities(data.availabilities || []);
+        if (data.currentUserId) setCurrentUserId(data.currentUserId);
       }
     } catch {
       // ignore
@@ -125,6 +127,7 @@ export default function CalendarPage() {
             onMonthChange={setCurrentMonth}
             groupId={selectedGroupId}
             notifyThreshold={groups.find(g => g.id === selectedGroupId)?.notify_threshold ?? 2}
+            currentUserId={currentUserId}
           />
         )}
       </div>

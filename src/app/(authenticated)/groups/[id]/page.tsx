@@ -162,11 +162,19 @@ export default function GroupDetailPage() {
   const isOwner = group?.created_by === currentUserId;
   const isCodeExpired = linkCodeExpiresAt ? new Date(linkCodeExpiresAt) < new Date() : false;
 
+  const handleBack = () => {
+    if (window.history.length > 1) {
+      router.back();
+    } else {
+      router.push("/groups");
+    }
+  };
+
   if (loading) {
     return (
       <div>
         <header className="sticky top-0 z-10 flex items-center border-b px-4 py-3" style={{ backgroundColor: "var(--color-surface)", borderColor: "var(--color-border)" }}>
-          <button onClick={() => router.back()} className="mr-3 rounded-lg p-1 active:bg-gray-100">
+          <button onClick={handleBack} className="mr-3 rounded-lg p-1 active:bg-gray-100">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="15,6 9,12 15,18" /></svg>
           </button>
         </header>
@@ -181,7 +189,7 @@ export default function GroupDetailPage() {
     return (
       <div>
         <header className="sticky top-0 z-10 flex items-center border-b px-4 py-3" style={{ backgroundColor: "var(--color-surface)", borderColor: "var(--color-border)" }}>
-          <button onClick={() => router.back()} className="mr-3 rounded-lg p-1 active:bg-gray-100">
+          <button onClick={handleBack} className="mr-3 rounded-lg p-1 active:bg-gray-100">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="15,6 9,12 15,18" /></svg>
           </button>
         </header>
@@ -193,7 +201,7 @@ export default function GroupDetailPage() {
   return (
     <div>
       <header className="sticky top-0 z-10 flex items-center border-b px-4 py-3" style={{ backgroundColor: "var(--color-surface)", borderColor: "var(--color-border)" }}>
-        <button onClick={() => router.back()} className="mr-3 rounded-lg p-1 active:bg-gray-100">
+        <button onClick={handleBack} className="mr-3 rounded-lg p-1 active:bg-gray-100">
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="15,6 9,12 15,18" /></svg>
         </button>
         <h1 className="text-lg font-bold">{group.name}</h1>
