@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "himajiku - ヒマを共有しよう",
+  title: "シェアヒマ - ヒマを友達とシェアしよう",
   description: "友達と暇な日を共有して、なんとなく集まれるアプリ",
 };
 

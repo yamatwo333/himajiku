@@ -138,7 +138,7 @@ export async function POST(request: NextRequest) {
     "",
     ...slotMessages,
     "",
-    "himajikuで詳細を見る 👀",
+    "シェアヒマで詳細を見る 👀",
   ].join("\n");
 
   // Send via LINE Messaging API

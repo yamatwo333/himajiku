@@ -75,7 +75,7 @@ export default function CalendarPage() {
         style={{ backgroundColor: "var(--color-surface)", borderColor: "var(--color-border)" }}
       >
         <h1 className="text-center text-lg font-bold">
-          hima<span style={{ color: "var(--color-primary)" }}>jiku</span>
+          シェア<span style={{ color: "var(--color-primary)" }}>ヒマ</span>
         </h1>
       </header>
 

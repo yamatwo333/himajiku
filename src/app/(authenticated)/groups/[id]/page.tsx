@@ -98,7 +98,7 @@ export default function GroupDetailPage() {
     if (navigator.share) {
       try {
         await navigator.share({
-          title: `himajiku - ${group.name}`,
+          title: `シェアヒマ - ${group.name}`,
           text: `「${group.name}」に参加しよう！`,
           url,
         });

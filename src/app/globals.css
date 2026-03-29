@@ -6,11 +6,12 @@
   --color-bg: #f5f5f5;
   --color-surface: #ffffff;
   --color-text: #1a1a1a;
-  --color-text-secondary: #666666;
+  --color-text-secondary: #888888;
   --color-border: #e5e5e5;
-  --color-free-self: #06C755;
-  --color-free-friend: #4ECDC4;
-  --color-hot: #FF6B6B;
+  --color-today: #1a1a1a;
+  --color-free-self: #3B82F6;
+  --color-free-friend: #F59E0B;
+  --color-hot: #EF4444;
 }
 
 html {

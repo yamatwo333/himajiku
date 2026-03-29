@@ -20,7 +20,6 @@ export default function FriendAvailabilityList({
     );
   }
 
-  // Sort: self first, then others
   const sorted = [...availabilities].sort((a, b) => {
     if (a.userId === currentUserId) return -1;
     if (b.userId === currentUserId) return 1;
@@ -44,10 +43,7 @@ export default function FriendAvailabilityList({
               <div className="flex items-center gap-2">
                 <span className="font-medium">{a.user.displayName}</span>
                 {isSelf && (
-                  <span
-                    className="rounded-md px-1.5 py-0.5 text-[10px] font-bold text-white"
-                    style={{ backgroundColor: "var(--color-free-self)" }}
-                  >
+                  <span className="rounded-md px-1.5 py-0.5 text-[10px] font-bold text-white" style={{ backgroundColor: "var(--color-free-self)" }}>
                     あなた
                   </span>
                 )}
@@ -58,9 +54,7 @@ export default function FriendAvailabilityList({
                     key={slot}
                     className="rounded-md px-2 py-0.5 text-xs text-white"
                     style={{
-                      backgroundColor: isSelf
-                        ? "var(--color-free-self)"
-                        : "var(--color-free-friend)",
+                      backgroundColor: isSelf ? "var(--color-free-self)" : "var(--color-free-friend)",
                     }}
                   >
                     {TIME_SLOT_LABELS[slot]}
@@ -69,10 +63,7 @@ export default function FriendAvailabilityList({
               </div>
             </div>
             {a.comment && (
-              <p
-                className="mt-1 text-sm"
-                style={{ color: "var(--color-text-secondary)" }}
-              >
+              <p className="mt-1 text-sm" style={{ color: "var(--color-text-secondary)" }}>
                 {a.comment}
               </p>
             )}

@@ -38,10 +38,10 @@ function LoginContent() {
     <div className="flex min-h-dvh flex-col items-center justify-center px-6">
       <div className="mb-12 text-center">
         <h1 className="mb-2 text-4xl font-bold tracking-tight">
-          hima<span style={{ color: "var(--color-primary)" }}>jiku</span>
+          シェア<span style={{ color: "var(--color-primary)" }}>ヒマ</span>
         </h1>
         <p className="text-sm" style={{ color: "var(--color-text-secondary)" }}>
-          ヒマを共有しよう
+          ヒマを友達とシェアしよう
         </p>
       </div>
 
