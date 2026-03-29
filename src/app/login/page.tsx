@@ -87,7 +87,7 @@ function LoginContent() {
           <div className="mt-3 flex items-center justify-center gap-3 text-[10px]" style={{ color: "var(--color-text-secondary)" }}>
             <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full" style={{ backgroundColor: "var(--color-free-self)" }} />自分がヒマ</span>
             <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full" style={{ backgroundColor: "var(--color-free-friend)" }} />友達がヒマ</span>
-            <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full" style={{ backgroundColor: "var(--color-hot)" }} />集まれる！</span>
+            <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full" style={{ backgroundColor: "var(--color-hot)" }} />集まったっていい</span>
           </div>
         </div>
 

@@ -20,24 +20,23 @@ export default function TimeSlotPicker({ selected, onChange }: Props) {
 
   return (
     <div className="flex gap-2">
-      {SLOTS.map((slot) => (
-        <button
-          key={slot}
-          onClick={() => toggle(slot)}
-          className="flex-1 rounded-lg border px-2 py-2.5 text-sm font-medium transition-all active:scale-95"
-          style={{
-            backgroundColor: selected.includes(slot)
-              ? "var(--color-primary)"
-              : "var(--color-surface)",
-            color: selected.includes(slot) ? "white" : "var(--color-text)",
-            borderColor: selected.includes(slot)
-              ? "var(--color-primary)"
-              : "var(--color-border)",
-          }}
-        >
-          {TIME_SLOT_LABELS[slot]}
-        </button>
-      ))}
+      {SLOTS.map((slot) => {
+        const isSelected = selected.includes(slot);
+        return (
+          <button
+            key={slot}
+            onClick={() => toggle(slot)}
+            className="flex-1 rounded-lg border px-2 py-2.5 text-sm font-medium transition-all active:scale-95"
+            style={{
+              backgroundColor: isSelected ? "#0F172A" : "var(--color-surface)",
+              color: isSelected ? "white" : "var(--color-text)",
+              borderColor: isSelected ? "#0F172A" : "var(--color-border)",
+            }}
+          >
+            {TIME_SLOT_LABELS[slot]}
+          </button>
+        );
+      })}
     </div>
   );
 }

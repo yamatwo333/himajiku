@@ -305,7 +305,8 @@ export default function GroupDetailPage() {
                     </button>
                   </div>
                   <ol className="space-y-1 text-xs list-decimal list-inside" style={{ color: "var(--color-text-secondary)" }}>
-                    <li>LINEグループに「シェアヒマ通知Bot」を招待</li>
+                    <li><a href="https://line.me/R/ti/p/@156samjs" target="_blank" rel="noopener noreferrer" className="underline" style={{ color: "var(--color-primary)" }}>シェアヒマ通知Bot</a>を友だち追加</li>
+                    <li>LINEグループにBotを招待</li>
                     <li>そのグループで上のメッセージを送信</li>
                     <li>Botが「連携完了」と返信したらOK</li>
                   </ol>
@@ -313,8 +314,24 @@ export default function GroupDetailPage() {
                   <button onClick={handleGenerateLinkCode} className="text-sm font-medium" style={{ color: "var(--color-primary)" }}>コードを再発行</button>
                 </div>
               ) : (
-                <div className="space-y-3">
+                <div className="space-y-4">
                   <p className="text-xs" style={{ color: "var(--color-text-secondary)" }}>LINEグループと連携すると、ヒマな人が集まった時に自動で通知が届きます。</p>
+
+                  {/* Bot友だち追加 */}
+                  <div className="rounded-xl p-3 space-y-2" style={{ backgroundColor: "var(--color-bg)" }}>
+                    <p className="text-xs font-bold" style={{ color: "var(--color-text)" }}>まずBotを友だち追加</p>
+                    <p className="text-xs" style={{ color: "var(--color-text-secondary)" }}>LINEグループに招待するには、先にBotを友だちに追加してください。</p>
+                    <a
+                      href="https://line.me/R/ti/p/@156samjs"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex w-full items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-bold text-white"
+                      style={{ backgroundColor: "#06C755" }}
+                    >
+                      友だち追加する
+                    </a>
+                  </div>
+
                   <button onClick={handleGenerateLinkCode} disabled={generatingCode}
                     className="w-full rounded-xl py-3 text-sm font-bold text-white transition-transform active:scale-[0.97] disabled:opacity-50" style={{ backgroundColor: "#06C755" }}>
                     {generatingCode ? "発行中..." : "LINE連携コードを発行"}

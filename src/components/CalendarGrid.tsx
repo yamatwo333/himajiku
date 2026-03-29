@@ -174,7 +174,7 @@ export default function CalendarGrid({ availabilities, onMonthChange, groupId }:
         </span>
         <span className="flex items-center gap-1">
           <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ backgroundColor: "var(--color-hot)" }} />
-          集まれる！
+          集まったっていい
         </span>
       </div>
     </div>

@@ -36,14 +36,14 @@ export default function FriendAvailabilityList({
             className="rounded-xl border p-3"
             style={{
               backgroundColor: "var(--color-surface)",
-              borderColor: isSelf ? "var(--color-free-self)" : "var(--color-border)",
+              borderColor: isSelf ? "var(--color-primary)" : "var(--color-border)",
             }}
           >
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <span className="font-medium">{a.user.displayName}</span>
                 {isSelf && (
-                  <span className="rounded-md px-1.5 py-0.5 text-[10px] font-bold text-white" style={{ backgroundColor: "var(--color-free-self)" }}>
+                  <span className="rounded-md px-1.5 py-0.5 text-[10px] font-bold text-white" style={{ backgroundColor: "var(--color-primary)" }}>
                     あなた
                   </span>
                 )}
@@ -52,9 +52,10 @@ export default function FriendAvailabilityList({
                 {a.timeSlots.map((slot) => (
                   <span
                     key={slot}
-                    className="rounded-md px-2 py-0.5 text-xs text-white"
+                    className="rounded-md px-2 py-0.5 text-xs"
                     style={{
-                      backgroundColor: isSelf ? "var(--color-free-self)" : "var(--color-free-friend)",
+                      backgroundColor: "var(--color-bg)",
+                      color: "var(--color-text)",
                     }}
                   >
                     {TIME_SLOT_LABELS[slot]}

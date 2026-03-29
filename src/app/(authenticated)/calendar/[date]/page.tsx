@@ -106,9 +106,10 @@ function DayDetailContent() {
         <h1 className="text-lg font-bold">{format(date, "M月d日 (E)", { locale: ja })}</h1>
         {friendCount > 0 && (
           <span
-            className="ml-2 rounded-full px-2 py-0.5 text-xs font-bold text-white"
+            className="ml-2 rounded-full px-2 py-0.5 text-xs font-bold"
             style={{
-              backgroundColor: friendCount + (isFree ? 1 : 0) >= 3 ? "var(--color-hot)" : "var(--color-free-friend)",
+              backgroundColor: "var(--color-bg)",
+              color: "var(--color-text)",
             }}
           >
             {friendCount}人がヒマ
@@ -121,7 +122,7 @@ function DayDetailContent() {
           <h2 className="mb-3 text-sm font-bold" style={{ color: "var(--color-text-secondary)" }}>この日ヒマ？</h2>
           <TimeSlotPicker selected={selectedSlots} onChange={setSelectedSlots} />
           <p className="mt-2 text-xs" style={{ color: "var(--color-text-secondary)" }}>ヒマな時間帯をタップ（複数選択OK）</p>
-          <p className="mt-1 text-xs" style={{ color: "var(--color-primary)" }}>※ ヒマの登録は参加中の全グループに反映されます</p>
+          <p className="mt-1 text-xs" style={{ color: "var(--color-text-secondary)" }}>※ ヒマの登録は参加中の全グループに反映されます</p>
         </section>
 
         <section>
@@ -141,8 +142,12 @@ function DayDetailContent() {
           <button
             onClick={handleSave}
             disabled={saving}
-            className="w-full rounded-xl py-3.5 text-base font-bold text-white transition-transform active:scale-[0.97] disabled:opacity-50"
-            style={{ backgroundColor: isFree ? "var(--color-primary)" : "var(--color-text-secondary)" }}
+            className="w-full rounded-xl py-3.5 text-base font-bold transition-transform active:scale-[0.97] disabled:opacity-50"
+            style={{
+              backgroundColor: isFree ? "#0F172A" : "transparent",
+              color: isFree ? "white" : "var(--color-hot)",
+              border: isFree ? "none" : "1px solid var(--color-border)",
+            }}
           >
             {saving ? "保存中..." : isFree ? "ヒマを登録する" : "ヒマを解除する"}
           </button>
