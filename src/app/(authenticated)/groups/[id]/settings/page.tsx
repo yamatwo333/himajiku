@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
 
 export default function GroupSettingsPage() {
   const params = useParams();
@@ -20,18 +19,17 @@ export default function GroupSettingsPage() {
   const [deleting, setDeleting] = useState(false);
 
   const fetchData = useCallback(async () => {
-    const supabase = createClient();
-    const { data } = await supabase
-      .from("groups")
-      .select("*")
-      .eq("id", groupId)
-      .single();
-
-    if (data) {
-      setName(data.name);
-      setNotifyThreshold(data.notify_threshold);
-      setLineGroupId(data.line_group_id || "");
-      setLineAccessToken(data.line_channel_access_token || "");
+    try {
+      const res = await fetch(`/api/groups/${groupId}`);
+      if (res.ok) {
+        const data = await res.json();
+        setName(data.group.name);
+        setNotifyThreshold(data.group.notify_threshold);
+        setLineGroupId(data.group.line_group_id || "");
+        setLineAccessToken(data.group.line_channel_access_token || "");
+      }
+    } catch {
+      // ignore
     }
     setLoading(false);
   }, [groupId]);
@@ -42,17 +40,17 @@ export default function GroupSettingsPage() {
 
   const handleSave = async () => {
     setSaving(true);
-    const supabase = createClient();
 
-    await supabase
-      .from("groups")
-      .update({
+    await fetch(`/api/groups/${groupId}/settings`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
         name: name.trim(),
         notify_threshold: notifyThreshold,
         line_group_id: lineGroupId.trim() || null,
         line_channel_access_token: lineAccessToken.trim() || null,
-      })
-      .eq("id", groupId);
+      }),
+    });
 
     setSaving(false);
     setSaved(true);
@@ -61,8 +59,7 @@ export default function GroupSettingsPage() {
 
   const handleDelete = async () => {
     setDeleting(true);
-    const supabase = createClient();
-    await supabase.from("groups").delete().eq("id", groupId);
+    await fetch(`/api/groups/${groupId}`, { method: "DELETE" });
     router.push("/groups");
   };
 
@@ -119,9 +116,7 @@ export default function GroupSettingsPage() {
                 <option key={n} value={n}>{n}人以上</option>
               ))}
             </select>
-            <span className="text-sm" style={{ color: "var(--color-text-secondary)" }}>
-              がヒマな日に通知
-            </span>
+            <span className="text-sm" style={{ color: "var(--color-text-secondary)" }}>がヒマな日に通知</span>
           </div>
         </section>
 
@@ -157,7 +152,7 @@ export default function GroupSettingsPage() {
           </p>
         </section>
 
-        {/* Save button */}
+        {/* Save */}
         <button
           onClick={handleSave}
           disabled={saving || !name.trim()}
@@ -167,30 +162,20 @@ export default function GroupSettingsPage() {
           {saving ? "保存中..." : saved ? "保存しました" : "設定を保存"}
         </button>
 
-        {/* Delete group */}
+        {/* Delete */}
         <section className="pt-4">
           {showDelete ? (
             <div className="rounded-xl border border-red-200 bg-red-50 p-4 space-y-3">
-              <p className="text-sm text-red-600">グループを削除すると、全メンバーがグループから外れます。元に戻せません。</p>
+              <p className="text-sm text-red-600">グループを削除すると全メンバーが外れます。元に戻せません。</p>
               <div className="flex gap-2">
-                <button onClick={() => setShowDelete(false)} className="flex-1 rounded-lg border py-2 text-sm" style={{ borderColor: "var(--color-border)" }}>
-                  キャンセル
-                </button>
-                <button
-                  onClick={handleDelete}
-                  disabled={deleting}
-                  className="flex-1 rounded-lg bg-red-500 py-2 text-sm font-bold text-white disabled:opacity-50"
-                >
+                <button onClick={() => setShowDelete(false)} className="flex-1 rounded-lg border py-2 text-sm" style={{ borderColor: "var(--color-border)" }}>キャンセル</button>
+                <button onClick={handleDelete} disabled={deleting} className="flex-1 rounded-lg bg-red-500 py-2 text-sm font-bold text-white disabled:opacity-50">
                   {deleting ? "削除中..." : "削除する"}
                 </button>
               </div>
             </div>
           ) : (
-            <button
-              onClick={() => setShowDelete(true)}
-              className="w-full rounded-xl border py-3 text-sm text-red-500"
-              style={{ borderColor: "var(--color-border)" }}
-            >
+            <button onClick={() => setShowDelete(true)} className="w-full rounded-xl border py-3 text-sm text-red-500" style={{ borderColor: "var(--color-border)" }}>
               グループを削除
             </button>
           )}

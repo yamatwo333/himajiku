@@ -28,6 +28,7 @@ export default function GroupDetailPage() {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
+  const [copiedUrl, setCopiedUrl] = useState(false);
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
   const [leaving, setLeaving] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -72,6 +73,41 @@ export default function GroupDetailPage() {
     }
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleCopyUrl = async () => {
+    if (!group) return;
+    const url = `${window.location.origin}/join?code=${group.invite_code}`;
+    try {
+      await navigator.clipboard.writeText(url);
+    } catch {
+      const input = document.createElement("input");
+      input.value = url;
+      document.body.appendChild(input);
+      input.select();
+      document.execCommand("copy");
+      document.body.removeChild(input);
+    }
+    setCopiedUrl(true);
+    setTimeout(() => setCopiedUrl(false), 2000);
+  };
+
+  const handleShare = async () => {
+    if (!group) return;
+    const url = `${window.location.origin}/join?code=${group.invite_code}`;
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: `himajiku - ${group.name}`,
+          text: `「${group.name}」に参加しよう！`,
+          url,
+        });
+      } catch {
+        // User cancelled
+      }
+    } else {
+      handleCopyUrl();
+    }
   };
 
   const handleLeave = async () => {
@@ -136,23 +172,63 @@ export default function GroupDetailPage() {
       </header>
 
       <div className="px-4 pt-5 pb-8 space-y-6">
-        {/* Invite code */}
-        <section className="rounded-xl border p-4" style={{ backgroundColor: "var(--color-surface)", borderColor: "var(--color-border)" }}>
-          <h2 className="mb-2 text-sm font-bold" style={{ color: "var(--color-text-secondary)" }}>招待コード</h2>
-          <div className="flex items-center justify-between">
-            <span className="text-2xl font-mono font-bold tracking-widest">{group.invite_code}</span>
+        {/* Invite */}
+        <section className="rounded-xl border p-4 space-y-3" style={{ backgroundColor: "var(--color-surface)", borderColor: "var(--color-border)" }}>
+          <h2 className="text-sm font-bold" style={{ color: "var(--color-text-secondary)" }}>友達を招待</h2>
+
+          {/* Share button */}
+          <button
+            onClick={handleShare}
+            className="flex w-full items-center justify-center gap-2 rounded-lg py-3 text-sm font-bold text-white"
+            style={{ backgroundColor: "var(--color-primary)" }}
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" />
+              <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" /><line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
+            </svg>
+            招待リンクを共有
+          </button>
+
+          {/* Invite URL */}
+          <div>
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                readOnly
+                value={`${typeof window !== "undefined" ? window.location.origin : ""}/join?code=${group.invite_code}`}
+                className="flex-1 rounded-lg border px-3 py-2 text-xs font-mono outline-none"
+                style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-bg)" }}
+              />
+              <button
+                onClick={handleCopyUrl}
+                className="shrink-0 rounded-lg border px-3 py-2 text-xs font-bold"
+                style={{
+                  borderColor: copiedUrl ? "var(--color-primary)" : "var(--color-border)",
+                  color: copiedUrl ? "var(--color-primary)" : "var(--color-text)",
+                }}
+              >
+                {copiedUrl ? "コピー済" : "コピー"}
+              </button>
+            </div>
+          </div>
+
+          {/* Invite code */}
+          <div className="flex items-center justify-between pt-1">
+            <div>
+              <span className="text-xs" style={{ color: "var(--color-text-secondary)" }}>招待コード: </span>
+              <span className="font-mono font-bold tracking-widest">{group.invite_code}</span>
+            </div>
             <button
               onClick={handleCopyCode}
-              className="rounded-lg border px-3 py-1.5 text-xs font-bold transition-colors"
+              className="rounded-lg border px-2 py-1 text-xs"
               style={{
                 borderColor: copied ? "var(--color-primary)" : "var(--color-border)",
-                color: copied ? "var(--color-primary)" : "var(--color-text)",
+                color: copied ? "var(--color-primary)" : "var(--color-text-secondary)",
               }}
             >
-              {copied ? "コピー済み" : "コピー"}
+              {copied ? "コピー済" : "コピー"}
             </button>
           </div>
-          <p className="mt-2 text-xs" style={{ color: "var(--color-text-secondary)" }}>友達にこのコードを共有して招待しましょう</p>
         </section>
 
         {/* Members */}

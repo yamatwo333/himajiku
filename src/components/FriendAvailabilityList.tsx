@@ -9,9 +9,9 @@ export default function FriendAvailabilityList({
   availabilities,
   currentUserId,
 }: Props) {
-  const friends = availabilities.filter((a) => a.userId !== currentUserId);
+  const others = availabilities.filter((a) => a.userId !== currentUserId);
 
-  if (friends.length === 0) {
+  if (availabilities.length === 0) {
     return (
       <p
         className="py-8 text-center text-sm"
@@ -22,9 +22,20 @@ export default function FriendAvailabilityList({
     );
   }
 
+  if (others.length === 0) {
+    return (
+      <p
+        className="py-8 text-center text-sm"
+        style={{ color: "var(--color-text-secondary)" }}
+      >
+        他のメンバーはまだ登録していません
+      </p>
+    );
+  }
+
   return (
     <div className="space-y-3">
-      {friends.map((a) => (
+      {others.map((a) => (
         <div
           key={a.id}
           className="rounded-xl border p-3"
