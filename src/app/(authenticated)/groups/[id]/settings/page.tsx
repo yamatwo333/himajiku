@@ -10,8 +10,11 @@ export default function GroupSettingsPage() {
 
   const [name, setName] = useState("");
   const [notifyThreshold, setNotifyThreshold] = useState(3);
-  const [lineGroupId, setLineGroupId] = useState<string>("");
-  const [lineGroups, setLineGroups] = useState<{ line_group_id: string; group_name: string }[]>([]);
+  const [lineLinked, setLineLinked] = useState(false);
+  const [linkCode, setLinkCode] = useState<string | null>(null);
+  const [linkCodeExpiresAt, setLinkCodeExpiresAt] = useState<string | null>(null);
+  const [generatingCode, setGeneratingCode] = useState(false);
+  const [unlinking, setUnlinking] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -20,19 +23,12 @@ export default function GroupSettingsPage() {
 
   const fetchData = useCallback(async () => {
     try {
-      const [groupRes, lineRes] = await Promise.all([
-        fetch(`/api/groups/${groupId}`),
-        fetch("/api/line/groups"),
-      ]);
-      if (groupRes.ok) {
-        const data = await groupRes.json();
+      const res = await fetch(`/api/groups/${groupId}`);
+      if (res.ok) {
+        const data = await res.json();
         setName(data.group.name);
         setNotifyThreshold(data.group.notify_threshold);
-        setLineGroupId(data.group.line_group_id || "");
-      }
-      if (lineRes.ok) {
-        const data = await lineRes.json();
-        setLineGroups(data.lineGroups || []);
+        setLineLinked(!!data.group.line_group_id);
       }
     } catch {
       // ignore
@@ -46,20 +42,46 @@ export default function GroupSettingsPage() {
 
   const handleSave = async () => {
     setSaving(true);
-
     await fetch(`/api/groups/${groupId}/settings`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         name: name.trim(),
         notify_threshold: notifyThreshold,
-        line_group_id: lineGroupId || null,
       }),
     });
-
     setSaving(false);
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
+  };
+
+  const handleGenerateLinkCode = async () => {
+    setGeneratingCode(true);
+    try {
+      const res = await fetch(`/api/groups/${groupId}/line-link`, { method: "POST" });
+      if (res.ok) {
+        const data = await res.json();
+        setLinkCode(data.code);
+        setLinkCodeExpiresAt(data.expiresAt);
+      }
+    } catch {
+      // ignore
+    }
+    setGeneratingCode(false);
+  };
+
+  const handleUnlink = async () => {
+    setUnlinking(true);
+    try {
+      const res = await fetch(`/api/groups/${groupId}/line-link`, { method: "DELETE" });
+      if (res.ok) {
+        setLineLinked(false);
+        setLinkCode(null);
+      }
+    } catch {
+      // ignore
+    }
+    setUnlinking(false);
   };
 
   const handleDelete = async () => {
@@ -67,6 +89,8 @@ export default function GroupSettingsPage() {
     await fetch(`/api/groups/${groupId}`, { method: "DELETE" });
     router.push("/groups");
   };
+
+  const isCodeExpired = linkCodeExpiresAt ? new Date(linkCodeExpiresAt) < new Date() : false;
 
   if (loading) {
     return (
@@ -125,33 +149,73 @@ export default function GroupSettingsPage() {
           </div>
         </section>
 
-        {/* LINE Group Link */}
+        {/* LINE Link */}
         <section>
           <h2 className="mb-2 text-sm font-bold" style={{ color: "var(--color-text-secondary)" }}>LINE通知連携</h2>
-          {lineGroups.length > 0 ? (
-            <>
-              <select
-                value={lineGroupId}
-                onChange={(e) => setLineGroupId(e.target.value)}
-                className="w-full rounded-xl border px-4 py-3 text-sm outline-none"
-                style={{ backgroundColor: "var(--color-surface)", borderColor: "var(--color-border)" }}
+
+          {lineLinked ? (
+            // 連携済み
+            <div className="rounded-xl border p-4 space-y-3" style={{ borderColor: "#06C755", backgroundColor: "#f0fdf4" }}>
+              <div className="flex items-center gap-2">
+                <span className="flex h-6 w-6 items-center justify-center rounded-full text-white text-xs" style={{ backgroundColor: "#06C755" }}>&#x2713;</span>
+                <span className="text-sm font-medium">LINEグループと連携済み</span>
+              </div>
+              <p className="text-xs" style={{ color: "var(--color-text-secondary)" }}>
+                通知条件を満たすと、連携先のLINEグループに自動で通知が届きます。
+              </p>
+              <button
+                onClick={handleUnlink}
+                disabled={unlinking}
+                className="text-sm text-red-500 disabled:opacity-50"
               >
-                <option value="">連携しない</option>
-                {lineGroups.map((lg) => (
-                  <option key={lg.line_group_id} value={lg.line_group_id}>
-                    {lg.group_name}
-                  </option>
-                ))}
-              </select>
-              <p className="mt-2 text-xs" style={{ color: "var(--color-text-secondary)" }}>
-                条件を満たすとLINEグループに通知が届きます
+                {unlinking ? "解除中..." : "連携を解除する"}
+              </button>
+            </div>
+          ) : linkCode && !isCodeExpired ? (
+            // コード発行済み
+            <div className="rounded-xl border p-4 space-y-4" style={{ borderColor: "var(--color-primary)", backgroundColor: "var(--color-bg)" }}>
+              <div>
+                <p className="mb-2 text-sm font-medium">LINEグループで以下を送信してください：</p>
+                <div className="flex items-center justify-center rounded-xl py-4 text-2xl font-bold tracking-widest" style={{ backgroundColor: "var(--color-surface)", color: "var(--color-primary)" }}>
+                  連携 {linkCode}
+                </div>
+              </div>
+              <div className="space-y-2">
+                <p className="text-xs" style={{ color: "var(--color-text-secondary)" }}>
+                  &#x2460; 通知を送りたいLINEグループに「シェアヒマ通知Bot」を招待
+                </p>
+                <p className="text-xs" style={{ color: "var(--color-text-secondary)" }}>
+                  &#x2461; そのグループで上のメッセージをそのまま送信
+                </p>
+                <p className="text-xs" style={{ color: "var(--color-text-secondary)" }}>
+                  &#x2462; Botが「連携完了」と返信したらOK！
+                </p>
+              </div>
+              <p className="text-xs" style={{ color: "var(--color-hot)" }}>
+                ※ コードの有効期限は10分です
               </p>
-            </>
+              <button
+                onClick={handleGenerateLinkCode}
+                className="text-sm font-medium"
+                style={{ color: "var(--color-primary)" }}
+              >
+                コードを再発行する
+              </button>
+            </div>
           ) : (
-            <div className="rounded-xl border p-4" style={{ borderColor: "var(--color-border)" }}>
+            // 未連携
+            <div className="rounded-xl border p-4 space-y-3" style={{ borderColor: "var(--color-border)" }}>
               <p className="text-sm" style={{ color: "var(--color-text-secondary)" }}>
-                LINEグループにシェアヒマ通知Botを追加すると、ここで連携できます
+                LINEグループと連携すると、ヒマな人が集まった時に自動で通知が届きます。
               </p>
+              <button
+                onClick={handleGenerateLinkCode}
+                disabled={generatingCode}
+                className="w-full rounded-xl py-3 text-sm font-bold text-white transition-transform active:scale-[0.97] disabled:opacity-50"
+                style={{ backgroundColor: "#06C755" }}
+              >
+                {generatingCode ? "発行中..." : "LINE連携コードを発行"}
+              </button>
             </div>
           )}
         </section>
@@ -161,7 +225,7 @@ export default function GroupSettingsPage() {
           onClick={handleSave}
           disabled={saving || !name.trim()}
           className="w-full rounded-xl py-3.5 text-base font-bold text-white transition-transform active:scale-[0.97] disabled:opacity-50"
-          style={{ backgroundColor: saved ? "var(--color-free-friend)" : "var(--color-primary)" }}
+          style={{ backgroundColor: saved ? "#10B981" : "var(--color-primary)" }}
         >
           {saving ? "保存中..." : saved ? "保存しました" : "設定を保存"}
         </button>

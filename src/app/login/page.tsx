@@ -21,7 +21,6 @@ function LoginContent() {
     auth_failed: "認証に失敗しました。",
   };
 
-  // エラーパラメータがあればstateに保存してURLをクリーンにする
   useEffect(() => {
     if (errorParam) {
       setError(errorParam);
@@ -35,27 +34,29 @@ function LoginContent() {
   };
 
   return (
-    <div className="flex min-h-dvh flex-col items-center justify-center px-6">
-      <div className="mb-12 text-center">
-        <h1 className="mb-2 text-4xl font-bold tracking-tight">
-          シェア<span style={{ color: "var(--color-primary)" }}>ヒマ</span>
+    <div className="flex min-h-dvh flex-col items-center justify-center px-6"
+      style={{ background: "linear-gradient(135deg, #F5F3FF 0%, #EDE9FE 50%, #F0EBFF 100%)" }}>
+      <div className="mb-10 text-center">
+        <div className="mb-4 text-6xl">&#x1F30A;</div>
+        <h1 className="mb-2 text-4xl font-extrabold tracking-tight" style={{ color: "var(--color-text)" }}>
+          シェアヒマ
         </h1>
-        <p className="text-sm" style={{ color: "var(--color-text-secondary)" }}>
-          ヒマを友達とシェアしよう
+        <p className="text-base" style={{ color: "var(--color-text-secondary)" }}>
+          ヒマな時間をシェアして、<br />なんとなく集まろう
         </p>
       </div>
 
       <div className="w-full max-w-xs space-y-4">
         {error && (
-          <div className="rounded-lg bg-red-50 px-4 py-3 text-center text-sm text-red-600">
+          <div className="rounded-xl bg-red-50 px-4 py-3 text-center text-sm text-red-600">
             {errorMessages[error] ?? errorMessages.unknown}
           </div>
         )}
 
         <button
           onClick={handleLineLogin}
-          className="flex w-full items-center justify-center gap-3 rounded-xl px-6 py-4 text-base font-bold text-white transition-transform active:scale-[0.97]"
-          style={{ backgroundColor: "var(--color-primary)" }}
+          className="flex w-full items-center justify-center gap-3 rounded-2xl px-6 py-4 text-base font-bold text-white shadow-lg transition-all active:scale-[0.97]"
+          style={{ backgroundColor: "#06C755" }}
         >
           <svg width="24" height="24" viewBox="0 0 24 24" fill="white">
             <path d="M12 2C6.48 2 2 5.83 2 10.5c0 4.07 3.57 7.47 8.4 8.29.33.07.77.22.88.5.1.26.07.66.03.92l-.14.87c-.04.26-.2 1.02.89.56.91-.39 4.89-2.88 6.67-4.93C20.63 14.48 22 12.63 22 10.5 22 5.83 17.52 2 12 2zm-3.5 11.5h-2a.75.75 0 01-.75-.75v-4.5a.75.75 0 011.5 0v3.75h1.25a.75.75 0 010 1.5zm2.5-.75a.75.75 0 01-1.5 0v-4.5a.75.75 0 011.5 0v4.5zm4.5 0a.75.75 0 01-1.35.45L12.5 10.3v2.45a.75.75 0 01-1.5 0v-4.5a.75.75 0 011.35-.45l2.15 2.9V8.25a.75.75 0 011.5 0v4.5zm3.25-3a.75.75 0 010 1.5h-1.25v1h1.25a.75.75 0 010 1.5h-2a.75.75 0 01-.75-.75v-4.5a.75.75 0 01.75-.75h2a.75.75 0 010 1.5h-1.25v.5h1.25z" />
@@ -63,11 +64,8 @@ function LoginContent() {
           LINEでログイン
         </button>
 
-        <p
-          className="text-center text-xs"
-          style={{ color: "var(--color-text-secondary)" }}
-        >
-          ログインすると友達のヒマが見えるようになります
+        <p className="text-center text-xs" style={{ color: "var(--color-text-secondary)" }}>
+          LINEアカウントで簡単にはじめられます
         </p>
       </div>
     </div>

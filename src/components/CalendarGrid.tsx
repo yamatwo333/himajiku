@@ -92,7 +92,7 @@ export default function CalendarGrid({ availabilities, onMonthChange, groupId }:
             key={d}
             className="py-1"
             style={{
-              color: i === 5 ? "#3B82F6" : i === 6 ? "#EF4444" : undefined,
+              color: i === 5 ? "var(--color-primary)" : i === 6 ? "var(--color-hot)" : undefined,
             }}
           >
             {d}
@@ -128,7 +128,7 @@ export default function CalendarGrid({ availabilities, onMonthChange, groupId }:
                 className="flex h-7 w-7 items-center justify-center rounded-full text-sm"
                 style={{
                   backgroundColor: isToday(day)
-                    ? "#1a1a1a"
+                    ? "var(--color-today)"
                     : "transparent",
                   color: isToday(day) ? "white" : undefined,
                   fontWeight: isToday(day) ? 700 : 400,

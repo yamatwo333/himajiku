@@ -49,7 +49,6 @@ export async function PUT(
       .update({
         name: body.name?.trim() || undefined,
         notify_threshold: body.notify_threshold,
-        line_group_id: body.line_group_id || null,
       })
       .eq("id", groupId);
 

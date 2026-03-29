@@ -14,23 +14,25 @@ function verifySignature(body: string, signature: string): boolean {
   return hash === signature;
 }
 
-async function getGroupName(groupId: string): Promise<string> {
+async function replyMessage(replyToken: string, text: string) {
   const token = process.env.LINE_MESSAGING_CHANNEL_ACCESS_TOKEN;
-  if (!token) return "LINEグループ";
+  if (!token) return;
 
   try {
-    const res = await fetch(
-      `https://api.line.me/v2/bot/group/${groupId}/summary`,
-      { headers: { Authorization: `Bearer ${token}` } }
-    );
-    if (res.ok) {
-      const data = await res.json();
-      return data.groupName || "LINEグループ";
-    }
+    await fetch("https://api.line.me/v2/bot/message/reply", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        replyToken,
+        messages: [{ type: "text", text }],
+      }),
+    });
   } catch {
     // ignore
   }
-  return "LINEグループ";
 }
 
 export async function POST(request: NextRequest) {
@@ -55,51 +57,68 @@ export async function POST(request: NextRequest) {
     if (source?.type !== "group") continue;
     const lineGroupId = source.groupId;
 
+    // bot参加イベント
     if (event.type === "join") {
-      const groupName = await getGroupName(lineGroupId);
-
-      await supabase.from("line_bot_groups").upsert(
-        { line_group_id: lineGroupId, group_name: groupName },
-        { onConflict: "line_group_id" }
+      await replyMessage(
+        event.replyToken,
+        "シェアヒマ通知Botが追加されました！\n\nシェアヒマのグループ設定から「LINE連携コードを発行」して、このグループに「連携 XXXXXX」と送ってください。"
       );
-
-      // グループに挨拶メッセージを送信
-      const token = process.env.LINE_MESSAGING_CHANNEL_ACCESS_TOKEN;
-      if (token) {
-        try {
-          await fetch("https://api.line.me/v2/bot/message/reply", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${token}`,
-            },
-            body: JSON.stringify({
-              replyToken: event.replyToken,
-              messages: [
-                {
-                  type: "text",
-                  text: "シェアヒマ通知Botが追加されました！\nシェアヒマのグループ設定からこのLINEグループを連携してください。",
-                },
-              ],
-            }),
-          });
-        } catch {
-          // ignore
-        }
-      }
     }
 
+    // bot退出イベント
     if (event.type === "leave") {
       await supabase
-        .from("line_bot_groups")
-        .delete()
+        .from("groups")
+        .update({ line_group_id: null, link_code: null, link_code_expires_at: null })
         .eq("line_group_id", lineGroupId);
+    }
 
-      // このLINEグループを使っていたアプリグループのリンクを解除
+    // メッセージイベント（連携コード処理）
+    if (event.type === "message" && event.message?.type === "text") {
+      const text = (event.message.text as string).trim();
+      const match = text.match(/^連携\s+([A-Za-z0-9]{6})$/);
+      if (!match) continue;
+
+      const code = match[1].toUpperCase();
+
+      // コードでグループを検索
+      const { data: group } = await supabase
+        .from("groups")
+        .select("id, name, link_code_expires_at, line_group_id")
+        .eq("link_code", code)
+        .single();
+
+      if (!group) {
+        await replyMessage(event.replyToken, "連携コードが見つかりません。コードを確認してください。");
+        continue;
+      }
+
+      // 有効期限チェック
+      if (group.link_code_expires_at && new Date(group.link_code_expires_at) < new Date()) {
+        await replyMessage(event.replyToken, "連携コードの有効期限が切れています。シェアヒマから再発行してください。");
+        continue;
+      }
+
+      // 既に別のLINEグループと連携済み
+      if (group.line_group_id && group.line_group_id !== lineGroupId) {
+        await replyMessage(event.replyToken, "このグループは既に別のLINEグループと連携されています。");
+        continue;
+      }
+
+      // 連携を設定
       await supabase
         .from("groups")
-        .update({ line_group_id: null })
-        .eq("line_group_id", lineGroupId);
+        .update({
+          line_group_id: lineGroupId,
+          link_code: null,
+          link_code_expires_at: null,
+        })
+        .eq("id", group.id);
+
+      await replyMessage(
+        event.replyToken,
+        `「${group.name}」とこのLINEグループの連携が完了しました！\n条件を満たすと、このグループに通知が届きます。`
+      );
     }
   }
 
