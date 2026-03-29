@@ -34,16 +34,29 @@ function LoginContent() {
   };
 
   return (
-    <div className="flex min-h-dvh flex-col items-center justify-center px-6"
-      style={{ background: "linear-gradient(135deg, #F5F3FF 0%, #EDE9FE 50%, #F0EBFF 100%)" }}>
+    <div className="flex min-h-dvh flex-col items-center justify-center px-6" style={{ backgroundColor: "var(--color-bg)" }}>
       <div className="mb-10 text-center">
-        <div className="mb-4 text-6xl">&#x1F30A;</div>
-        <h1 className="mb-2 text-4xl font-extrabold tracking-tight" style={{ color: "var(--color-text)" }}>
+        <h1 className="mb-1 text-5xl font-extrabold tracking-tight" style={{ color: "var(--color-text)" }}>
           シェアヒマ
         </h1>
-        <p className="text-base" style={{ color: "var(--color-text-secondary)" }}>
-          ヒマな時間をシェアして、<br />なんとなく集まろう
+        <p className="text-lg font-medium" style={{ color: "var(--color-primary)" }}>
+          ヒマをシェアして、集まろう
         </p>
+      </div>
+
+      <div className="mb-10 flex justify-center gap-6 text-center text-sm" style={{ color: "var(--color-text-secondary)" }}>
+        <div>
+          <div className="mb-1 text-2xl">&#x1F4C5;</div>
+          <p>ヒマな日を<br />登録</p>
+        </div>
+        <div>
+          <div className="mb-1 text-2xl">&#x1F44B;</div>
+          <p>友達と<br />共有</p>
+        </div>
+        <div>
+          <div className="mb-1 text-2xl">&#x1F389;</div>
+          <p>集まれる日が<br />わかる</p>
+        </div>
       </div>
 
       <div className="w-full max-w-xs space-y-4">
@@ -55,7 +68,7 @@ function LoginContent() {
 
         <button
           onClick={handleLineLogin}
-          className="flex w-full items-center justify-center gap-3 rounded-2xl px-6 py-4 text-base font-bold text-white shadow-lg transition-all active:scale-[0.97]"
+          className="flex w-full items-center justify-center gap-3 rounded-2xl px-6 py-4 text-base font-bold text-white shadow-md transition-all active:scale-[0.97]"
           style={{ backgroundColor: "#06C755" }}
         >
           <svg width="24" height="24" viewBox="0 0 24 24" fill="white">
@@ -65,7 +78,7 @@ function LoginContent() {
         </button>
 
         <p className="text-center text-xs" style={{ color: "var(--color-text-secondary)" }}>
-          LINEアカウントで簡単にはじめられます
+          LINEアカウントで10秒ではじめられます
         </p>
       </div>
     </div>

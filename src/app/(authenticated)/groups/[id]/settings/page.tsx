@@ -15,6 +15,7 @@ export default function GroupSettingsPage() {
   const [linkCodeExpiresAt, setLinkCodeExpiresAt] = useState<string | null>(null);
   const [generatingCode, setGeneratingCode] = useState(false);
   const [unlinking, setUnlinking] = useState(false);
+  const [copied, setCopied] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -141,7 +142,7 @@ export default function GroupSettingsPage() {
               className="rounded-xl border px-4 py-3 text-sm outline-none"
               style={{ backgroundColor: "var(--color-surface)", borderColor: "var(--color-border)" }}
             >
-              {[2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => (
+              {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => (
                 <option key={n} value={n}>{n}人以上</option>
               ))}
             </select>
@@ -176,8 +177,19 @@ export default function GroupSettingsPage() {
             <div className="rounded-xl border p-4 space-y-4" style={{ borderColor: "var(--color-primary)", backgroundColor: "var(--color-bg)" }}>
               <div>
                 <p className="mb-2 text-sm font-medium">LINEグループで以下を送信してください：</p>
-                <div className="flex items-center justify-center rounded-xl py-4 text-2xl font-bold tracking-widest" style={{ backgroundColor: "var(--color-surface)", color: "var(--color-primary)" }}>
+                <div className="relative flex items-center justify-center rounded-xl py-4 text-2xl font-bold tracking-widest" style={{ backgroundColor: "var(--color-surface)", color: "var(--color-primary)" }}>
                   連携 {linkCode}
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(`連携 ${linkCode}`);
+                      setCopied(true);
+                      setTimeout(() => setCopied(false), 2000);
+                    }}
+                    className="absolute right-3 rounded-lg px-2 py-1 text-xs font-medium transition-colors"
+                    style={{ backgroundColor: copied ? "#10B981" : "var(--color-border)", color: copied ? "white" : "var(--color-text-secondary)" }}
+                  >
+                    {copied ? "OK!" : "コピー"}
+                  </button>
                 </div>
               </div>
               <div className="space-y-2">
