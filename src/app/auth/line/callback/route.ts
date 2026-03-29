@@ -52,53 +52,57 @@ export async function GET(request: NextRequest) {
     const profile = await profileRes.json();
     const email = `line_${profile.userId}@himajiku.app`;
 
-    // 3. Use Supabase Admin client (direct, not SSR)
+    // 3. Use Supabase Admin client
     const supabaseAdmin = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!,
       { auth: { autoRefreshToken: false, persistSession: false } }
     );
 
-    // Check if user exists by email
-    const { data: existingUsers, error: listError } =
-      await supabaseAdmin.auth.admin.listUsers();
+    // Try to find existing user by email (more reliable than listUsers)
+    let userId: string | null = null;
 
-    if (listError) {
-      console.error("List users error:", listError);
-      return NextResponse.redirect(`${origin}/login?error=create_failed`);
-    }
-
-    let user = existingUsers?.users.find(
-      (u) => u.email === email
-    );
-
-    if (!user) {
-      // Create new user
-      const { data: newUser, error: createError } =
-        await supabaseAdmin.auth.admin.createUser({
-          email,
-          email_confirm: true,
-          user_metadata: {
-            line_id: profile.userId,
-            name: profile.displayName,
-            avatar_url: profile.pictureUrl,
-          },
-        });
-
-      if (createError) {
-        console.error("User creation error:", createError);
-        return NextResponse.redirect(`${origin}/login?error=create_failed`);
-      }
-      user = newUser.user;
-    } else {
-      // Update profile info
-      await supabaseAdmin.auth.admin.updateUserById(user.id, {
+    // First, try to create the user. If they exist, this will fail and we handle it.
+    const { data: newUser, error: createError } =
+      await supabaseAdmin.auth.admin.createUser({
+        email,
+        email_confirm: true,
         user_metadata: {
           line_id: profile.userId,
           name: profile.displayName,
           avatar_url: profile.pictureUrl,
         },
       });
+
+    if (newUser?.user) {
+      userId = newUser.user.id;
+    } else if (createError) {
+      // User likely already exists - find them
+      const { data: existingUsers } =
+        await supabaseAdmin.auth.admin.listUsers({ perPage: 1000 });
+
+      const existingUser = existingUsers?.users.find(
+        (u) => u.email === email
+      );
+
+      if (existingUser) {
+        userId = existingUser.id;
+        // Update their profile info
+        await supabaseAdmin.auth.admin.updateUserById(userId, {
+          user_metadata: {
+            line_id: profile.userId,
+            name: profile.displayName,
+            avatar_url: profile.pictureUrl,
+          },
+        });
+      } else {
+        console.error("User creation error and not found:", createError);
+        return NextResponse.redirect(`${origin}/login?error=create_failed`);
+      }
+    }
+
+    if (!userId) {
+      return NextResponse.redirect(`${origin}/login?error=create_failed`);
     }
 
     // 4. Generate magic link to create session

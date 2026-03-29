@@ -1,11 +1,13 @@
 "use client";
 
-import { useSearchParams } from "next/navigation";
-import { Suspense } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
 
 function LoginContent() {
   const searchParams = useSearchParams();
-  const error = searchParams.get("error");
+  const router = useRouter();
+  const errorParam = searchParams.get("error");
+  const [error, setError] = useState<string | null>(null);
 
   const errorMessages: Record<string, string> = {
     invalid_state: "認証エラーが発生しました。もう一度お試しください。",
@@ -19,7 +21,16 @@ function LoginContent() {
     auth_failed: "認証に失敗しました。",
   };
 
+  // エラーパラメータがあればstateに保存してURLをクリーンにする
+  useEffect(() => {
+    if (errorParam) {
+      setError(errorParam);
+      router.replace("/login", { scroll: false });
+    }
+  }, [errorParam, router]);
+
   const handleLineLogin = () => {
+    setError(null);
     window.location.href = "/auth/line";
   };
 
