@@ -15,7 +15,7 @@ export default function FriendAvailabilityList({
         className="py-8 text-center text-sm"
         style={{ color: "var(--color-text-secondary)" }}
       >
-        この日はまだ誰もヒマを登録していません
+        この日はまだ誰もヒマをシェアしていません
       </p>
     );
   }

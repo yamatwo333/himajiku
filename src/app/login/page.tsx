@@ -94,7 +94,7 @@ function LoginContent() {
         <div className="flex gap-6 text-center text-xs" style={{ color: "var(--color-text-secondary)" }}>
           <div>
             <div className="mb-1 text-xl">&#x1F4C5;</div>
-            <p>ヒマを登録</p>
+            <p>ヒマをシェア</p>
           </div>
           <div>
             <div className="mb-1 text-xl">&#x1F44B;</div>

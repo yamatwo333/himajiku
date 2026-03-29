@@ -122,7 +122,7 @@ function DayDetailContent() {
           <h2 className="mb-3 text-sm font-bold" style={{ color: "var(--color-text-secondary)" }}>この日ヒマ？</h2>
           <TimeSlotPicker selected={selectedSlots} onChange={setSelectedSlots} />
           <p className="mt-2 text-xs" style={{ color: "var(--color-text-secondary)" }}>ヒマな時間帯をタップ（複数選択OK）</p>
-          <p className="mt-1 text-xs" style={{ color: "var(--color-text-secondary)" }}>※ ヒマの登録は参加中の全グループに反映されます</p>
+          <p className="mt-1 text-xs" style={{ color: "var(--color-text-secondary)" }}>※ ヒマのシェアは参加中の全グループに反映されます</p>
         </section>
 
         <section>
@@ -149,7 +149,7 @@ function DayDetailContent() {
               border: isFree ? "none" : "1px solid var(--color-border)",
             }}
           >
-            {saving ? "保存中..." : isFree ? "ヒマを登録する ☀️" : "ヒマを解除する"}
+            {saving ? "保存中..." : isFree ? "ヒマをシェアする" : "ヒマを解除する"}
           </button>
         )}
 

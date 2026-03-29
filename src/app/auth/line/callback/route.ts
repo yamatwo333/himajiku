@@ -88,7 +88,17 @@ export async function GET(request: NextRequest) {
 
     // 6. Verify OTP to create session cookie
     // Check for redirect cookie (set before login)
-    const redirectTo = request.cookies.get("login_redirect")?.value || "/calendar";
+    const rawRedirect = request.cookies.get("login_redirect")?.value;
+    let redirectTo = "/calendar";
+    if (rawRedirect) {
+      try {
+        redirectTo = decodeURIComponent(rawRedirect);
+      } catch {
+        redirectTo = rawRedirect;
+      }
+      // セキュリティ: 相対パスのみ許可
+      if (!redirectTo.startsWith("/")) redirectTo = "/calendar";
+    }
     let supabaseResponse = NextResponse.redirect(`${origin}${redirectTo}`);
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
