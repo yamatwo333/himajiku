@@ -8,6 +8,7 @@ import { AvailabilityWithUser } from "@/lib/types";
 interface GroupInfo {
   id: string;
   name: string;
+  notify_threshold: number;
 }
 
 export default function CalendarPage() {
@@ -114,6 +115,7 @@ export default function CalendarPage() {
             availabilities={availabilities}
             onMonthChange={setCurrentMonth}
             groupId={selectedGroupId}
+            notifyThreshold={groups.find(g => g.id === selectedGroupId)?.notify_threshold ?? 2}
           />
         )}
       </div>

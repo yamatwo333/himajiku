@@ -267,15 +267,16 @@ export default function GroupDetailPage() {
 
             {/* Notification threshold */}
             <section>
-              <h2 className="mb-2 text-sm font-bold" style={{ color: "var(--color-text-secondary)" }}>通知の条件</h2>
+              <h2 className="mb-2 text-sm font-bold" style={{ color: "var(--color-text-secondary)" }}>「集まったっていい」の条件</h2>
               <div className="flex items-center gap-3">
                 <select value={notifyThreshold} onChange={(e) => setNotifyThreshold(Number(e.target.value))}
                   className="rounded-xl border px-4 py-3 text-sm outline-none" style={{ backgroundColor: "var(--color-surface)", borderColor: "var(--color-border)" }}>
                   {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => (<option key={n} value={n}>{n}人以上</option>))}
                 </select>
-                <span className="text-sm" style={{ color: "var(--color-text-secondary)" }}>が同じ時間帯にヒマなとき</span>
+                <span className="text-sm" style={{ color: "var(--color-text-secondary)" }}>ヒマが重なったら</span>
               </div>
-              <p className="mt-2 text-xs" style={{ color: "var(--color-text-secondary)" }}>※設定は自動で保存されます</p>
+              <p className="mt-2 text-xs" style={{ color: "var(--color-text-secondary)" }}>※ カレンダーの<span className="inline-block h-2 w-2 rounded-full align-middle" style={{ backgroundColor: "var(--color-hot)" }} />マークとLINE通知の基準になります</p>
+              <p className="mt-1 text-xs" style={{ color: "var(--color-text-secondary)" }}>※ 設定は自動で保存されます</p>
             </section>
 
             {/* LINE Link */}

@@ -24,9 +24,10 @@ interface Props {
   availabilities: AvailabilityWithUser[];
   onMonthChange: (month: Date) => void;
   groupId?: string;
+  notifyThreshold?: number;
 }
 
-export default function CalendarGrid({ availabilities, onMonthChange, groupId }: Props) {
+export default function CalendarGrid({ availabilities, onMonthChange, groupId, notifyThreshold = 2 }: Props) {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const router = useRouter();
@@ -145,12 +146,12 @@ export default function CalendarGrid({ availabilities, onMonthChange, groupId }:
                     style={{ backgroundColor: "var(--color-free-self)" }}
                   />
                 )}
-                {totalCount >= 2 ? (
+                {totalCount >= notifyThreshold ? (
                   <div
                     className="h-2 w-2 rounded-full"
                     style={{ backgroundColor: "var(--color-hot)" }}
                   />
-                ) : friendCount > 0 && !selfFree ? (
+                ) : friendCount > 0 ? (
                   <div
                     className="h-2 w-2 rounded-full"
                     style={{ backgroundColor: "var(--color-free-friend)" }}
