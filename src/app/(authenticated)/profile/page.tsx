@@ -1,8 +1,39 @@
 "use client";
 
-import { CURRENT_USER } from "@/lib/mock-data";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
 
 export default function ProfilePage() {
+  const router = useRouter();
+  const [displayName, setDisplayName] = useState("");
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    const supabase = createClient();
+    supabase.auth.getUser().then(({ data }) => {
+      if (data.user) {
+        supabase
+          .from("profiles")
+          .select("*")
+          .eq("id", data.user.id)
+          .single()
+          .then(({ data: profile }) => {
+            if (profile) {
+              setDisplayName(profile.display_name);
+              setAvatarUrl(profile.avatar_url);
+            }
+          });
+      }
+    });
+  }, []);
+
+  const handleLogout = async () => {
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    router.push("/login");
+  };
+
   return (
     <div>
       <header
@@ -18,15 +49,26 @@ export default function ProfilePage() {
       <div className="space-y-6 px-4 pt-6">
         {/* User info */}
         <section className="flex items-center gap-4">
-          <div
-            className="flex h-14 w-14 items-center justify-center rounded-full text-xl font-bold text-white"
-            style={{ backgroundColor: "var(--color-primary)" }}
-          >
-            {CURRENT_USER.displayName.charAt(0)}
-          </div>
+          {avatarUrl ? (
+            <img
+              src={avatarUrl}
+              alt={displayName}
+              className="h-14 w-14 rounded-full object-cover"
+            />
+          ) : (
+            <div
+              className="flex h-14 w-14 items-center justify-center rounded-full text-xl font-bold text-white"
+              style={{ backgroundColor: "var(--color-primary)" }}
+            >
+              {displayName.charAt(0)}
+            </div>
+          )}
           <div>
-            <p className="text-lg font-bold">{CURRENT_USER.displayName}</p>
-            <p className="text-sm" style={{ color: "var(--color-text-secondary)" }}>
+            <p className="text-lg font-bold">{displayName}</p>
+            <p
+              className="text-sm"
+              style={{ color: "var(--color-text-secondary)" }}
+            >
               LINE連携済み
             </p>
           </div>
@@ -34,7 +76,10 @@ export default function ProfilePage() {
 
         {/* Settings */}
         <section className="space-y-2">
-          <h2 className="text-sm font-bold" style={{ color: "var(--color-text-secondary)" }}>
+          <h2
+            className="text-sm font-bold"
+            style={{ color: "var(--color-text-secondary)" }}
+          >
             設定
           </h2>
           <div
@@ -46,12 +91,23 @@ export default function ProfilePage() {
           >
             <button className="flex w-full items-center justify-between px-4 py-3.5 text-left text-sm">
               <span>LINE通知設定</span>
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 16 16"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+              >
                 <polyline points="6,4 10,8 6,12" />
               </svg>
             </button>
             <hr style={{ borderColor: "var(--color-border)" }} />
-            <button className="flex w-full items-center justify-between px-4 py-3.5 text-left text-sm text-red-500">
+            <button
+              onClick={handleLogout}
+              className="flex w-full items-center justify-between px-4 py-3.5 text-left text-sm text-red-500"
+            >
               <span>ログアウト</span>
             </button>
           </div>

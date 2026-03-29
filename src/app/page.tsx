@@ -1,6 +1,15 @@
 import { redirect } from "next/navigation";
+import { createClient } from "@/lib/supabase/server";
 
-export default function Home() {
-  // TODO: check auth state, redirect to login if not authenticated
-  redirect("/calendar");
+export default async function Home() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (user) {
+    redirect("/calendar");
+  } else {
+    redirect("/login");
+  }
 }

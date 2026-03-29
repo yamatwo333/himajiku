@@ -1,14 +1,16 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
 
 export default function LoginPage() {
-  const router = useRouter();
-
-  const handleLineLogin = () => {
-    // TODO: implement LINE OAuth flow
-    // For now, skip to calendar with mock user
-    router.push("/calendar");
+  const handleLineLogin = async () => {
+    const supabase = createClient();
+    await supabase.auth.signInWithOAuth({
+      provider: "kakao" as "google", // TODO: LINE provider設定後に変更
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback`,
+      },
+    });
   };
 
   return (

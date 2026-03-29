@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import {
   format,
@@ -16,17 +16,31 @@ import {
 } from "date-fns";
 import { ja } from "date-fns/locale";
 import { AvailabilityWithUser } from "@/lib/types";
-import { CURRENT_USER } from "@/lib/mock-data";
+import { createClient } from "@/lib/supabase/client";
 
 const WEEKDAYS = ["月", "火", "水", "木", "金", "土", "日"];
 
 interface Props {
   availabilities: AvailabilityWithUser[];
+  onMonthChange: (month: Date) => void;
 }
 
-export default function CalendarGrid({ availabilities }: Props) {
+export default function CalendarGrid({ availabilities, onMonthChange }: Props) {
   const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const router = useRouter();
+
+  useEffect(() => {
+    const supabase = createClient();
+    supabase.auth.getUser().then(({ data }) => {
+      setCurrentUserId(data.user?.id ?? null);
+    });
+  }, []);
+
+  const changeMonth = (next: Date) => {
+    setCurrentMonth(next);
+    onMonthChange(next);
+  };
 
   const days = useMemo(() => {
     const monthStart = startOfMonth(currentMonth);
@@ -50,7 +64,7 @@ export default function CalendarGrid({ availabilities }: Props) {
       {/* Month header */}
       <div className="mb-4 flex items-center justify-between">
         <button
-          onClick={() => setCurrentMonth((m) => subMonths(m, 1))}
+          onClick={() => changeMonth(subMonths(currentMonth, 1))}
           className="rounded-lg p-2 active:bg-gray-100"
         >
           <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
@@ -61,7 +75,7 @@ export default function CalendarGrid({ availabilities }: Props) {
           {format(currentMonth, "yyyy年 M月", { locale: ja })}
         </h2>
         <button
-          onClick={() => setCurrentMonth((m) => addMonths(m, 1))}
+          onClick={() => changeMonth(addMonths(currentMonth, 1))}
           className="rounded-lg p-2 active:bg-gray-100"
         >
           <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
@@ -92,10 +106,10 @@ export default function CalendarGrid({ availabilities }: Props) {
           const dayAvails = availByDate[dateStr] || [];
           const inMonth = isSameMonth(day, currentMonth);
           const selfFree = dayAvails.some(
-            (a) => a.userId === CURRENT_USER.id
+            (a) => a.userId === currentUserId
           );
           const friendCount = dayAvails.filter(
-            (a) => a.userId !== CURRENT_USER.id
+            (a) => a.userId !== currentUserId
           ).length;
           const totalCount = dayAvails.length;
 

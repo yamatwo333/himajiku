@@ -1,12 +1,52 @@
 "use client";
 
+import { useState, useEffect, useCallback } from "react";
+import { startOfMonth, endOfMonth, format } from "date-fns";
 import CalendarGrid from "@/components/CalendarGrid";
-import { MOCK_AVAILABILITIES } from "@/lib/mock-data";
+import { createClient } from "@/lib/supabase/client";
+import { AvailabilityWithUser } from "@/lib/types";
 
 export default function CalendarPage() {
+  const [availabilities, setAvailabilities] = useState<AvailabilityWithUser[]>(
+    []
+  );
+  const [currentMonth, setCurrentMonth] = useState(new Date());
+
+  const fetchAvailabilities = useCallback(async () => {
+    const supabase = createClient();
+    const monthStart = format(startOfMonth(currentMonth), "yyyy-MM-dd");
+    const monthEnd = format(endOfMonth(currentMonth), "yyyy-MM-dd");
+
+    const { data } = await supabase
+      .from("availability")
+      .select("*, user:profiles(*)")
+      .gte("date", monthStart)
+      .lte("date", monthEnd);
+
+    if (data) {
+      setAvailabilities(
+        data.map((row) => ({
+          id: row.id,
+          userId: row.user_id,
+          date: row.date,
+          timeSlots: row.time_slots,
+          comment: row.comment,
+          user: {
+            id: row.user.id,
+            displayName: row.user.display_name,
+            avatarUrl: row.user.avatar_url,
+          },
+        }))
+      );
+    }
+  }, [currentMonth]);
+
+  useEffect(() => {
+    fetchAvailabilities();
+  }, [fetchAvailabilities]);
+
   return (
     <div>
-      {/* Header */}
       <header
         className="sticky top-0 z-10 border-b px-4 py-3"
         style={{
@@ -20,7 +60,10 @@ export default function CalendarPage() {
       </header>
 
       <div className="pt-4">
-        <CalendarGrid availabilities={MOCK_AVAILABILITIES} />
+        <CalendarGrid
+          availabilities={availabilities}
+          onMonthChange={setCurrentMonth}
+        />
       </div>
     </div>
   );
