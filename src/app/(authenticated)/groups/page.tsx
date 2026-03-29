@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
 
 interface Group {
   id: string;
@@ -24,38 +23,14 @@ export default function GroupsPage() {
   const [creating, setCreating] = useState(false);
 
   const fetchGroups = useCallback(async () => {
-    const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-
-    const { data: memberships } = await supabase
-      .from("group_members")
-      .select("group_id")
-      .eq("user_id", user.id);
-
-    if (!memberships || memberships.length === 0) {
-      setGroups([]);
-      setLoading(false);
-      return;
-    }
-
-    const groupIds = memberships.map((m) => m.group_id);
-    const { data: groupsData } = await supabase
-      .from("groups")
-      .select("*")
-      .in("id", groupIds);
-
-    if (groupsData) {
-      const groupsWithCount: Group[] = await Promise.all(
-        groupsData.map(async (g) => {
-          const { count } = await supabase
-            .from("group_members")
-            .select("*", { count: "exact", head: true })
-            .eq("group_id", g.id);
-          return { ...g, member_count: count ?? 0 };
-        })
-      );
-      setGroups(groupsWithCount);
+    try {
+      const res = await fetch("/api/groups/mine");
+      if (res.ok) {
+        const data = await res.json();
+        setGroups(data.groups || []);
+      }
+    } catch {
+      // ignore
     }
     setLoading(false);
   }, []);

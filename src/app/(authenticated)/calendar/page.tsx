@@ -21,26 +21,18 @@ export default function CalendarPage() {
   // Fetch groups the user belongs to
   useEffect(() => {
     const fetchGroups = async () => {
-      const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const { data: memberships } = await supabase
-        .from("group_members")
-        .select("group_id")
-        .eq("user_id", user.id);
-
-      if (memberships && memberships.length > 0) {
-        const groupIds = memberships.map((m) => m.group_id);
-        const { data: groupsData } = await supabase
-          .from("groups")
-          .select("id, name")
-          .in("id", groupIds);
-
-        if (groupsData && groupsData.length > 0) {
-          setGroups(groupsData);
-          setSelectedGroupId(groupsData[0].id);
+      try {
+        const res = await fetch("/api/groups/mine");
+        if (res.ok) {
+          const data = await res.json();
+          const groupsList = data.groups || [];
+          if (groupsList.length > 0) {
+            setGroups(groupsList);
+            setSelectedGroupId(groupsList[0].id);
+          }
         }
+      } catch {
+        // ignore
       }
       setLoading(false);
     };
