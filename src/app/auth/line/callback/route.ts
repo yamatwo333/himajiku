@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
+import { createClient } from "@supabase/supabase-js";
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -49,30 +50,33 @@ export async function GET(request: NextRequest) {
     }
 
     const profile = await profileRes.json();
+    const email = `line_${profile.userId}@himajiku.app`;
 
-    // 3. Sign in to Supabase using service role (create user if needed)
-    const supabaseAdmin = createServerClient(
+    // 3. Use Supabase Admin client (direct, not SSR)
+    const supabaseAdmin = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      {
-        cookies: {
-          getAll: () => [],
-          setAll: () => {},
-        },
-      }
+      { auth: { autoRefreshToken: false, persistSession: false } }
     );
 
-    // Check if user exists by LINE ID (stored in user_metadata)
-    const { data: existingUsers } = await supabaseAdmin.auth.admin.listUsers();
+    // Check if user exists by email
+    const { data: existingUsers, error: listError } =
+      await supabaseAdmin.auth.admin.listUsers();
+
+    if (listError) {
+      console.error("List users error:", listError);
+      return NextResponse.redirect(`${origin}/login?error=create_failed`);
+    }
+
     let user = existingUsers?.users.find(
-      (u) => u.user_metadata?.line_id === profile.userId
+      (u) => u.email === email
     );
 
     if (!user) {
       // Create new user
       const { data: newUser, error: createError } =
         await supabaseAdmin.auth.admin.createUser({
-          email: `line_${profile.userId}@himajiku.app`,
+          email,
           email_confirm: true,
           user_metadata: {
             line_id: profile.userId,
@@ -97,11 +101,11 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // 4. Create a session for the user using magic link approach
+    // 4. Generate magic link to create session
     const { data: linkData, error: linkError } =
       await supabaseAdmin.auth.admin.generateLink({
         type: "magiclink",
-        email: `line_${profile.userId}@himajiku.app`,
+        email,
       });
 
     if (linkError || !linkData) {
@@ -109,11 +113,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.redirect(`${origin}/login?error=session_failed`);
     }
 
-    // Extract token from the link
-    const linkUrl = new URL(linkData.properties.action_link);
-    const token_hash = linkUrl.searchParams.get("token") || linkUrl.hash;
-
-    // Use the OTP to verify and create session
+    // 5. Verify OTP to create session cookie
     let supabaseResponse = NextResponse.redirect(`${origin}/calendar`);
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
