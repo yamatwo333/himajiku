@@ -9,7 +9,6 @@ export async function GET(request: NextRequest) {
   const savedState = request.cookies.get("line_oauth_state")?.value;
   const origin = new URL(request.url).origin;
 
-  // CSRF check
   if (!state || state !== savedState) {
     return NextResponse.redirect(`${origin}/login?error=invalid_state`);
   }
@@ -33,8 +32,7 @@ export async function GET(request: NextRequest) {
     });
 
     if (!tokenRes.ok) {
-      const errorBody = await tokenRes.text();
-      console.error("LINE token error:", errorBody);
+      console.error("LINE token error:", await tokenRes.text());
       return NextResponse.redirect(`${origin}/login?error=token_failed`);
     }
 
@@ -52,18 +50,15 @@ export async function GET(request: NextRequest) {
     const profile = await profileRes.json();
     const email = `line_${profile.userId}@himajiku.app`;
 
-    // 3. Use Supabase Admin client
+    // 3. Supabase Admin client
     const supabaseAdmin = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!,
       { auth: { autoRefreshToken: false, persistSession: false } }
     );
 
-    // Try to find existing user by email (more reliable than listUsers)
-    let userId: string | null = null;
-
-    // First, try to create the user. If they exist, this will fail and we handle it.
-    const { data: newUser, error: createError } =
+    // 4. Create user (ignore error if already exists)
+    const { error: createError } =
       await supabaseAdmin.auth.admin.createUser({
         email,
         email_confirm: true,
@@ -74,38 +69,12 @@ export async function GET(request: NextRequest) {
         },
       });
 
-    if (newUser?.user) {
-      userId = newUser.user.id;
-    } else if (createError) {
-      // User likely already exists - find them
-      const { data: existingUsers } =
-        await supabaseAdmin.auth.admin.listUsers({ perPage: 1000 });
-
-      const existingUser = existingUsers?.users.find(
-        (u) => u.email === email
-      );
-
-      if (existingUser) {
-        userId = existingUser.id;
-        // Update their profile info
-        await supabaseAdmin.auth.admin.updateUserById(userId, {
-          user_metadata: {
-            line_id: profile.userId,
-            name: profile.displayName,
-            avatar_url: profile.pictureUrl,
-          },
-        });
-      } else {
-        console.error("User creation error and not found:", createError);
-        return NextResponse.redirect(`${origin}/login?error=create_failed`);
-      }
-    }
-
-    if (!userId) {
+    if (createError && createError.code !== "email_exists") {
+      console.error("User creation error:", createError);
       return NextResponse.redirect(`${origin}/login?error=create_failed`);
     }
 
-    // 4. Generate magic link to create session
+    // 5. Generate magic link (works for both new and existing users)
     const { data: linkData, error: linkError } =
       await supabaseAdmin.auth.admin.generateLink({
         type: "magiclink",
@@ -117,7 +86,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.redirect(`${origin}/login?error=session_failed`);
     }
 
-    // 5. Verify OTP to create session cookie
+    // 6. Verify OTP to create session cookie
     let supabaseResponse = NextResponse.redirect(`${origin}/calendar`);
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -146,7 +115,6 @@ export async function GET(request: NextRequest) {
       return NextResponse.redirect(`${origin}/login?error=verify_failed`);
     }
 
-    // Clear the state cookie
     supabaseResponse.cookies.set("line_oauth_state", "", {
       maxAge: 0,
       path: "/",
