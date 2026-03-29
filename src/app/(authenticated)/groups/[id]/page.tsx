@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 
 interface GroupDetail {
@@ -9,6 +9,7 @@ interface GroupDetail {
   invite_code: string;
   created_by: string;
   notify_threshold: number;
+  line_group_id: string | null;
 }
 
 interface Member {
@@ -34,42 +35,69 @@ export default function GroupDetailPage() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
+  // Settings state
+  const [editName, setEditName] = useState("");
+  const [notifyThreshold, setNotifyThreshold] = useState(3);
+  const [lineLinked, setLineLinked] = useState(false);
+  const [linkCode, setLinkCode] = useState<string | null>(null);
+  const [linkCodeExpiresAt, setLinkCodeExpiresAt] = useState<string | null>(null);
+  const [generatingCode, setGeneratingCode] = useState(false);
+  const [unlinking, setUnlinking] = useState(false);
+  const [copiedCode, setCopiedCode] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const initialLoadRef = useRef(true);
+
   const fetchData = useCallback(async () => {
     try {
-      // Get current user
       const { createClient } = await import("@/lib/supabase/client");
       const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
       if (user) setCurrentUserId(user.id);
 
-      // Fetch group via API
       const res = await fetch(`/api/groups/${groupId}`);
       if (res.ok) {
         const data = await res.json();
         setGroup(data.group);
         setMembers(data.members || []);
+        setEditName(data.group.name);
+        setNotifyThreshold(data.group.notify_threshold);
+        setLineLinked(!!data.group.line_group_id);
       }
     } catch {
       // ignore
     }
     setLoading(false);
+    setTimeout(() => { initialLoadRef.current = false; }, 100);
   }, [groupId]);
 
   useEffect(() => {
     fetchData();
   }, [fetchData]);
 
+  // Auto-save name & threshold
+  useEffect(() => {
+    if (initialLoadRef.current || loading) return;
+    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+    saveTimeoutRef.current = setTimeout(async () => {
+      if (!editName.trim()) return;
+      setSaving(true);
+      await fetch(`/api/groups/${groupId}/settings`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: editName.trim(), notify_threshold: notifyThreshold }),
+      });
+      setSaving(false);
+    }, 500);
+    return () => { if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current); };
+  }, [editName, notifyThreshold, groupId, loading]);
+
   const handleCopyCode = async () => {
     if (!group) return;
-    try {
-      await navigator.clipboard.writeText(group.invite_code);
-    } catch {
+    try { await navigator.clipboard.writeText(group.invite_code); } catch {
       const input = document.createElement("input");
       input.value = group.invite_code;
-      document.body.appendChild(input);
-      input.select();
-      document.execCommand("copy");
-      document.body.removeChild(input);
+      document.body.appendChild(input); input.select(); document.execCommand("copy"); document.body.removeChild(input);
     }
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
@@ -78,15 +106,10 @@ export default function GroupDetailPage() {
   const handleCopyUrl = async () => {
     if (!group) return;
     const url = `${window.location.origin}/join?code=${group.invite_code}`;
-    try {
-      await navigator.clipboard.writeText(url);
-    } catch {
+    try { await navigator.clipboard.writeText(url); } catch {
       const input = document.createElement("input");
       input.value = url;
-      document.body.appendChild(input);
-      input.select();
-      document.execCommand("copy");
-      document.body.removeChild(input);
+      document.body.appendChild(input); input.select(); document.execCommand("copy"); document.body.removeChild(input);
     }
     setCopiedUrl(true);
     setTimeout(() => setCopiedUrl(false), 2000);
@@ -96,18 +119,32 @@ export default function GroupDetailPage() {
     if (!group) return;
     const url = `${window.location.origin}/join?code=${group.invite_code}`;
     if (navigator.share) {
-      try {
-        await navigator.share({
-          title: `シェアヒマ - ${group.name}`,
-          text: `「${group.name}」に参加しよう！`,
-          url,
-        });
-      } catch {
-        // User cancelled
-      }
+      try { await navigator.share({ title: `シェアヒマ - ${group.name}`, text: `「${group.name}」に参加しよう！`, url }); } catch { /* cancelled */ }
     } else {
       handleCopyUrl();
     }
+  };
+
+  const handleGenerateLinkCode = async () => {
+    setGeneratingCode(true);
+    try {
+      const res = await fetch(`/api/groups/${groupId}/line-link`, { method: "POST" });
+      if (res.ok) {
+        const data = await res.json();
+        setLinkCode(data.code);
+        setLinkCodeExpiresAt(data.expiresAt);
+      }
+    } catch { /* ignore */ }
+    setGeneratingCode(false);
+  };
+
+  const handleUnlink = async () => {
+    setUnlinking(true);
+    try {
+      const res = await fetch(`/api/groups/${groupId}/line-link`, { method: "DELETE" });
+      if (res.ok) { setLineLinked(false); setLinkCode(null); }
+    } catch { /* ignore */ }
+    setUnlinking(false);
   };
 
   const handleLeave = async () => {
@@ -123,6 +160,7 @@ export default function GroupDetailPage() {
   };
 
   const isOwner = group?.created_by === currentUserId;
+  const isCodeExpired = linkCodeExpiresAt ? new Date(linkCodeExpiresAt) < new Date() : false;
 
   if (loading) {
     return (
@@ -154,78 +192,40 @@ export default function GroupDetailPage() {
 
   return (
     <div>
-      <header className="sticky top-0 z-10 flex items-center justify-between border-b px-4 py-3" style={{ backgroundColor: "var(--color-surface)", borderColor: "var(--color-border)" }}>
-        <div className="flex items-center">
-          <button onClick={() => router.back()} className="mr-3 rounded-lg p-1 active:bg-gray-100">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="15,6 9,12 15,18" /></svg>
-          </button>
-          <h1 className="text-lg font-bold">{group.name}</h1>
-        </div>
-        {isOwner && (
-          <button onClick={() => router.push(`/groups/${groupId}/settings`)} className="rounded-lg p-1 active:bg-gray-100">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="12" cy="12" r="3" />
-              <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z" />
-            </svg>
-          </button>
-        )}
+      <header className="sticky top-0 z-10 flex items-center border-b px-4 py-3" style={{ backgroundColor: "var(--color-surface)", borderColor: "var(--color-border)" }}>
+        <button onClick={() => router.back()} className="mr-3 rounded-lg p-1 active:bg-gray-100">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="15,6 9,12 15,18" /></svg>
+        </button>
+        <h1 className="text-lg font-bold">{group.name}</h1>
+        {saving && <span className="ml-auto text-xs" style={{ color: "var(--color-text-secondary)" }}>保存中...</span>}
       </header>
 
       <div className="px-4 pt-5 pb-8 space-y-6">
         {/* Invite */}
         <section className="rounded-xl border p-4 space-y-3" style={{ backgroundColor: "var(--color-surface)", borderColor: "var(--color-border)" }}>
           <h2 className="text-sm font-bold" style={{ color: "var(--color-text-secondary)" }}>友達を招待</h2>
-
-          {/* Share button */}
-          <button
-            onClick={handleShare}
-            className="flex w-full items-center justify-center gap-2 rounded-lg py-3 text-sm font-bold text-white"
-            style={{ backgroundColor: "var(--color-primary)" }}
-          >
+          <button onClick={handleShare} className="flex w-full items-center justify-center gap-2 rounded-lg py-3 text-sm font-bold text-white" style={{ backgroundColor: "var(--color-primary)" }}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" />
               <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" /><line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
             </svg>
             招待リンクを共有
           </button>
-
-          {/* Invite URL */}
-          <div>
-            <div className="flex items-center gap-2">
-              <input
-                type="text"
-                readOnly
-                value={`${typeof window !== "undefined" ? window.location.origin : ""}/join?code=${group.invite_code}`}
-                className="flex-1 rounded-lg border px-3 py-2 text-xs font-mono outline-none"
-                style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-bg)" }}
-              />
-              <button
-                onClick={handleCopyUrl}
-                className="shrink-0 rounded-lg border px-3 py-2 text-xs font-bold"
-                style={{
-                  borderColor: copiedUrl ? "var(--color-primary)" : "var(--color-border)",
-                  color: copiedUrl ? "var(--color-primary)" : "var(--color-text)",
-                }}
-              >
-                {copiedUrl ? "コピー済" : "コピー"}
-              </button>
-            </div>
+          <div className="flex items-center gap-2">
+            <input type="text" readOnly value={`${typeof window !== "undefined" ? window.location.origin : ""}/join?code=${group.invite_code}`}
+              className="flex-1 rounded-lg border px-3 py-2 text-xs font-mono outline-none" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-bg)" }} />
+            <button onClick={handleCopyUrl} className="shrink-0 rounded-lg border px-3 py-2 text-xs font-bold"
+              style={{ borderColor: copiedUrl ? "var(--color-primary)" : "var(--color-border)", color: copiedUrl ? "var(--color-primary)" : "var(--color-text)" }}>
+              {copiedUrl ? "コピー済" : "コピー"}
+            </button>
           </div>
-
-          {/* Invite code */}
           <div className="flex items-center justify-between pt-1">
             <div>
               <span className="text-xs" style={{ color: "var(--color-text-secondary)" }}>招待コード: </span>
               <span className="font-mono font-bold tracking-widest">{group.invite_code}</span>
             </div>
-            <button
-              onClick={handleCopyCode}
-              className="rounded-lg border px-2 py-1 text-xs"
-              style={{
-                borderColor: copied ? "var(--color-primary)" : "var(--color-border)",
-                color: copied ? "var(--color-primary)" : "var(--color-text-secondary)",
-              }}
-            >
+            <button onClick={handleCopyCode} className="rounded-lg border px-2 py-1 text-xs"
+              style={{ borderColor: copied ? "var(--color-primary)" : "var(--color-border)", color: copied ? "var(--color-primary)" : "var(--color-text-secondary)" }}>
               {copied ? "コピー済" : "コピー"}
             </button>
           </div>
@@ -246,17 +246,84 @@ export default function GroupDetailPage() {
                 )}
                 <div className="flex-1">
                   <p className="font-medium">{m.display_name}</p>
-                  {m.user_id === group.created_by && (
-                    <span className="text-xs" style={{ color: "var(--color-primary)" }}>管理者</span>
-                  )}
+                  {m.user_id === group.created_by && <span className="text-xs" style={{ color: "var(--color-primary)" }}>管理者</span>}
                 </div>
-                {m.user_id === currentUserId && (
-                  <span className="text-xs" style={{ color: "var(--color-text-secondary)" }}>あなた</span>
-                )}
+                {m.user_id === currentUserId && <span className="text-xs" style={{ color: "var(--color-text-secondary)" }}>あなた</span>}
               </div>
             ))}
           </div>
         </section>
+
+        {/* Owner settings */}
+        {isOwner && (
+          <>
+            {/* Group name edit */}
+            <section>
+              <h2 className="mb-2 text-sm font-bold" style={{ color: "var(--color-text-secondary)" }}>グループ名</h2>
+              <input type="text" value={editName} onChange={(e) => setEditName(e.target.value)} maxLength={30}
+                className="w-full rounded-xl border px-4 py-3 text-sm outline-none focus:border-[var(--color-primary)]"
+                style={{ backgroundColor: "var(--color-surface)", borderColor: "var(--color-border)" }} />
+            </section>
+
+            {/* Notification threshold */}
+            <section>
+              <h2 className="mb-2 text-sm font-bold" style={{ color: "var(--color-text-secondary)" }}>通知の条件</h2>
+              <div className="flex items-center gap-3">
+                <select value={notifyThreshold} onChange={(e) => setNotifyThreshold(Number(e.target.value))}
+                  className="rounded-xl border px-4 py-3 text-sm outline-none" style={{ backgroundColor: "var(--color-surface)", borderColor: "var(--color-border)" }}>
+                  {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => (<option key={n} value={n}>{n}人以上</option>))}
+                </select>
+                <span className="text-sm" style={{ color: "var(--color-text-secondary)" }}>が同じ時間帯にヒマなとき</span>
+              </div>
+              <p className="mt-2 text-xs" style={{ color: "var(--color-text-secondary)" }}>※設定は自動で保存されます</p>
+            </section>
+
+            {/* LINE Link */}
+            <section className="rounded-2xl border p-4 space-y-3" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-surface)" }}>
+              <h2 className="text-sm font-bold" style={{ color: "var(--color-text)" }}>LINE通知連携</h2>
+
+              {lineLinked ? (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 rounded-xl p-3" style={{ backgroundColor: "#f0fdf4" }}>
+                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-white text-xs" style={{ backgroundColor: "#06C755" }}>&#x2713;</span>
+                    <span className="text-sm font-medium">連携済み</span>
+                  </div>
+                  <p className="text-xs" style={{ color: "var(--color-text-secondary)" }}>通知条件を満たすと、連携先のLINEグループに自動で通知が届きます。</p>
+                  <button onClick={handleUnlink} disabled={unlinking} className="text-sm text-red-500 disabled:opacity-50">
+                    {unlinking ? "解除中..." : "連携を解除する"}
+                  </button>
+                </div>
+              ) : linkCode && !isCodeExpired ? (
+                <div className="space-y-4">
+                  <p className="text-sm">LINEグループで以下を送信してください：</p>
+                  <div className="relative flex items-center justify-center rounded-xl py-4 text-xl font-bold tracking-widest" style={{ backgroundColor: "var(--color-bg)", color: "var(--color-primary)" }}>
+                    連携 {linkCode}
+                    <button onClick={() => { navigator.clipboard.writeText(`連携 ${linkCode}`); setCopiedCode(true); setTimeout(() => setCopiedCode(false), 2000); }}
+                      className="absolute right-3 rounded-lg px-2 py-1 text-xs font-medium transition-colors"
+                      style={{ backgroundColor: copiedCode ? "#10B981" : "var(--color-border)", color: copiedCode ? "white" : "var(--color-text-secondary)" }}>
+                      {copiedCode ? "OK!" : "コピー"}
+                    </button>
+                  </div>
+                  <ol className="space-y-1 text-xs list-decimal list-inside" style={{ color: "var(--color-text-secondary)" }}>
+                    <li>LINEグループに「シェアヒマ通知Bot」を招待</li>
+                    <li>そのグループで上のメッセージを送信</li>
+                    <li>Botが「連携完了」と返信したらOK</li>
+                  </ol>
+                  <p className="text-xs" style={{ color: "var(--color-hot)" }}>※ 有効期限は10分です</p>
+                  <button onClick={handleGenerateLinkCode} className="text-sm font-medium" style={{ color: "var(--color-primary)" }}>コードを再発行</button>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <p className="text-xs" style={{ color: "var(--color-text-secondary)" }}>LINEグループと連携すると、ヒマな人が集まった時に自動で通知が届きます。</p>
+                  <button onClick={handleGenerateLinkCode} disabled={generatingCode}
+                    className="w-full rounded-xl py-3 text-sm font-bold text-white transition-transform active:scale-[0.97] disabled:opacity-50" style={{ backgroundColor: "#06C755" }}>
+                    {generatingCode ? "発行中..." : "LINE連携コードを発行"}
+                  </button>
+                </div>
+              )}
+            </section>
+          </>
+        )}
 
         {/* Leave / Delete */}
         {isOwner ? (

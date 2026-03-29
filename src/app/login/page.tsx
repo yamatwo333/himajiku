@@ -34,53 +34,71 @@ function LoginContent() {
   };
 
   return (
-    <div className="flex min-h-dvh flex-col" style={{ backgroundColor: "#ffffff" }}>
-      {/* Hero section */}
-      <div className="flex flex-1 flex-col items-center justify-center px-6 pb-4">
-        <div className="mb-8 text-center">
-          <h1 className="mb-3 text-4xl font-extrabold tracking-tight" style={{ color: "var(--color-text)" }}>
+    <div className="flex min-h-dvh flex-col" style={{ backgroundColor: "var(--color-bg)" }}>
+      {/* Top visual */}
+      <div className="flex flex-1 flex-col items-center justify-center px-6">
+        <div className="mb-6 text-center">
+          <h1 className="text-5xl font-extrabold tracking-tight" style={{ color: "var(--color-text)" }}>
             シェア<span style={{ color: "var(--color-primary)" }}>ヒマ</span>
           </h1>
-          <p className="text-base leading-relaxed" style={{ color: "var(--color-text-secondary)" }}>
-            ヒマな時間をシェアして<br />なんとなく集まれるアプリ
+          <p className="mt-3 text-sm leading-relaxed" style={{ color: "var(--color-text-secondary)" }}>
+            ヒマな時間をシェアして、なんとなく集まろう
           </p>
         </div>
 
-        {/* Feature cards */}
-        <div className="mb-8 w-full max-w-xs space-y-3">
-          <div className="flex items-center gap-4 rounded-2xl px-5 py-4" style={{ backgroundColor: "var(--color-bg)" }}>
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-lg" style={{ backgroundColor: "#E0F2FE" }}>&#x1F4C5;</span>
-            <div>
-              <p className="text-sm font-bold" style={{ color: "var(--color-text)" }}>ヒマな日を登録</p>
-              <p className="text-xs" style={{ color: "var(--color-text-secondary)" }}>時間帯ごとにサクッと登録</p>
-            </div>
+        {/* Mock calendar visual */}
+        <div className="mb-6 w-full max-w-[280px] rounded-2xl border p-4 shadow-sm" style={{ backgroundColor: "var(--color-surface)", borderColor: "var(--color-border)" }}>
+          <div className="mb-3 text-center text-sm font-bold" style={{ color: "var(--color-text)" }}>4月</div>
+          <div className="grid grid-cols-7 gap-1 text-center text-xs" style={{ color: "var(--color-text-secondary)" }}>
+            {["月","火","水","木","金","土","日"].map(d => <div key={d} className="py-0.5">{d}</div>)}
           </div>
-          <div className="flex items-center gap-4 rounded-2xl px-5 py-4" style={{ backgroundColor: "var(--color-bg)" }}>
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-lg" style={{ backgroundColor: "#FEF3C7" }}>&#x1F44B;</span>
-            <div>
-              <p className="text-sm font-bold" style={{ color: "var(--color-text)" }}>友達とシェア</p>
-              <p className="text-xs" style={{ color: "var(--color-text-secondary)" }}>グループでヒマを共有</p>
-            </div>
+          <div className="grid grid-cols-7 gap-1 text-center text-xs mt-1">
+            {[" "," ","1","2","3","4","5","6","7","8","9","10","11","12","13","14","15","16","17","18","19","20","21"].map((d, i) => (
+              <div key={i} className="flex flex-col items-center py-1">
+                <span className="text-xs" style={{ color: d === " " ? "transparent" : "var(--color-text)" }}>{d || "\u00A0"}</span>
+                {["3","8","10","15","17","19"].includes(d) && (
+                  <div className="mt-0.5 flex gap-[2px]">
+                    <div className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: "var(--color-free-self)" }} />
+                    {["10","15","19"].includes(d) && <div className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: "var(--color-free-friend)" }} />}
+                  </div>
+                )}
+                {["15"].includes(d) && (
+                  <div className="absolute -mt-1 flex h-3 w-3 items-center justify-center rounded-full text-[7px] font-bold text-white" style={{ backgroundColor: "var(--color-hot)" }}>3</div>
+                )}
+              </div>
+            ))}
           </div>
-          <div className="flex items-center gap-4 rounded-2xl px-5 py-4" style={{ backgroundColor: "var(--color-bg)" }}>
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-lg" style={{ backgroundColor: "#FEE2E2" }}>&#x1F514;</span>
-            <div>
-              <p className="text-sm font-bold" style={{ color: "var(--color-text)" }}>LINEに通知</p>
-              <p className="text-xs" style={{ color: "var(--color-text-secondary)" }}>集まれそうな日を自動でお知らせ</p>
-            </div>
+          <div className="mt-3 flex items-center justify-center gap-3 text-[10px]" style={{ color: "var(--color-text-secondary)" }}>
+            <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full" style={{ backgroundColor: "var(--color-free-self)" }} />自分</span>
+            <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full" style={{ backgroundColor: "var(--color-free-friend)" }} />友達</span>
+            <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full" style={{ backgroundColor: "var(--color-hot)" }} />集まれる！</span>
+          </div>
+        </div>
+
+        <div className="flex gap-6 text-center text-xs" style={{ color: "var(--color-text-secondary)" }}>
+          <div>
+            <div className="mb-1 text-xl">&#x1F4C5;</div>
+            <p>ヒマを登録</p>
+          </div>
+          <div>
+            <div className="mb-1 text-xl">&#x1F44B;</div>
+            <p>友達と共有</p>
+          </div>
+          <div>
+            <div className="mb-1 text-xl">&#x1F514;</div>
+            <p>LINEに通知</p>
           </div>
         </div>
       </div>
 
-      {/* Login section - fixed bottom */}
-      <div className="sticky bottom-0 px-6 pb-10 pt-4" style={{ backgroundColor: "#ffffff" }}>
+      {/* Login button */}
+      <div className="px-6 pb-10 pt-6">
         <div className="mx-auto w-full max-w-xs space-y-3">
           {error && (
             <div className="rounded-xl bg-red-50 px-4 py-3 text-center text-sm text-red-600">
               {errorMessages[error] ?? errorMessages.unknown}
             </div>
           )}
-
           <button
             onClick={handleLineLogin}
             className="flex w-full items-center justify-center gap-3 rounded-2xl px-6 py-4 text-base font-bold text-white shadow-md transition-all active:scale-[0.97]"
@@ -91,7 +109,6 @@ function LoginContent() {
             </svg>
             LINEでログイン
           </button>
-
           <p className="text-center text-xs" style={{ color: "var(--color-text-secondary)" }}>
             LINEアカウントで10秒ではじめられます
           </p>

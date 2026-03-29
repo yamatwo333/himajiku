@@ -92,11 +92,6 @@ export default function CalendarPage() {
               <option key={g.id} value={g.id}>{g.name}</option>
             ))}
           </select>
-          {groups.length > 1 && (
-            <p className="mt-1.5 text-xs text-center" style={{ color: "var(--color-text-secondary)" }}>
-              ヒマの登録は全グループ共通です
-            </p>
-          )}
         </div>
       )}
 
