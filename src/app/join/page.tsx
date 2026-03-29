@@ -1,7 +1,7 @@
 "use client";
 
 import { useSearchParams, useRouter } from "next/navigation";
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useState, useRef } from "react";
 
 function JoinContent() {
   const searchParams = useSearchParams();
@@ -10,6 +10,7 @@ function JoinContent() {
   const [status, setStatus] = useState<"loading" | "success" | "error">("loading");
   const [message, setMessage] = useState("");
   const [groupName, setGroupName] = useState("");
+  const retryCountRef = useRef(0);
 
   useEffect(() => {
     if (!code) {
@@ -29,7 +30,13 @@ function JoinContent() {
         const data = await res.json();
 
         if (res.status === 401) {
-          // Not logged in - redirect to login, then back here
+          // セッション未確立の可能性 → リトライ（最大3回）
+          if (retryCountRef.current < 3) {
+            retryCountRef.current++;
+            setTimeout(join, 1000);
+            return;
+          }
+          // リトライ上限 → ログインへリダイレクト
           router.push(`/login?redirect=${encodeURIComponent(`/join?code=${code}`)}`);
           return;
         }
@@ -41,7 +48,7 @@ function JoinContent() {
           setStatus(res.status === 409 ? "success" : "error");
           setMessage(data.error || "参加に失敗しました");
           if (res.status === 409) {
-            setGroupName(""); // already member
+            setGroupName("");
           }
         }
       } catch {
