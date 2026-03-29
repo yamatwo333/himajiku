@@ -115,6 +115,31 @@ export async function GET(request: NextRequest) {
       return NextResponse.redirect(`${origin}/login?error=verify_failed`);
     }
 
+    // 7. Ensure profile exists (DB trigger may have failed)
+    const userId = linkData.user.id;
+    const { data: existingProfile } = await supabaseAdmin
+      .from("profiles")
+      .select("id")
+      .eq("id", userId)
+      .single();
+
+    if (!existingProfile) {
+      await supabaseAdmin.from("profiles").insert({
+        id: userId,
+        display_name: profile.displayName || email.split("@")[0],
+        avatar_url: profile.pictureUrl || null,
+      });
+    } else {
+      // Update LINE profile info
+      await supabaseAdmin
+        .from("profiles")
+        .update({
+          display_name: profile.displayName,
+          avatar_url: profile.pictureUrl || null,
+        })
+        .eq("id", userId);
+    }
+
     supabaseResponse.cookies.set("line_oauth_state", "", {
       maxAge: 0,
       path: "/",
