@@ -18,7 +18,7 @@ export default function GroupSettingsPage() {
 
   const fetchData = useCallback(async () => {
     try {
-      const res = await fetch(`/api/groups/${groupId}`, { cache: "no-store" });
+      const res = await fetch(`/api/groups/${groupId}`);
       if (res.ok) {
         const data = await res.json();
         setName(data.group.name);

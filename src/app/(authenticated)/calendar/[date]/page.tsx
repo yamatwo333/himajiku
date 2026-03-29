@@ -28,7 +28,7 @@ function DayDetailContent() {
     setLoading(true);
     try {
       const groupParam = groupId ? `?group=${groupId}` : "";
-      const res = await fetch(`/api/availability/${dateStr}${groupParam}`, { cache: "no-store" });
+      const res = await fetch(`/api/availability/${dateStr}${groupParam}`);
       if (res.ok) {
         const data = await res.json();
         setCurrentUserId(data.currentUserId);
@@ -58,7 +58,7 @@ function DayDetailContent() {
     setSaving(true);
 
     try {
-      const saveRes = await fetch("/api/availability", {
+      await fetch("/api/availability", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -68,37 +68,20 @@ function DayDetailContent() {
         }),
       });
 
-      if (!saveRes.ok) {
-        setSaving(false);
-        alert("保存に失敗しました。もう一度お試しください。");
-        return;
-      }
-
-      // ユーザーが所属する全グループに通知チェック
-      if (selectedSlots.length > 0) {
+      // グループごとに通知チェック
+      if (groupId && selectedSlots.length > 0) {
         try {
-          const groupsRes = await fetch("/api/groups/mine", { cache: "no-store" });
-          if (groupsRes.ok) {
-            const groupsData = await groupsRes.json();
-            const allGroups = groupsData.groups || [];
-            await Promise.allSettled(
-              allGroups.map((g: { id: string }) =>
-                fetch("/api/notify", {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ date: dateStr, group_id: g.id }),
-                })
-              )
-            );
-          }
+          await fetch("/api/notify", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ date: dateStr, group_id: groupId }),
+          });
         } catch {
           // 通知失敗は無視
         }
       }
     } catch {
-      setSaving(false);
-      alert("保存に失敗しました。もう一度お試しください。");
-      return;
+      // ignore
     }
 
     setSaving(false);

@@ -24,7 +24,7 @@ export default function GroupsPage() {
 
   const fetchGroups = useCallback(async () => {
     try {
-      const res = await fetch("/api/groups/mine", { cache: "no-store" });
+      const res = await fetch("/api/groups/mine");
       if (res.ok) {
         const data = await res.json();
         setGroups(data.groups || []);
