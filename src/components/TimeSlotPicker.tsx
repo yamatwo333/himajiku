@@ -7,42 +7,15 @@ interface Props {
   onChange: (slots: TimeSlot[]) => void;
 }
 
-const SLOTS: TimeSlot[] = ["all_day", "morning", "afternoon", "evening"];
+const SLOTS: TimeSlot[] = ["morning", "afternoon", "evening", "late_night"];
 
 export default function TimeSlotPicker({ selected, onChange }: Props) {
   const toggle = (slot: TimeSlot) => {
-    if (slot === "all_day") {
-      // Toggle all_day: if selected, deselect; if not, select only all_day
-      if (selected.includes("all_day")) {
-        onChange([]);
-      } else {
-        onChange(["all_day"]);
-      }
-      return;
-    }
-
-    // If all_day is selected and user picks a specific slot, switch to that slot
-    let next = selected.filter((s) => s !== "all_day");
-    if (next.includes(slot)) {
-      next = next.filter((s) => s !== slot);
+    if (selected.includes(slot)) {
+      onChange(selected.filter((s) => s !== slot));
     } else {
-      next = [...next, slot];
+      onChange([...selected, slot]);
     }
-    // If all three specific slots are selected, switch to all_day
-    if (
-      next.includes("morning") &&
-      next.includes("afternoon") &&
-      next.includes("evening")
-    ) {
-      onChange(["all_day"]);
-    } else {
-      onChange(next);
-    }
-  };
-
-  const isActive = (slot: TimeSlot) => {
-    if (slot === "all_day") return selected.includes("all_day");
-    return selected.includes(slot) || selected.includes("all_day");
   };
 
   return (
@@ -53,11 +26,11 @@ export default function TimeSlotPicker({ selected, onChange }: Props) {
           onClick={() => toggle(slot)}
           className="flex-1 rounded-lg border px-2 py-2.5 text-sm font-medium transition-all active:scale-95"
           style={{
-            backgroundColor: isActive(slot)
+            backgroundColor: selected.includes(slot)
               ? "var(--color-primary)"
               : "var(--color-surface)",
-            color: isActive(slot) ? "white" : "var(--color-text)",
-            borderColor: isActive(slot)
+            color: selected.includes(slot) ? "white" : "var(--color-text)",
+            borderColor: selected.includes(slot)
               ? "var(--color-primary)"
               : "var(--color-border)",
           }}

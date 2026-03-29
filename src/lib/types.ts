@@ -1,10 +1,10 @@
-export type TimeSlot = "morning" | "afternoon" | "evening" | "all_day";
+export type TimeSlot = "morning" | "afternoon" | "evening" | "late_night";
 
 export const TIME_SLOT_LABELS: Record<TimeSlot, string> = {
-  all_day: "終日",
   morning: "午前",
   afternoon: "午後",
   evening: "夜",
+  late_night: "夜中",
 };
 
 export interface User {
