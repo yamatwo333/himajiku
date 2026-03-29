@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 
 export default function GroupSettingsPage() {
@@ -18,9 +18,10 @@ export default function GroupSettingsPage() {
   const [copied, setCopied] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
   const [showDelete, setShowDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const initialLoadRef = useRef(true);
 
   const fetchData = useCallback(async () => {
     try {
@@ -35,26 +36,37 @@ export default function GroupSettingsPage() {
       // ignore
     }
     setLoading(false);
+    // 初期ロード完了後にフラグを立てる（useEffectで自動保存が走らないように）
+    setTimeout(() => { initialLoadRef.current = false; }, 100);
   }, [groupId]);
 
   useEffect(() => {
     fetchData();
   }, [fetchData]);
 
-  const handleSave = async () => {
-    setSaving(true);
-    await fetch(`/api/groups/${groupId}/settings`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        name: name.trim(),
-        notify_threshold: notifyThreshold,
-      }),
-    });
-    setSaving(false);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
-  };
+  // 名前・通知条件の変更を自動保存（デバウンス500ms）
+  useEffect(() => {
+    if (initialLoadRef.current || loading) return;
+
+    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+    saveTimeoutRef.current = setTimeout(async () => {
+      if (!name.trim()) return;
+      setSaving(true);
+      await fetch(`/api/groups/${groupId}/settings`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: name.trim(),
+          notify_threshold: notifyThreshold,
+        }),
+      });
+      setSaving(false);
+    }, 500);
+
+    return () => {
+      if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+    };
+  }, [name, notifyThreshold, groupId, loading]);
 
   const handleGenerateLinkCode = async () => {
     setGeneratingCode(true);
@@ -116,6 +128,9 @@ export default function GroupSettingsPage() {
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="15,6 9,12 15,18" /></svg>
         </button>
         <h1 className="text-lg font-bold">グループ設定</h1>
+        {saving && (
+          <span className="ml-auto text-xs" style={{ color: "var(--color-text-secondary)" }}>保存中...</span>
+        )}
       </header>
 
       <div className="px-4 pt-5 pb-8 space-y-6">
@@ -148,18 +163,20 @@ export default function GroupSettingsPage() {
             </select>
             <span className="text-sm" style={{ color: "var(--color-text-secondary)" }}>が同じ時間帯にヒマなとき</span>
           </div>
+          <p className="mt-2 text-xs" style={{ color: "var(--color-text-secondary)" }}>
+            設定は自動で保存されます
+          </p>
         </section>
 
-        {/* LINE Link */}
-        <section>
-          <h2 className="mb-2 text-sm font-bold" style={{ color: "var(--color-text-secondary)" }}>LINE通知連携</h2>
+        {/* LINE Link - separate section with clear boundary */}
+        <section className="rounded-2xl border p-4 space-y-3" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-surface)" }}>
+          <h2 className="text-sm font-bold" style={{ color: "var(--color-text)" }}>LINE通知連携</h2>
 
           {lineLinked ? (
-            // 連携済み
-            <div className="rounded-xl border p-4 space-y-3" style={{ borderColor: "#06C755", backgroundColor: "#f0fdf4" }}>
-              <div className="flex items-center gap-2">
-                <span className="flex h-6 w-6 items-center justify-center rounded-full text-white text-xs" style={{ backgroundColor: "#06C755" }}>&#x2713;</span>
-                <span className="text-sm font-medium">LINEグループと連携済み</span>
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 rounded-xl p-3" style={{ backgroundColor: "#f0fdf4" }}>
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-white text-xs" style={{ backgroundColor: "#06C755" }}>&#x2713;</span>
+                <span className="text-sm font-medium">連携済み</span>
               </div>
               <p className="text-xs" style={{ color: "var(--color-text-secondary)" }}>
                 通知条件を満たすと、連携先のLINEグループに自動で通知が届きます。
@@ -173,51 +190,41 @@ export default function GroupSettingsPage() {
               </button>
             </div>
           ) : linkCode && !isCodeExpired ? (
-            // コード発行済み
-            <div className="rounded-xl border p-4 space-y-4" style={{ borderColor: "var(--color-primary)", backgroundColor: "var(--color-bg)" }}>
-              <div>
-                <p className="mb-2 text-sm font-medium">LINEグループで以下を送信してください：</p>
-                <div className="relative flex items-center justify-center rounded-xl py-4 text-2xl font-bold tracking-widest" style={{ backgroundColor: "var(--color-surface)", color: "var(--color-primary)" }}>
-                  連携 {linkCode}
-                  <button
-                    onClick={() => {
-                      navigator.clipboard.writeText(`連携 ${linkCode}`);
-                      setCopied(true);
-                      setTimeout(() => setCopied(false), 2000);
-                    }}
-                    className="absolute right-3 rounded-lg px-2 py-1 text-xs font-medium transition-colors"
-                    style={{ backgroundColor: copied ? "#10B981" : "var(--color-border)", color: copied ? "white" : "var(--color-text-secondary)" }}
-                  >
-                    {copied ? "OK!" : "コピー"}
-                  </button>
-                </div>
+            <div className="space-y-4">
+              <p className="text-sm">LINEグループで以下を送信してください：</p>
+              <div className="relative flex items-center justify-center rounded-xl py-4 text-xl font-bold tracking-widest" style={{ backgroundColor: "var(--color-bg)", color: "var(--color-primary)" }}>
+                連携 {linkCode}
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(`連携 ${linkCode}`);
+                    setCopied(true);
+                    setTimeout(() => setCopied(false), 2000);
+                  }}
+                  className="absolute right-3 rounded-lg px-2 py-1 text-xs font-medium transition-colors"
+                  style={{ backgroundColor: copied ? "#10B981" : "var(--color-border)", color: copied ? "white" : "var(--color-text-secondary)" }}
+                >
+                  {copied ? "OK!" : "コピー"}
+                </button>
               </div>
-              <div className="space-y-2">
-                <p className="text-xs" style={{ color: "var(--color-text-secondary)" }}>
-                  &#x2460; 通知を送りたいLINEグループに「シェアヒマ通知Bot」を招待
-                </p>
-                <p className="text-xs" style={{ color: "var(--color-text-secondary)" }}>
-                  &#x2461; そのグループで上のメッセージをそのまま送信
-                </p>
-                <p className="text-xs" style={{ color: "var(--color-text-secondary)" }}>
-                  &#x2462; Botが「連携完了」と返信したらOK！
-                </p>
-              </div>
+              <ol className="space-y-1 text-xs list-decimal list-inside" style={{ color: "var(--color-text-secondary)" }}>
+                <li>LINEグループに「シェアヒマ通知Bot」を招待</li>
+                <li>そのグループで上のメッセージを送信</li>
+                <li>Botが「連携完了」と返信したらOK</li>
+              </ol>
               <p className="text-xs" style={{ color: "var(--color-hot)" }}>
-                ※ コードの有効期限は10分です
+                ※ 有効期限は10分です
               </p>
               <button
                 onClick={handleGenerateLinkCode}
                 className="text-sm font-medium"
                 style={{ color: "var(--color-primary)" }}
               >
-                コードを再発行する
+                コードを再発行
               </button>
             </div>
           ) : (
-            // 未連携
-            <div className="rounded-xl border p-4 space-y-3" style={{ borderColor: "var(--color-border)" }}>
-              <p className="text-sm" style={{ color: "var(--color-text-secondary)" }}>
+            <div className="space-y-3">
+              <p className="text-xs" style={{ color: "var(--color-text-secondary)" }}>
                 LINEグループと連携すると、ヒマな人が集まった時に自動で通知が届きます。
               </p>
               <button
@@ -231,16 +238,6 @@ export default function GroupSettingsPage() {
             </div>
           )}
         </section>
-
-        {/* Save */}
-        <button
-          onClick={handleSave}
-          disabled={saving || !name.trim()}
-          className="w-full rounded-xl py-3.5 text-base font-bold text-white transition-transform active:scale-[0.97] disabled:opacity-50"
-          style={{ backgroundColor: saved ? "#10B981" : "var(--color-primary)" }}
-        >
-          {saving ? "保存中..." : saved ? "保存しました" : "設定を保存"}
-        </button>
 
         {/* Delete */}
         <section className="pt-4">

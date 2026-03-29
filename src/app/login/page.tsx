@@ -39,7 +39,7 @@ function LoginContent() {
       <div className="flex flex-1 flex-col items-center justify-center px-6 pb-4">
         <div className="mb-8 text-center">
           <h1 className="mb-3 text-4xl font-extrabold tracking-tight" style={{ color: "var(--color-text)" }}>
-            シェアヒマ
+            シェア<span style={{ color: "var(--color-primary)" }}>ヒマ</span>
           </h1>
           <p className="text-base leading-relaxed" style={{ color: "var(--color-text-secondary)" }}>
             ヒマな時間をシェアして<br />なんとなく集まれるアプリ

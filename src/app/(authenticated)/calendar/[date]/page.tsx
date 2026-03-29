@@ -67,19 +67,6 @@ function DayDetailContent() {
           comment,
         }),
       });
-
-      // グループごとに通知チェック
-      if (groupId && selectedSlots.length > 0) {
-        try {
-          await fetch("/api/notify", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ date: dateStr, group_id: groupId }),
-          });
-        } catch {
-          // 通知失敗は無視
-        }
-      }
     } catch {
       // ignore
     }
@@ -133,7 +120,7 @@ function DayDetailContent() {
         <section>
           <h2 className="mb-3 text-sm font-bold" style={{ color: "var(--color-text-secondary)" }}>この日ヒマ？</h2>
           <TimeSlotPicker selected={selectedSlots} onChange={setSelectedSlots} />
-          <p className="mt-2 text-xs" style={{ color: "var(--color-text-secondary)" }}>ヒマな時間帯をタップ（複数選択OK）</p>
+          <p className="mt-2 text-xs" style={{ color: "var(--color-text-secondary)" }}>ヒマな時間帯をタップ（複数選択OK・全グループ共通）</p>
         </section>
 
         <section>
