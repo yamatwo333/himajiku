@@ -61,7 +61,7 @@ function LoginContent() {
         <div className="mb-6 w-full max-w-[280px] rounded-2xl border p-4 shadow-sm" style={{ backgroundColor: "var(--color-surface)", borderColor: "var(--color-border)" }}>
           <div className="mb-3 text-center text-sm font-bold" style={{ color: "var(--color-text)" }}>4月</div>
           <div className="grid grid-cols-7 gap-1 text-center text-xs" style={{ color: "var(--color-text-secondary)" }}>
-            {["月","火","水","木","金","土","日"].map(d => <div key={d} className="py-0.5">{d}</div>)}
+            {["日","月","火","水","木","金","土"].map(d => <div key={d} className="py-0.5">{d}</div>)}
           </div>
           <div className="grid grid-cols-7 gap-1 text-center text-xs mt-1">
             {[" "," ","1","2","3","4","5","6","7","8","9","10","11","12","13","14","15","16","17","18","19","20","21"].map((d, i) => {

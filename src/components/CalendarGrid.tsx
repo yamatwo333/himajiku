@@ -18,7 +18,7 @@ import { ja } from "date-fns/locale";
 import { AvailabilityWithUser } from "@/lib/types";
 import { createClient } from "@/lib/supabase/client";
 
-const WEEKDAYS = ["月", "火", "水", "木", "金", "土", "日"];
+const WEEKDAYS = ["日", "月", "火", "水", "木", "金", "土"];
 
 interface Props {
   availabilities: AvailabilityWithUser[];
@@ -47,8 +47,8 @@ export default function CalendarGrid({ availabilities, onMonthChange, groupId, n
   const days = useMemo(() => {
     const monthStart = startOfMonth(currentMonth);
     const monthEnd = endOfMonth(currentMonth);
-    const calStart = startOfWeek(monthStart, { weekStartsOn: 1 });
-    const calEnd = endOfWeek(monthEnd, { weekStartsOn: 1 });
+    const calStart = startOfWeek(monthStart, { weekStartsOn: 0 });
+    const calEnd = endOfWeek(monthEnd, { weekStartsOn: 0 });
     return eachDayOfInterval({ start: calStart, end: calEnd });
   }, [currentMonth]);
 
@@ -93,7 +93,7 @@ export default function CalendarGrid({ availabilities, onMonthChange, groupId, n
             key={d}
             className="py-1"
             style={{
-              color: i === 5 ? "var(--color-primary)" : i === 6 ? "var(--color-hot)" : undefined,
+              color: i === 0 ? "var(--color-hot)" : i === 6 ? "var(--color-primary)" : undefined,
             }}
           >
             {d}
