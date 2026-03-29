@@ -125,18 +125,22 @@ export default function CalendarGrid({ availabilities, onMonthChange, groupId, n
               }}
             >
               {/* Date number */}
-              <span
-                className="flex h-7 w-7 items-center justify-center rounded-full text-sm"
-                style={{
-                  backgroundColor: isToday(day)
-                    ? "var(--color-today)"
-                    : "transparent",
-                  color: isToday(day) ? "white" : undefined,
-                  fontWeight: isToday(day) ? 700 : 400,
-                }}
-              >
-                {format(day, "d")}
-              </span>
+              {(() => {
+                const isHot = totalCount >= notifyThreshold;
+                const today = isToday(day);
+                return (
+                  <span
+                    className="flex h-7 w-7 items-center justify-center rounded-full text-sm"
+                    style={{
+                      backgroundColor: today ? "var(--color-today)" : isHot ? "var(--color-hot)" : "transparent",
+                      color: today || isHot ? "white" : undefined,
+                      fontWeight: today || isHot ? 700 : 400,
+                    }}
+                  >
+                    {format(day, "d")}
+                  </span>
+                );
+              })()}
 
               {/* Availability indicators */}
               <div className="mt-1 flex items-center gap-[3px]">
@@ -146,17 +150,12 @@ export default function CalendarGrid({ availabilities, onMonthChange, groupId, n
                     style={{ backgroundColor: "var(--color-free-self)" }}
                   />
                 )}
-                {totalCount >= notifyThreshold ? (
-                  <div
-                    className="h-2 w-2 rounded-full"
-                    style={{ backgroundColor: "var(--color-hot)" }}
-                  />
-                ) : friendCount > 0 ? (
+                {friendCount > 0 && (
                   <div
                     className="h-2 w-2 rounded-full"
                     style={{ backgroundColor: "var(--color-free-friend)" }}
                   />
-                ) : null}
+                )}
               </div>
             </button>
           );
@@ -174,7 +173,7 @@ export default function CalendarGrid({ availabilities, onMonthChange, groupId, n
           友達がヒマ
         </span>
         <span className="flex items-center gap-1">
-          <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ backgroundColor: "var(--color-hot)" }} />
+          <span className="flex h-4 w-4 items-center justify-center rounded-full text-[9px] font-bold text-white" style={{ backgroundColor: "var(--color-hot)" }}>3</span>
           集まったっていい
         </span>
       </div>
