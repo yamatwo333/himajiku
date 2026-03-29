@@ -1,16 +1,9 @@
 "use client";
 
-import { createClient } from "@/lib/supabase/client";
-
 export default function LoginPage() {
-  const handleLineLogin = async () => {
-    const supabase = createClient();
-    await supabase.auth.signInWithOAuth({
-      provider: "kakao" as "google", // TODO: LINE provider設定後に変更
-      options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
-      },
-    });
+  const handleLineLogin = () => {
+    // LINE OAuth flow via our API route
+    window.location.href = "/auth/line";
   };
 
   return (

@@ -1,0 +1,156 @@
+import { NextRequest, NextResponse } from "next/server";
+import { createServerClient } from "@supabase/ssr";
+
+export async function GET(request: NextRequest) {
+  const { searchParams } = new URL(request.url);
+  const code = searchParams.get("code");
+  const state = searchParams.get("state");
+  const savedState = request.cookies.get("line_oauth_state")?.value;
+  const origin = new URL(request.url).origin;
+
+  // CSRF check
+  if (!state || state !== savedState) {
+    return NextResponse.redirect(`${origin}/login?error=invalid_state`);
+  }
+
+  if (!code) {
+    return NextResponse.redirect(`${origin}/login?error=no_code`);
+  }
+
+  try {
+    // 1. Exchange code for access token
+    const tokenRes = await fetch("https://api.line.me/oauth2/v2.1/token", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        grant_type: "authorization_code",
+        code,
+        redirect_uri: `${origin}/auth/line/callback`,
+        client_id: process.env.LINE_CHANNEL_ID!,
+        client_secret: process.env.LINE_CHANNEL_SECRET!,
+      }),
+    });
+
+    if (!tokenRes.ok) {
+      const errorBody = await tokenRes.text();
+      console.error("LINE token error:", errorBody);
+      return NextResponse.redirect(`${origin}/login?error=token_failed`);
+    }
+
+    const tokenData = await tokenRes.json();
+
+    // 2. Get LINE profile
+    const profileRes = await fetch("https://api.line.me/v2/profile", {
+      headers: { Authorization: `Bearer ${tokenData.access_token}` },
+    });
+
+    if (!profileRes.ok) {
+      return NextResponse.redirect(`${origin}/login?error=profile_failed`);
+    }
+
+    const profile = await profileRes.json();
+
+    // 3. Sign in to Supabase using service role (create user if needed)
+    const supabaseAdmin = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      {
+        cookies: {
+          getAll: () => [],
+          setAll: () => {},
+        },
+      }
+    );
+
+    // Check if user exists by LINE ID (stored in user_metadata)
+    const { data: existingUsers } = await supabaseAdmin.auth.admin.listUsers();
+    let user = existingUsers?.users.find(
+      (u) => u.user_metadata?.line_id === profile.userId
+    );
+
+    if (!user) {
+      // Create new user
+      const { data: newUser, error: createError } =
+        await supabaseAdmin.auth.admin.createUser({
+          email: `line_${profile.userId}@himajiku.app`,
+          email_confirm: true,
+          user_metadata: {
+            line_id: profile.userId,
+            name: profile.displayName,
+            avatar_url: profile.pictureUrl,
+          },
+        });
+
+      if (createError) {
+        console.error("User creation error:", createError);
+        return NextResponse.redirect(`${origin}/login?error=create_failed`);
+      }
+      user = newUser.user;
+    } else {
+      // Update profile info
+      await supabaseAdmin.auth.admin.updateUserById(user.id, {
+        user_metadata: {
+          line_id: profile.userId,
+          name: profile.displayName,
+          avatar_url: profile.pictureUrl,
+        },
+      });
+    }
+
+    // 4. Create a session for the user using magic link approach
+    const { data: linkData, error: linkError } =
+      await supabaseAdmin.auth.admin.generateLink({
+        type: "magiclink",
+        email: `line_${profile.userId}@himajiku.app`,
+      });
+
+    if (linkError || !linkData) {
+      console.error("Magic link error:", linkError);
+      return NextResponse.redirect(`${origin}/login?error=session_failed`);
+    }
+
+    // Extract token from the link
+    const linkUrl = new URL(linkData.properties.action_link);
+    const token_hash = linkUrl.searchParams.get("token") || linkUrl.hash;
+
+    // Use the OTP to verify and create session
+    let supabaseResponse = NextResponse.redirect(`${origin}/calendar`);
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() {
+            return request.cookies.getAll();
+          },
+          setAll(cookiesToSet) {
+            cookiesToSet.forEach(({ name, value, options }) => {
+              supabaseResponse.cookies.set(name, value, options);
+            });
+          },
+        },
+      }
+    );
+
+    const { error: verifyError } = await supabase.auth.verifyOtp({
+      token_hash: linkData.properties.hashed_token,
+      type: "magiclink",
+    });
+
+    if (verifyError) {
+      console.error("OTP verify error:", verifyError);
+      return NextResponse.redirect(`${origin}/login?error=verify_failed`);
+    }
+
+    // Clear the state cookie
+    supabaseResponse.cookies.set("line_oauth_state", "", {
+      maxAge: 0,
+      path: "/",
+    });
+
+    return supabaseResponse;
+  } catch (error) {
+    console.error("LINE auth error:", error);
+    return NextResponse.redirect(`${origin}/login?error=unknown`);
+  }
+}
