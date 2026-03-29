@@ -10,6 +10,8 @@ const TIME_SLOT_LABELS: Record<string, string> = {
   late_night: "夜中",
 };
 
+const ALL_SLOTS = ["morning", "afternoon", "evening", "late_night"];
+
 export async function POST(request: NextRequest) {
   const { date, group_id } = await request.json();
 
@@ -30,8 +32,50 @@ export async function POST(request: NextRequest) {
     .eq("id", group_id)
     .single();
 
-  if (!group || !group.line_group_id || !group.line_channel_access_token) {
-    return NextResponse.json({ sent: false, reason: "LINE not configured for this group" });
+  if (!group) {
+    return NextResponse.json({ sent: false, reason: "group not found" });
+  }
+
+  // LINE not configured - just log and return (notification feature is pending)
+  if (!group.line_group_id || !group.line_channel_access_token) {
+    // Check for time-slot matches for future notification support
+    const { data: members } = await supabase
+      .from("group_members")
+      .select("user_id")
+      .eq("group_id", group_id);
+
+    if (!members) {
+      return NextResponse.json({ sent: false, reason: "no members" });
+    }
+
+    const memberIds = members.map((m) => m.user_id);
+
+    const { data: avails } = await supabase
+      .from("availability")
+      .select("user_id, time_slots")
+      .eq("date", date)
+      .in("user_id", memberIds);
+
+    if (!avails) {
+      return NextResponse.json({ sent: false, reason: "no availabilities" });
+    }
+
+    // Check each time slot for matching people
+    const matches: Record<string, number> = {};
+    for (const slot of ALL_SLOTS) {
+      const count = avails.filter((a) =>
+        (a.time_slots as string[]).includes(slot)
+      ).length;
+      if (count >= group.notify_threshold) {
+        matches[slot] = count;
+      }
+    }
+
+    return NextResponse.json({
+      sent: false,
+      reason: "LINE not configured",
+      matches,
+    });
   }
 
   // Get group members
@@ -46,17 +90,32 @@ export async function POST(request: NextRequest) {
 
   const memberIds = members.map((m) => m.user_id);
 
-  // Get availabilities for this date from group members
   const { data: avails } = await supabase
     .from("availability")
-    .select("*, user:profiles(*)")
+    .select("*, user:profiles(display_name)")
     .eq("date", date)
     .in("user_id", memberIds);
 
-  if (!avails || avails.length < group.notify_threshold) {
+  if (!avails) {
+    return NextResponse.json({ sent: false, reason: "no availabilities" });
+  }
+
+  // Check each time slot for matching people (threshold check per slot)
+  const matchingSlots: { slot: string; people: typeof avails }[] = [];
+
+  for (const slot of ALL_SLOTS) {
+    const matching = avails.filter((a) =>
+      (a.time_slots as string[]).includes(slot)
+    );
+    if (matching.length >= group.notify_threshold) {
+      matchingSlots.push({ slot, people: matching });
+    }
+  }
+
+  if (matchingSlots.length === 0) {
     return NextResponse.json({
       sent: false,
-      reason: `less than ${group.notify_threshold} people (${avails?.length ?? 0} free)`,
+      reason: `no time slot has ${group.notify_threshold}+ people`,
     });
   }
 
@@ -64,18 +123,20 @@ export async function POST(request: NextRequest) {
   const parsedDate = parse(date, "yyyy-MM-dd", new Date());
   const dateLabel = format(parsedDate, "M/d (E)", { locale: ja });
 
-  const lines = avails.map((a) => {
-    const slots = (a.time_slots as string[])
-      .map((s) => TIME_SLOT_LABELS[s] || s)
-      .join("・");
-    const comment = a.comment ? ` 「${a.comment}」` : "";
-    return `・${a.user.display_name}（${slots}）${comment}`;
+  const slotMessages = matchingSlots.map(({ slot, people }) => {
+    const slotLabel = TIME_SLOT_LABELS[slot];
+    const names = people.map((p) => {
+      const name = (p.user as any)?.display_name || "ユーザー";
+      const comment = p.comment ? ` 「${p.comment}」` : "";
+      return `  ・${name}${comment}`;
+    });
+    return [`📌 ${slotLabel}（${people.length}人）`, ...names].join("\n");
   });
 
   const message = [
-    `🎉 [${group.name}] ${dateLabel} に${avails.length}人がヒマです！`,
+    `🎉 [${group.name}] ${dateLabel}`,
     "",
-    ...lines,
+    ...slotMessages,
     "",
     "himajikuで詳細を見る 👀",
   ].join("\n");
@@ -100,7 +161,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ sent: false, error: "LINE API error" }, { status: 500 });
     }
 
-    return NextResponse.json({ sent: true, count: avails.length });
+    return NextResponse.json({ sent: true, matchingSlots: matchingSlots.length });
   } catch (error) {
     console.error("LINE notify error:", error);
     return NextResponse.json({ sent: false, error: "network error" }, { status: 500 });

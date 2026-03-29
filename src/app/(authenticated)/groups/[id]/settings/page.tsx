@@ -10,8 +10,6 @@ export default function GroupSettingsPage() {
 
   const [name, setName] = useState("");
   const [notifyThreshold, setNotifyThreshold] = useState(3);
-  const [lineGroupId, setLineGroupId] = useState("");
-  const [lineAccessToken, setLineAccessToken] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -25,8 +23,6 @@ export default function GroupSettingsPage() {
         const data = await res.json();
         setName(data.group.name);
         setNotifyThreshold(data.group.notify_threshold);
-        setLineGroupId(data.group.line_group_id || "");
-        setLineAccessToken(data.group.line_channel_access_token || "");
       }
     } catch {
       // ignore
@@ -47,8 +43,6 @@ export default function GroupSettingsPage() {
       body: JSON.stringify({
         name: name.trim(),
         notify_threshold: notifyThreshold,
-        line_group_id: lineGroupId.trim() || null,
-        line_channel_access_token: lineAccessToken.trim() || null,
       }),
     });
 
@@ -104,7 +98,7 @@ export default function GroupSettingsPage() {
 
         {/* Notification threshold */}
         <section>
-          <h2 className="mb-2 text-sm font-bold" style={{ color: "var(--color-text-secondary)" }}>LINE通知の条件</h2>
+          <h2 className="mb-2 text-sm font-bold" style={{ color: "var(--color-text-secondary)" }}>通知の条件</h2>
           <div className="flex items-center gap-3">
             <select
               value={notifyThreshold}
@@ -116,39 +110,10 @@ export default function GroupSettingsPage() {
                 <option key={n} value={n}>{n}人以上</option>
               ))}
             </select>
-            <span className="text-sm" style={{ color: "var(--color-text-secondary)" }}>がヒマな日に通知</span>
+            <span className="text-sm" style={{ color: "var(--color-text-secondary)" }}>が同じ時間帯にヒマなとき</span>
           </div>
-        </section>
-
-        {/* LINE Group ID */}
-        <section>
-          <h2 className="mb-2 text-sm font-bold" style={{ color: "var(--color-text-secondary)" }}>LINE通知先グループID</h2>
-          <input
-            type="text"
-            value={lineGroupId}
-            onChange={(e) => setLineGroupId(e.target.value)}
-            placeholder="C1234567890abcdef..."
-            className="w-full rounded-xl border px-4 py-3 text-sm font-mono outline-none focus:border-[var(--color-primary)]"
-            style={{ backgroundColor: "var(--color-surface)", borderColor: "var(--color-border)" }}
-          />
-          <p className="mt-1 text-xs" style={{ color: "var(--color-text-secondary)" }}>
-            LINE Messaging APIで取得したグループIDを入力
-          </p>
-        </section>
-
-        {/* LINE Channel Access Token */}
-        <section>
-          <h2 className="mb-2 text-sm font-bold" style={{ color: "var(--color-text-secondary)" }}>LINEチャネルアクセストークン</h2>
-          <input
-            type="password"
-            value={lineAccessToken}
-            onChange={(e) => setLineAccessToken(e.target.value)}
-            placeholder="トークンを入力"
-            className="w-full rounded-xl border px-4 py-3 text-sm font-mono outline-none focus:border-[var(--color-primary)]"
-            style={{ backgroundColor: "var(--color-surface)", borderColor: "var(--color-border)" }}
-          />
-          <p className="mt-1 text-xs" style={{ color: "var(--color-text-secondary)" }}>
-            LINE Developers → Messaging API → チャネルアクセストークン
+          <p className="mt-2 text-xs" style={{ color: "var(--color-text-secondary)" }}>
+            ※ 通知機能は今後対応予定です
           </p>
         </section>
 
