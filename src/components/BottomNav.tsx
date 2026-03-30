@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 
 const NAV_ITEMS = [
@@ -42,6 +43,23 @@ const NAV_ITEMS = [
 
 export default function BottomNav() {
   const pathname = usePathname();
+  const [calendarHref, setCalendarHref] = useState("/calendar");
+
+  useEffect(() => {
+    const updateCalendarHref = () => {
+      const selectedGroupId = sessionStorage.getItem("selectedGroupId");
+      setCalendarHref(selectedGroupId ? `/calendar?group=${selectedGroupId}` : "/calendar");
+    };
+
+    updateCalendarHref();
+    window.addEventListener("selected-group-change", updateCalendarHref);
+    window.addEventListener("storage", updateCalendarHref);
+
+    return () => {
+      window.removeEventListener("selected-group-change", updateCalendarHref);
+      window.removeEventListener("storage", updateCalendarHref);
+    };
+  }, []);
 
   return (
     <nav
@@ -53,10 +71,11 @@ export default function BottomNav() {
     >
       {NAV_ITEMS.map((item) => {
         const isActive = pathname.startsWith(item.href);
+        const href = item.href === "/calendar" ? calendarHref : item.href;
         return (
           <Link
             key={item.href}
-            href={item.href}
+            href={href}
             className="flex flex-1 flex-col items-center gap-1 py-2 text-xs transition-colors"
             style={{
               color: isActive

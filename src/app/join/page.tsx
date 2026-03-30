@@ -3,6 +3,17 @@
 import { useSearchParams, useRouter } from "next/navigation";
 import { Suspense, useEffect, useState, useRef } from "react";
 
+function JoinLoadingFallback() {
+  return (
+    <div className="flex min-h-dvh items-center justify-center px-6" style={{ backgroundColor: "var(--color-bg)" }}>
+      <div className="text-center">
+        <div className="mx-auto h-8 w-8 animate-spin rounded-full border-2 border-t-transparent" style={{ borderColor: "var(--color-border)", borderTopColor: "transparent" }} />
+        <p className="mt-4 text-sm" style={{ color: "var(--color-text-secondary)" }}>招待情報を確認中...</p>
+      </div>
+    </div>
+  );
+}
+
 function JoinContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -108,7 +119,7 @@ function JoinContent() {
 
 export default function JoinPage() {
   return (
-    <Suspense>
+    <Suspense fallback={<JoinLoadingFallback />}>
       <JoinContent />
     </Suspense>
   );

@@ -50,6 +50,7 @@ export default function CalendarPage() {
     }
 
     window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}`);
+    window.dispatchEvent(new Event("selected-group-change"));
   }, []);
 
   // Fetch groups the user belongs to

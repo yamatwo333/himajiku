@@ -5,11 +5,6 @@ import { getTodayInTokyo } from "@/lib/date";
 import { ensureProfile } from "@/lib/ensure-profile";
 import { sendGroupAvailabilityNotification } from "@/lib/server/notify";
 
-interface AvailabilityRow {
-  date: string;
-  time_slots: string[] | null;
-}
-
 export async function POST(request: NextRequest) {
   try {
     const supabase = createServerClient(
@@ -72,54 +67,13 @@ export async function POST(request: NextRequest) {
     }
 
     const today = getTodayInTokyo();
-    const { data: currentMembers } = await supabaseAdmin
-      .from("group_members")
-      .select("user_id")
-      .eq("group_id", group.id);
-
-    const currentMemberIds = currentMembers?.map((member) => member.user_id) ?? [];
-
     const { data: myFutureAvailabilities } = await supabaseAdmin
       .from("availability")
-      .select("date, time_slots")
+      .select("date")
       .eq("user_id", user.id)
       .gte("date", today);
 
-    const notificationSlotsByDate = new Map<string, Set<string>>();
-
-    if (myFutureAvailabilities?.length) {
-      const futureDates = [...new Set(myFutureAvailabilities.map((availability) => availability.date))];
-      let existingAvailabilities: AvailabilityRow[] = [];
-
-      if (currentMemberIds.length) {
-        const { data } = await supabaseAdmin
-          .from("availability")
-          .select("date, time_slots")
-          .in("user_id", currentMemberIds)
-          .in("date", futureDates);
-
-        existingAvailabilities = (data as AvailabilityRow[] | null) ?? [];
-      }
-
-      for (const availability of myFutureAvailabilities as AvailabilityRow[]) {
-        for (const slot of availability.time_slots ?? []) {
-          const beforeCount = existingAvailabilities.filter(
-            (existingAvailability) =>
-              existingAvailability.date === availability.date &&
-              existingAvailability.time_slots?.includes(slot)
-          ).length;
-
-          if (
-            beforeCount < group.notify_threshold &&
-            beforeCount + 1 >= group.notify_threshold
-          ) {
-            const slots = notificationSlotsByDate.get(availability.date) ?? new Set<string>();
-            slots.add(slot);
-            notificationSlotsByDate.set(availability.date, slots);
-          }
-        }
-      }
-    }
+    const futureDates = [...new Set((myFutureAvailabilities ?? []).map((availability) => availability.date))];
 
     // Join
     const { error: joinError } = await supabaseAdmin
@@ -134,14 +88,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "参加に失敗しました" }, { status: 500 });
     }
 
-    if (group.line_group_id && notificationSlotsByDate.size > 0) {
+    if (group.line_group_id && futureDates.length > 0) {
       after(async () => {
         await Promise.allSettled(
-          Array.from(notificationSlotsByDate.entries()).map(([date, slots]) =>
+          futureDates.map((date) =>
             sendGroupAvailabilityNotification({
               date,
               groupId: group.id,
-              slots: Array.from(slots),
             })
           )
         );
