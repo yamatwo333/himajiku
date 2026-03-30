@@ -1,7 +1,10 @@
 "use client";
 
+import BrandLogo from "@/components/BrandLogo";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
+
+const TIME_SLOTS = ["morning", "afternoon", "evening", "late_night"] as const;
 
 function LoginContent() {
   const searchParams = useSearchParams();
@@ -39,20 +42,22 @@ function LoginContent() {
     }
   };
 
-  // Mock calendar data: { day: [selfFree, friendCount] }
-  const mockData: Record<string, [boolean, number]> = {
-    "3": [true, 0], "5": [false, 1], "8": [true, 0],
-    "10": [true, 1], "14": [false, 1], "15": [true, 2],
-    "19": [true, 1], "21": [false, 1],
+  const mockData: Record<string, { self: string[]; friends: string[][] }> = {
+    "3": { self: ["morning"], friends: [] },
+    "5": { self: [], friends: [["afternoon"]] },
+    "8": { self: ["evening"], friends: [] },
+    "10": { self: ["morning"], friends: [["afternoon"]] },
+    "14": { self: [], friends: [["late_night"]] },
+    "15": { self: ["evening"], friends: [["evening"], ["evening"]] },
+    "19": { self: ["afternoon"], friends: [["morning"]] },
+    "21": { self: [], friends: [["evening"]] },
   };
 
   return (
     <div className="flex min-h-dvh flex-col" style={{ backgroundColor: "var(--color-bg)" }}>
       <div className="flex flex-1 flex-col items-center justify-center px-6">
         <div className="mb-6 text-center">
-          <h1 className="text-5xl font-extrabold tracking-tight" style={{ color: "var(--color-text)" }}>
-            シェア<span style={{ color: "var(--color-primary)" }}>ヒマ</span>
-          </h1>
+          <BrandLogo variant="lockup" className="mx-auto" />
           <p className="mt-3 text-sm leading-relaxed" style={{ color: "var(--color-text-secondary)" }}>
             ヒマな時間をシェアして、なんとなく集まろう
           </p>
@@ -67,10 +72,16 @@ function LoginContent() {
           <div className="grid grid-cols-7 gap-1 text-center text-xs mt-1">
             {[" "," ","1","2","3","4","5","6","7","8","9","10","11","12","13","14","15","16","17","18","19","20","21"].map((d, i) => {
               const data = mockData[d];
-              const selfFree = data?.[0] ?? false;
-              const friendCount = data?.[1] ?? 0;
-              const totalCount = (selfFree ? 1 : 0) + friendCount;
-              const isHot = totalCount >= 2;
+              const selfSlots = data?.self ?? [];
+              const friendSlots = data?.friends ?? [];
+              const selfFree = selfSlots.length > 0;
+              const friendCount = friendSlots.length;
+              const isHot = TIME_SLOTS.some((slot) => {
+                const count =
+                  (selfSlots.includes(slot) ? 1 : 0) +
+                  friendSlots.filter((friend) => friend.includes(slot)).length;
+                return count >= 2;
+              });
               return (
                 <div key={i} className="flex flex-col items-center py-1">
                   <span

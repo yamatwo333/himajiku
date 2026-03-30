@@ -86,7 +86,9 @@ export default function ProfilePage() {
 
           {/* App info */}
           <section className="rounded-xl border p-4" style={{ backgroundColor: "var(--color-surface)", borderColor: "var(--color-border)" }}>
-            <p className="text-sm font-bold" style={{ color: "var(--color-text)" }}>シェアヒマとは？</p>
+            <p className="text-sm font-bold" style={{ color: "var(--color-text)" }}>
+              シェア<span style={{ color: "var(--color-primary)" }}>ヒマ</span>とは？
+            </p>
             <p className="mt-1 text-xs leading-relaxed" style={{ color: "var(--color-text-secondary)" }}>
               ヒマな時間をシェアして、なんとなく集まれるアプリ。グループを作って友達を招待し、ヒマな日をシェアしよう。
             </p>

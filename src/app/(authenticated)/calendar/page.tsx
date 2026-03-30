@@ -1,5 +1,6 @@
 "use client";
 
+import BrandLogo from "@/components/BrandLogo";
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { addMonths, endOfMonth, format, startOfMonth, startOfWeek, endOfWeek } from "date-fns";
@@ -135,11 +136,11 @@ export default function CalendarPage() {
     <div>
       <header
         className="sticky top-0 z-10 border-b px-4 py-3"
-        style={{ backgroundColor: "var(--color-surface)", borderColor: "var(--color-border)" }}
+        style={{ backgroundColor: "var(--color-bg)", borderColor: "var(--color-border)" }}
       >
-        <h1 className="text-center text-lg font-bold">
-          シェア<span style={{ color: "var(--color-primary)" }}>ヒマ</span>
-        </h1>
+        <div className="flex justify-center">
+          <BrandLogo variant="wordmark" />
+        </div>
       </header>
 
       {/* Group selector */}

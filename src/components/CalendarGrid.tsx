@@ -19,6 +19,7 @@ import { ja } from "date-fns/locale";
 import { AvailabilityWithUser } from "@/lib/types";
 
 const WEEKDAYS = ["日", "月", "火", "水", "木", "金", "土"];
+const TIME_SLOTS = ["morning", "afternoon", "evening", "late_night"] as const;
 
 interface Props {
   availabilities: AvailabilityWithUser[];
@@ -151,7 +152,9 @@ export default function CalendarGrid({ availabilities, onMonthChange, groupId, n
           const friendCount = dayAvails.filter(
             (a) => a.userId !== currentUserId
           ).length;
-          const totalCount = dayAvails.length;
+          const isHot = TIME_SLOTS.some((slot) =>
+            dayAvails.filter((availability) => availability.timeSlots.includes(slot)).length >= notifyThreshold
+          );
 
           return (
             <button
@@ -168,7 +171,6 @@ export default function CalendarGrid({ availabilities, onMonthChange, groupId, n
             >
               {/* Date number */}
               {(() => {
-                const isHot = totalCount >= notifyThreshold;
                 const today = isToday(day);
                 return (
                   <span
