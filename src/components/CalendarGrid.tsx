@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import {
   format,
@@ -30,7 +30,7 @@ interface Props {
 
 export default function CalendarGrid({ availabilities, onMonthChange, groupId, notifyThreshold = 2, currentUserId = null, initialMonth }: Props) {
   const [currentMonth, setCurrentMonth] = useState(() => initialMonth ?? new Date());
-  const [showPicker, setShowPicker] = useState(false);
+  const monthInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
 
   const now = new Date();
@@ -45,20 +45,14 @@ export default function CalendarGrid({ availabilities, onMonthChange, groupId, n
     onMonthChange(next);
   };
 
-  const jumpToMonth = (month: Date) => {
-    setCurrentMonth(month);
-    onMonthChange(month);
-    setShowPicker(false);
-  };
-
-  // 前後3ヶ月の月リスト
-  const monthOptions = useMemo(() => {
-    const months: Date[] = [];
-    for (let i = -3; i <= 3; i++) {
-      months.push(addMonths(startOfMonth(now), i));
+  const handleMonthPick = (value: string) => {
+    if (!value) return;
+    const picked = new Date(value + "-01");
+    if (picked >= startOfMonth(subMonths(now, 3)) && picked <= endOfMonth(addMonths(now, 3))) {
+      setCurrentMonth(picked);
+      onMonthChange(picked);
     }
-    return months;
-  }, []);
+  };
 
   const days = useMemo(() => {
     const monthStart = startOfMonth(currentMonth);
@@ -90,11 +84,21 @@ export default function CalendarGrid({ availabilities, onMonthChange, groupId, n
             <polyline points="12,4 6,10 12,16" />
           </svg>
         </button>
-        <button onClick={() => setShowPicker(!showPicker)} className="rounded-lg px-3 py-1 active:bg-gray-100">
+        <button onClick={() => monthInputRef.current?.showPicker()} className="relative rounded-lg px-3 py-1 active:bg-gray-100">
           <h2 className="text-lg font-bold">
             {format(currentMonth, "yyyy年 M月", { locale: ja })}
             <span className="ml-1 text-xs" style={{ color: "var(--color-text-secondary)" }}>&#x25BC;</span>
           </h2>
+          <input
+            ref={monthInputRef}
+            type="month"
+            value={format(currentMonth, "yyyy-MM")}
+            min={format(subMonths(now, 3), "yyyy-MM")}
+            max={format(addMonths(now, 3), "yyyy-MM")}
+            onChange={(e) => handleMonthPick(e.target.value)}
+            className="absolute inset-0 opacity-0"
+            style={{ pointerEvents: "none" }}
+          />
         </button>
         <button
           onClick={() => changeMonth(1)}
@@ -106,29 +110,6 @@ export default function CalendarGrid({ availabilities, onMonthChange, groupId, n
           </svg>
         </button>
       </div>
-
-      {/* Month picker */}
-      {showPicker && (
-        <div className="mb-3 flex flex-wrap justify-center gap-2">
-          {monthOptions.map((m) => {
-            const isActive = format(m, "yyyy-MM") === format(currentMonth, "yyyy-MM");
-            return (
-              <button
-                key={format(m, "yyyy-MM")}
-                onClick={() => jumpToMonth(m)}
-                className="rounded-lg px-3 py-1.5 text-xs font-medium transition-colors"
-                style={{
-                  backgroundColor: isActive ? "var(--color-primary)" : "var(--color-surface)",
-                  color: isActive ? "white" : "var(--color-text)",
-                  border: isActive ? "none" : "1px solid var(--color-border)",
-                }}
-              >
-                {format(m, "M月", { locale: ja })}
-              </button>
-            );
-          })}
-        </div>
-      )}
 
       {/* Weekday header */}
       <div className="mb-1 grid grid-cols-7 text-center text-xs font-medium" style={{ color: "var(--color-text-secondary)" }}>
