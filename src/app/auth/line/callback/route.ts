@@ -48,7 +48,7 @@ export async function GET(request: NextRequest) {
     }
 
     const profile = await profileRes.json();
-    const email = `line_${profile.userId}@himajiku.app`;
+    const email = `line_${profile.userId}@sharehima.app`;
 
     // 3. Supabase Admin client
     const supabaseAdmin = createClient(

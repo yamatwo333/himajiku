@@ -135,7 +135,7 @@ export async function POST(request: NextRequest) {
     return [`📌 ${slotLabel}（${people.length}人）`, ...names].join("\n");
   });
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://himajiku.vercel.app";
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://sharehima.vercel.app";
   const detailLink = `${appUrl}/calendar/${date}?group=${group_id}`;
 
   const message = [
