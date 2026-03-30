@@ -137,7 +137,7 @@ export default function CalendarPage() {
                 className="w-full rounded-xl border py-3 text-sm font-medium"
                 style={{ borderColor: "var(--color-border)", color: "var(--color-primary)" }}
               >
-                まとめてシェア
+                ヒマな日をまとめてシェア
               </button>
             </div>
           </>

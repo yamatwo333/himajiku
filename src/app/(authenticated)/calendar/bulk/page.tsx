@@ -1,87 +1,140 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import {
   format,
   startOfMonth,
   endOfMonth,
-  startOfWeek,
-  endOfWeek,
   eachDayOfInterval,
-  isSameMonth,
-  isToday,
   addMonths,
   subMonths,
   isBefore,
+  startOfDay,
 } from "date-fns";
 import { ja } from "date-fns/locale";
 import { TimeSlot, TIME_SLOT_LABELS } from "@/lib/types";
 
-const WEEKDAYS = ["日", "月", "火", "水", "木", "金", "土"];
 const SLOTS: TimeSlot[] = ["morning", "afternoon", "evening", "late_night"];
+
+interface DayEntry {
+  date: string;
+  timeSlots: TimeSlot[];
+  comment: string;
+}
 
 export default function BulkSharePage() {
   const router = useRouter();
   const [currentMonth, setCurrentMonth] = useState(new Date());
-  const [selectedDates, setSelectedDates] = useState<Set<string>>(new Set());
-  const [selectedSlots, setSelectedSlots] = useState<TimeSlot[]>([]);
-  const [comment, setComment] = useState("");
+  const [entries, setEntries] = useState<Record<string, DayEntry>>({});
+  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
   const now = new Date();
-  const today = format(now, "yyyy-MM-dd");
+  const todayStr = format(now, "yyyy-MM-dd");
   const minMonth = startOfMonth(subMonths(now, 1));
   const maxMonth = startOfMonth(addMonths(now, 2));
   const canGoPrev = currentMonth > minMonth;
   const canGoNext = currentMonth < maxMonth;
 
-  const days = useMemo(() => {
+  // 当月の日付一覧（今日以降のみ）
+  const daysInMonth = useMemo(() => {
     const monthStart = startOfMonth(currentMonth);
     const monthEnd = endOfMonth(currentMonth);
-    const calStart = startOfWeek(monthStart, { weekStartsOn: 0 });
-    const calEnd = endOfWeek(monthEnd, { weekStartsOn: 0 });
-    return eachDayOfInterval({ start: calStart, end: calEnd });
+    return eachDayOfInterval({ start: monthStart, end: monthEnd })
+      .filter(d => !isBefore(d, startOfDay(now)));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentMonth]);
 
-  const toggleDate = (dateStr: string) => {
-    const next = new Set(selectedDates);
-    if (next.has(dateStr)) {
-      next.delete(dateStr);
-    } else {
-      next.add(dateStr);
+  // 既存データを取得
+  const fetchExisting = useCallback(async () => {
+    setLoading(true);
+    const monthStart = format(startOfMonth(currentMonth), "yyyy-MM-dd");
+    const monthEnd = format(endOfMonth(currentMonth), "yyyy-MM-dd");
+
+    try {
+      const res = await fetch(`/api/availability/month?start=${monthStart}&end=${monthEnd}`);
+      if (res.ok) {
+        const data = await res.json();
+        const currentUserId = data.currentUserId;
+        const existing: Record<string, DayEntry> = {};
+        for (const a of data.availabilities || []) {
+          if (a.userId === currentUserId) {
+            existing[a.date] = {
+              date: a.date,
+              timeSlots: a.timeSlots || [],
+              comment: a.comment || "",
+            };
+          }
+        }
+        // 既存データをマージ（新しいentriesで上書きされていないものを復元）
+        setEntries(prev => {
+          const merged = { ...existing };
+          for (const [key, val] of Object.entries(prev)) {
+            if (key.startsWith(format(currentMonth, "yyyy-MM"))) {
+              merged[key] = val;
+            }
+          }
+          return merged;
+        });
+      }
+    } catch {
+      // ignore
     }
-    setSelectedDates(next);
+    setLoading(false);
+  }, [currentMonth]);
+
+  useEffect(() => {
+    fetchExisting();
+  }, [fetchExisting]);
+
+  const toggleSlot = (dateStr: string, slot: TimeSlot) => {
+    setEntries(prev => {
+      const entry = prev[dateStr] || { date: dateStr, timeSlots: [], comment: "" };
+      const newSlots = entry.timeSlots.includes(slot)
+        ? entry.timeSlots.filter(s => s !== slot)
+        : [...entry.timeSlots, slot];
+      return { ...prev, [dateStr]: { ...entry, timeSlots: newSlots } };
+    });
   };
 
-  const toggleSlot = (slot: TimeSlot) => {
-    if (selectedSlots.includes(slot)) {
-      setSelectedSlots(selectedSlots.filter(s => s !== slot));
-    } else {
-      setSelectedSlots([...selectedSlots, slot]);
-    }
+  const setComment = (dateStr: string, comment: string) => {
+    setEntries(prev => {
+      const entry = prev[dateStr] || { date: dateStr, timeSlots: [], comment: "" };
+      return { ...prev, [dateStr]: { ...entry, comment } };
+    });
   };
+
+  const changedEntries = useMemo(() => {
+    return Object.values(entries).filter(e =>
+      e.timeSlots.length > 0 &&
+      daysInMonth.some(d => format(d, "yyyy-MM-dd") === e.date)
+    );
+  }, [entries, daysInMonth]);
 
   const handleSave = async () => {
-    if (selectedDates.size === 0 || selectedSlots.length === 0) return;
+    if (changedEntries.length === 0) return;
     setSaving(true);
 
     try {
-      const res = await fetch("/api/availability/bulk", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          dates: Array.from(selectedDates).sort(),
-          time_slots: selectedSlots,
-          comment,
-        }),
-      });
+      // 個別にupsert（日ごとに時間帯・コメントが異なるため）
+      await Promise.all(
+        changedEntries.map(entry =>
+          fetch("/api/availability", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              date: entry.date,
+              time_slots: entry.timeSlots,
+              comment: entry.comment,
+            }),
+          })
+        )
+      );
 
-      if (res.ok) {
-        router.push("/calendar");
-        router.refresh();
-        return;
-      }
+      router.push("/calendar");
+      router.refresh();
+      return;
     } catch {
       // ignore
     }
@@ -102,121 +155,109 @@ export default function BulkSharePage() {
         <button onClick={handleBack} className="mr-3 rounded-lg p-1 active:bg-gray-100">
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="15,6 9,12 15,18" /></svg>
         </button>
-        <h1 className="text-lg font-bold">まとめてシェア</h1>
+        <h1 className="text-lg font-bold">ヒマな日をまとめてシェア</h1>
       </header>
 
-      <div className="px-4 pt-4 pb-8 space-y-5">
-        {/* Calendar for date selection */}
-        <section>
-          <h2 className="mb-2 text-sm font-bold" style={{ color: "var(--color-text-secondary)" }}>日付を選択（複数OK）</h2>
+      <div className="px-4 pt-4 pb-8 space-y-2">
+        {/* Month selector */}
+        <div className="flex items-center justify-between mb-2">
+          <button
+            onClick={() => canGoPrev && setCurrentMonth(subMonths(currentMonth, 1))}
+            disabled={!canGoPrev}
+            className="rounded-lg p-2 active:bg-gray-100 disabled:opacity-20"
+          >
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="12,4 6,10 12,16" /></svg>
+          </button>
+          <span className="text-sm font-bold">{format(currentMonth, "yyyy年 M月", { locale: ja })}</span>
+          <button
+            onClick={() => canGoNext && setCurrentMonth(addMonths(currentMonth, 1))}
+            disabled={!canGoNext}
+            className="rounded-lg p-2 active:bg-gray-100 disabled:opacity-20"
+          >
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="8,4 14,10 8,16" /></svg>
+          </button>
+        </div>
 
-          <div className="mb-3 flex items-center justify-between">
-            <button
-              onClick={() => canGoPrev && setCurrentMonth(subMonths(currentMonth, 1))}
-              disabled={!canGoPrev}
-              className="rounded-lg p-2 active:bg-gray-100 disabled:opacity-20"
-            >
-              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="12,4 6,10 12,16" /></svg>
-            </button>
-            <span className="text-sm font-bold">{format(currentMonth, "yyyy年 M月", { locale: ja })}</span>
-            <button
-              onClick={() => canGoNext && setCurrentMonth(addMonths(currentMonth, 1))}
-              disabled={!canGoNext}
-              className="rounded-lg p-2 active:bg-gray-100 disabled:opacity-20"
-            >
-              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="8,4 14,10 8,16" /></svg>
-            </button>
+        <p className="text-xs" style={{ color: "var(--color-text-secondary)" }}>
+          各日の時間帯をタップしてヒマを設定してください
+        </p>
+
+        {loading ? (
+          <div className="flex items-center justify-center py-16">
+            <div className="h-8 w-8 animate-spin rounded-full border-2 border-t-transparent" style={{ borderColor: "var(--color-border)", borderTopColor: "transparent" }} />
           </div>
-
-          <div className="grid grid-cols-7 gap-1 text-center text-xs font-medium" style={{ color: "var(--color-text-secondary)" }}>
-            {WEEKDAYS.map((d, i) => (
-              <div key={d} style={{ color: i === 0 ? "var(--color-hot)" : i === 6 ? "var(--color-primary)" : undefined }}>{d}</div>
-            ))}
-          </div>
-
-          <div className="mt-1 grid grid-cols-7 gap-1">
-            {days.map((day) => {
+        ) : (
+          <div className="space-y-2">
+            {daysInMonth.map(day => {
               const dateStr = format(day, "yyyy-MM-dd");
-              const inMonth = isSameMonth(day, currentMonth);
-              const isPast = isBefore(day, new Date(today));
-              const isSelected = selectedDates.has(dateStr);
+              const dayLabel = format(day, "M/d (E)", { locale: ja });
+              const entry = entries[dateStr];
+              const hasSlots = entry && entry.timeSlots.length > 0;
+              const isToday = dateStr === todayStr;
 
               return (
-                <button
-                  key={dateStr}
-                  onClick={() => inMonth && !isPast && toggleDate(dateStr)}
-                  disabled={!inMonth || isPast}
-                  className="flex h-9 items-center justify-center rounded-lg text-sm transition-colors disabled:opacity-20"
-                  style={{
-                    backgroundColor: isSelected ? "var(--color-free-self)" : isToday(day) ? "var(--color-today)" : "transparent",
-                    color: isSelected || isToday(day) ? "white" : "var(--color-text)",
-                    fontWeight: isSelected || isToday(day) ? 700 : 400,
-                  }}
-                >
-                  {format(day, "d")}
-                </button>
+                <div key={dateStr} className="rounded-xl border p-3" style={{ backgroundColor: "var(--color-surface)", borderColor: hasSlots ? "var(--color-free-self)" : "var(--color-border)" }}>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-bold" style={{ color: isToday ? "var(--color-primary)" : "var(--color-text)" }}>
+                      {dayLabel}{isToday ? "（今日）" : ""}
+                    </span>
+                    {hasSlots && (
+                      <span className="text-[10px] font-medium px-1.5 py-0.5 rounded" style={{ backgroundColor: "var(--color-free-self)", color: "white" }}>
+                        シェア中
+                      </span>
+                    )}
+                  </div>
+                  {/* Time slots */}
+                  <div className="flex gap-1.5 mb-2">
+                    {SLOTS.map(slot => {
+                      const isSelected = entry?.timeSlots.includes(slot);
+                      return (
+                        <button
+                          key={slot}
+                          onClick={() => toggleSlot(dateStr, slot)}
+                          className="flex-1 rounded-md border py-1.5 text-xs font-medium transition-all active:scale-95"
+                          style={{
+                            backgroundColor: isSelected ? "var(--color-free-self)" : "transparent",
+                            color: isSelected ? "white" : "var(--color-text-secondary)",
+                            borderColor: isSelected ? "var(--color-free-self)" : "var(--color-border)",
+                          }}
+                        >
+                          {TIME_SLOT_LABELS[slot]}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {/* Comment (show only if has slots) */}
+                  {hasSlots && (
+                    <input
+                      type="text"
+                      value={entry?.comment || ""}
+                      onChange={(e) => setComment(dateStr, e.target.value)}
+                      placeholder="ひとこと"
+                      maxLength={100}
+                      className="w-full rounded-lg border px-3 py-2 text-xs outline-none focus:border-[var(--color-primary)]"
+                      style={{ borderColor: "var(--color-border)" }}
+                    />
+                  )}
+                </div>
               );
             })}
           </div>
-
-          {selectedDates.size > 0 && (
-            <p className="mt-2 text-xs text-center" style={{ color: "var(--color-primary)" }}>
-              {selectedDates.size}日選択中
-            </p>
-          )}
-        </section>
-
-        {/* Time slot picker */}
-        <section>
-          <h2 className="mb-2 text-sm font-bold" style={{ color: "var(--color-text-secondary)" }}>時間帯を選択</h2>
-          <div className="flex gap-2">
-            {SLOTS.map((slot) => {
-              const isSelected = selectedSlots.includes(slot);
-              return (
-                <button
-                  key={slot}
-                  onClick={() => toggleSlot(slot)}
-                  className="flex-1 rounded-lg border px-2 py-2.5 text-sm font-medium transition-all active:scale-95"
-                  style={{
-                    backgroundColor: isSelected ? "var(--color-free-self)" : "var(--color-surface)",
-                    color: isSelected ? "white" : "var(--color-text)",
-                    borderColor: isSelected ? "var(--color-free-self)" : "var(--color-border)",
-                  }}
-                >
-                  {TIME_SLOT_LABELS[slot]}
-                </button>
-              );
-            })}
-          </div>
-        </section>
-
-        {/* Comment */}
-        <section>
-          <h2 className="mb-2 text-sm font-bold" style={{ color: "var(--color-text-secondary)" }}>ひとこと</h2>
-          <input
-            type="text"
-            value={comment}
-            onChange={(e) => setComment(e.target.value)}
-            placeholder="何したい？（例: 飲みたい、どこか行きたい）"
-            maxLength={100}
-            className="w-full rounded-xl border px-4 py-3 text-sm outline-none focus:border-[var(--color-primary)]"
-            style={{ backgroundColor: "var(--color-surface)", borderColor: "var(--color-border)" }}
-          />
-        </section>
+        )}
 
         {/* Save button */}
-        <button
-          onClick={handleSave}
-          disabled={saving || selectedDates.size === 0 || selectedSlots.length === 0}
-          className="w-full rounded-xl py-3.5 text-base font-bold text-white transition-transform active:scale-[0.97] disabled:opacity-50"
-          style={{ backgroundColor: "var(--color-free-self)" }}
-        >
-          {saving ? "保存中..." : `${selectedDates.size}日分まとめてシェアする`}
-        </button>
-
-        <p className="text-xs text-center" style={{ color: "var(--color-text-secondary)" }}>
-          ※ 既にシェア済みの日は上書きされます
-        </p>
+        {changedEntries.length > 0 && (
+          <div className="sticky bottom-16 pt-3">
+            <button
+              onClick={handleSave}
+              disabled={saving}
+              className="w-full rounded-xl py-3.5 text-base font-bold text-white shadow-md transition-transform active:scale-[0.97] disabled:opacity-50"
+              style={{ backgroundColor: "var(--color-free-self)" }}
+            >
+              {saving ? "保存中..." : `${changedEntries.length}日分シェアする`}
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
