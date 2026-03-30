@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useRef } from "react";
+import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import {
   format,
@@ -30,12 +30,23 @@ interface Props {
 
 export default function CalendarGrid({ availabilities, onMonthChange, groupId, notifyThreshold = 2, currentUserId = null, initialMonth }: Props) {
   const [currentMonth, setCurrentMonth] = useState(() => initialMonth ?? new Date());
-  const monthInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
 
   const now = new Date();
-  const canGoPrev = currentMonth > startOfMonth(subMonths(now, 3));
-  const canGoNext = currentMonth < startOfMonth(addMonths(now, 3));
+  const minMonth = startOfMonth(subMonths(now, 1));
+  const maxMonth = startOfMonth(addMonths(now, 2));
+  const canGoPrev = currentMonth > minMonth;
+  const canGoNext = currentMonth < maxMonth;
+
+  // 選択可能な月リスト（前月〜2ヶ月後）
+  const monthOptions = useMemo(() => {
+    const months: Date[] = [];
+    for (let i = -1; i <= 2; i++) {
+      months.push(addMonths(startOfMonth(now), i));
+    }
+    return months;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const changeMonth = (direction: number) => {
     const next = direction > 0 ? addMonths(currentMonth, 1) : subMonths(currentMonth, 1);
@@ -45,13 +56,10 @@ export default function CalendarGrid({ availabilities, onMonthChange, groupId, n
     onMonthChange(next);
   };
 
-  const handleMonthPick = (value: string) => {
-    if (!value) return;
+  const jumpToMonth = (value: string) => {
     const picked = new Date(value + "-01");
-    if (picked >= startOfMonth(subMonths(now, 3)) && picked <= endOfMonth(addMonths(now, 3))) {
-      setCurrentMonth(picked);
-      onMonthChange(picked);
-    }
+    setCurrentMonth(picked);
+    onMonthChange(picked);
   };
 
   const days = useMemo(() => {
@@ -84,21 +92,18 @@ export default function CalendarGrid({ availabilities, onMonthChange, groupId, n
             <polyline points="12,4 6,10 12,16" />
           </svg>
         </button>
-        <label className="relative cursor-pointer rounded-lg px-3 py-1 active:bg-gray-100">
-          <h2 className="text-lg font-bold">
-            {format(currentMonth, "yyyy年 M月", { locale: ja })}
-            <span className="ml-1 text-xs" style={{ color: "var(--color-text-secondary)" }}>&#x25BC;</span>
-          </h2>
-          <input
-            ref={monthInputRef}
-            type="month"
-            value={format(currentMonth, "yyyy-MM")}
-            min={format(subMonths(now, 3), "yyyy-MM")}
-            max={format(addMonths(now, 3), "yyyy-MM")}
-            onChange={(e) => handleMonthPick(e.target.value)}
-            className="absolute inset-0 opacity-0"
-          />
-        </label>
+        <select
+          value={format(currentMonth, "yyyy-MM")}
+          onChange={(e) => jumpToMonth(e.target.value)}
+          className="appearance-none rounded-lg bg-transparent px-3 py-1 text-center text-lg font-bold outline-none"
+          style={{ color: "var(--color-text)" }}
+        >
+          {monthOptions.map((m) => (
+            <option key={format(m, "yyyy-MM")} value={format(m, "yyyy-MM")}>
+              {format(m, "yyyy年 M月", { locale: ja })}
+            </option>
+          ))}
+        </select>
         <button
           onClick={() => changeMonth(1)}
           disabled={!canGoNext}

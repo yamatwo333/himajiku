@@ -61,6 +61,15 @@ export async function POST(request: NextRequest) {
     // 保存成功後、ユーザーが所属する全グループの通知を自動チェック（非同期）
     triggerNotifications(supabaseAdmin, user.id, date, request.nextUrl.origin);
 
+    // 3ヶ月以上前のデータを自動削除（非同期）
+    const cutoffDate = new Date();
+    cutoffDate.setMonth(cutoffDate.getMonth() - 3);
+    supabaseAdmin
+      .from("availability")
+      .delete()
+      .lt("date", cutoffDate.toISOString().split("T")[0])
+      .then(() => {});
+
     return NextResponse.json({ success: true, action: "saved" });
   } catch (err) {
     console.error("Availability error:", err);
