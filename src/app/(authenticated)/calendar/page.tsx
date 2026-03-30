@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { startOfMonth, endOfMonth, format } from "date-fns";
+import { startOfMonth, endOfMonth, startOfWeek, endOfWeek, format } from "date-fns";
 import CalendarGrid from "@/components/CalendarGrid";
 import { AvailabilityWithUser } from "@/lib/types";
 
@@ -15,7 +15,13 @@ interface GroupInfo {
 export default function CalendarPage() {
   const router = useRouter();
   const [availabilities, setAvailabilities] = useState<AvailabilityWithUser[]>([]);
-  const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [currentMonth, setCurrentMonth] = useState(() => {
+    if (typeof window !== "undefined") {
+      const saved = sessionStorage.getItem("calendarMonth");
+      if (saved) return new Date(saved);
+    }
+    return new Date();
+  });
   const [loading, setLoading] = useState(true);
   const [groups, setGroups] = useState<GroupInfo[]>([]);
   const [selectedGroupId, setSelectedGroupId] = useState<string>("");
@@ -49,8 +55,9 @@ export default function CalendarPage() {
     }
 
     setLoading(true);
-    const monthStart = format(startOfMonth(currentMonth), "yyyy-MM-dd");
-    const monthEnd = format(endOfMonth(currentMonth), "yyyy-MM-dd");
+    // カレンダーグリッド全体（前後の週を含む）をフェッチ
+    const monthStart = format(startOfWeek(startOfMonth(currentMonth), { weekStartsOn: 0 }), "yyyy-MM-dd");
+    const monthEnd = format(endOfWeek(endOfMonth(currentMonth), { weekStartsOn: 0 }), "yyyy-MM-dd");
 
     try {
       const res = await fetch(
@@ -72,6 +79,11 @@ export default function CalendarPage() {
       fetchAvailabilities();
     }
   }, [fetchAvailabilities, selectedGroupId]);
+
+  const handleMonthChange = useCallback((month: Date) => {
+    setCurrentMonth(month);
+    sessionStorage.setItem("calendarMonth", month.toISOString());
+  }, []);
 
   return (
     <div>
@@ -125,7 +137,7 @@ export default function CalendarPage() {
           <>
             <CalendarGrid
               availabilities={availabilities}
-              onMonthChange={setCurrentMonth}
+              onMonthChange={handleMonthChange}
               groupId={selectedGroupId}
               notifyThreshold={groups.find(g => g.id === selectedGroupId)?.notify_threshold ?? 2}
               currentUserId={currentUserId}
