@@ -7,7 +7,8 @@ export const metadata: Metadata = {
   title: "シェアヒマ - ヒマを友達とシェアしよう",
   description: "ヒマな時間をシェアして、なんとなく集まれるアプリ",
   icons: {
-    icon: "/favicon.svg",
+    icon: "/icon.png",
+    apple: "/icon.png",
   },
   openGraph: {
     title: "シェアヒマ",
@@ -16,7 +17,7 @@ export const metadata: Metadata = {
     siteName: "シェアヒマ",
     images: [
       {
-        url: `${appUrl}/api/og`,
+        url: `${appUrl}/og.png`,
         width: 1200,
         height: 630,
       },
@@ -28,7 +29,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "シェアヒマ",
     description: "ヒマな時間をシェアして、なんとなく集まろう",
-    images: [`${appUrl}/api/og`],
+    images: [`${appUrl}/og.png`],
   },
 };
 
