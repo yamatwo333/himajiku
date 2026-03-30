@@ -3,7 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import { createServerClient } from "@supabase/ssr";
 import { getTodayInTokyo } from "@/lib/date";
 import { ensureProfile } from "@/lib/ensure-profile";
-import { sendGroupAvailabilityNotification } from "@/lib/server/notify";
+import { sendGroupAvailabilityDigestNotification } from "@/lib/server/notify";
 
 export async function POST(request: NextRequest) {
   try {
@@ -90,14 +90,10 @@ export async function POST(request: NextRequest) {
 
     if (group.line_group_id && futureDates.length > 0) {
       after(async () => {
-        await Promise.allSettled(
-          futureDates.map((date) =>
-            sendGroupAvailabilityNotification({
-              date,
-              groupId: group.id,
-            })
-          )
-        );
+        await sendGroupAvailabilityDigestNotification({
+          dates: futureDates,
+          groupId: group.id,
+        });
       });
     }
 

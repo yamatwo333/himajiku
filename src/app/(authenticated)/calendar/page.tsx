@@ -33,7 +33,8 @@ export default function CalendarPage() {
   const [groups, setGroups] = useState<GroupInfo[]>([]);
   const [selectedGroupId, setSelectedGroupId] = useState<string>(() => {
     if (typeof window !== "undefined") {
-      return sessionStorage.getItem("selectedGroupId") || "";
+      const requestedGroupId = new URLSearchParams(window.location.search).get("group");
+      return requestedGroupId || sessionStorage.getItem("selectedGroupId") || "";
     }
     return "";
   });
