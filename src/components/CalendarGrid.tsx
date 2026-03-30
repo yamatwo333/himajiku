@@ -31,12 +31,14 @@ export default function CalendarGrid({ availabilities, onMonthChange, groupId, n
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const router = useRouter();
 
-  const changeMonth = (next: Date) => {
-    // 前後3ヶ月に制限
-    const now = new Date();
-    const minMonth = subMonths(now, 3);
-    const maxMonth = addMonths(now, 3);
-    if (next < startOfMonth(minMonth) || next > endOfMonth(maxMonth)) return;
+  const now = new Date();
+  const canGoPrev = currentMonth > startOfMonth(subMonths(now, 3));
+  const canGoNext = currentMonth < startOfMonth(addMonths(now, 3));
+
+  const changeMonth = (direction: number) => {
+    const next = direction > 0 ? addMonths(currentMonth, 1) : subMonths(currentMonth, 1);
+    if (direction < 0 && !canGoPrev) return;
+    if (direction > 0 && !canGoNext) return;
     setCurrentMonth(next);
     onMonthChange(next);
   };
@@ -63,8 +65,9 @@ export default function CalendarGrid({ availabilities, onMonthChange, groupId, n
       {/* Month header */}
       <div className="mb-4 flex items-center justify-between">
         <button
-          onClick={() => changeMonth(subMonths(currentMonth, 1))}
-          className="rounded-lg p-2 active:bg-gray-100"
+          onClick={() => changeMonth(-1)}
+          disabled={!canGoPrev}
+          className="rounded-lg p-3 active:bg-gray-100 disabled:opacity-20"
         >
           <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
             <polyline points="12,4 6,10 12,16" />
@@ -74,8 +77,9 @@ export default function CalendarGrid({ availabilities, onMonthChange, groupId, n
           {format(currentMonth, "yyyy年 M月", { locale: ja })}
         </h2>
         <button
-          onClick={() => changeMonth(addMonths(currentMonth, 1))}
-          className="rounded-lg p-2 active:bg-gray-100"
+          onClick={() => changeMonth(1)}
+          disabled={!canGoNext}
+          className="rounded-lg p-3 active:bg-gray-100 disabled:opacity-20"
         >
           <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
             <polyline points="8,4 14,10 8,16" />
