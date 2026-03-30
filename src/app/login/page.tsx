@@ -25,6 +25,7 @@ function LoginContent() {
     if (errorParam) {
       setError(errorParam);
       router.replace("/login", { scroll: false });
+      setTimeout(() => setError(null), 5000);
     }
   }, [errorParam, router]);
 

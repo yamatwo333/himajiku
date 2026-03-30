@@ -30,6 +30,7 @@ interface Props {
 
 export default function CalendarGrid({ availabilities, onMonthChange, groupId, notifyThreshold = 2, currentUserId = null, initialMonth }: Props) {
   const [currentMonth, setCurrentMonth] = useState(() => initialMonth ?? new Date());
+  const [showPicker, setShowPicker] = useState(false);
   const router = useRouter();
 
   const now = new Date();
@@ -43,6 +44,21 @@ export default function CalendarGrid({ availabilities, onMonthChange, groupId, n
     setCurrentMonth(next);
     onMonthChange(next);
   };
+
+  const jumpToMonth = (month: Date) => {
+    setCurrentMonth(month);
+    onMonthChange(month);
+    setShowPicker(false);
+  };
+
+  // 前後3ヶ月の月リスト
+  const monthOptions = useMemo(() => {
+    const months: Date[] = [];
+    for (let i = -3; i <= 3; i++) {
+      months.push(addMonths(startOfMonth(now), i));
+    }
+    return months;
+  }, []);
 
   const days = useMemo(() => {
     const monthStart = startOfMonth(currentMonth);
@@ -74,9 +90,12 @@ export default function CalendarGrid({ availabilities, onMonthChange, groupId, n
             <polyline points="12,4 6,10 12,16" />
           </svg>
         </button>
-        <h2 className="text-lg font-bold">
-          {format(currentMonth, "yyyy年 M月", { locale: ja })}
-        </h2>
+        <button onClick={() => setShowPicker(!showPicker)} className="rounded-lg px-3 py-1 active:bg-gray-100">
+          <h2 className="text-lg font-bold">
+            {format(currentMonth, "yyyy年 M月", { locale: ja })}
+            <span className="ml-1 text-xs" style={{ color: "var(--color-text-secondary)" }}>&#x25BC;</span>
+          </h2>
+        </button>
         <button
           onClick={() => changeMonth(1)}
           disabled={!canGoNext}
@@ -87,6 +106,29 @@ export default function CalendarGrid({ availabilities, onMonthChange, groupId, n
           </svg>
         </button>
       </div>
+
+      {/* Month picker */}
+      {showPicker && (
+        <div className="mb-3 flex flex-wrap justify-center gap-2">
+          {monthOptions.map((m) => {
+            const isActive = format(m, "yyyy-MM") === format(currentMonth, "yyyy-MM");
+            return (
+              <button
+                key={format(m, "yyyy-MM")}
+                onClick={() => jumpToMonth(m)}
+                className="rounded-lg px-3 py-1.5 text-xs font-medium transition-colors"
+                style={{
+                  backgroundColor: isActive ? "var(--color-primary)" : "var(--color-surface)",
+                  color: isActive ? "white" : "var(--color-text)",
+                  border: isActive ? "none" : "1px solid var(--color-border)",
+                }}
+              >
+                {format(m, "M月", { locale: ja })}
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       {/* Weekday header */}
       <div className="mb-1 grid grid-cols-7 text-center text-xs font-medium" style={{ color: "var(--color-text-secondary)" }}>
