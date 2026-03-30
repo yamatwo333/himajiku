@@ -34,6 +34,8 @@ export default function GroupDetailPage() {
   const [leaving, setLeaving] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [transferTarget, setTransferTarget] = useState<string | null>(null);
+  const [transferring, setTransferring] = useState(false);
 
   // Settings state
   const [editName, setEditName] = useState("");
@@ -147,6 +149,22 @@ export default function GroupDetailPage() {
     setUnlinking(false);
   };
 
+  const handleTransfer = async (newOwnerId: string) => {
+    setTransferring(true);
+    try {
+      const res = await fetch(`/api/groups/${groupId}/transfer`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ new_owner_id: newOwnerId }),
+      });
+      if (res.ok) {
+        setTransferTarget(null);
+        fetchData();
+      }
+    } catch { /* ignore */ }
+    setTransferring(false);
+  };
+
   const handleLeave = async () => {
     setLeaving(true);
     await fetch(`/api/groups/${groupId}/leave`, { method: "POST" });
@@ -256,16 +274,42 @@ export default function GroupDetailPage() {
                   <p className="font-medium">{m.display_name}</p>
                   {m.user_id === group.created_by && <span className="text-xs" style={{ color: "var(--color-primary)" }}>管理者</span>}
                 </div>
-                {m.user_id === currentUserId && <span className="text-xs" style={{ color: "var(--color-text-secondary)" }}>あなた</span>}
+                <div className="flex items-center gap-2">
+                  {m.user_id === currentUserId && <span className="text-xs" style={{ color: "var(--color-text-secondary)" }}>あなた</span>}
+                  {isOwner && m.user_id !== currentUserId && (
+                    <button
+                      onClick={() => setTransferTarget(transferTarget === m.user_id ? null : m.user_id)}
+                      className="rounded-lg border px-2 py-1 text-[10px]"
+                      style={{ borderColor: "var(--color-border)", color: "var(--color-text-secondary)" }}
+                    >
+                      管理者にする
+                    </button>
+                  )}
+                </div>
               </div>
             ))}
           </div>
+          {/* Transfer confirm */}
+          {transferTarget && (
+            <div className="mt-2 rounded-xl border p-3 space-y-2" style={{ borderColor: "var(--color-primary)", backgroundColor: "var(--color-bg)" }}>
+              <p className="text-sm">
+                <span className="font-bold">{members.find(m => m.user_id === transferTarget)?.display_name}</span>
+                を管理者にしますか？
+              </p>
+              <p className="text-xs" style={{ color: "var(--color-text-secondary)" }}>あなたは管理者ではなくなりますが、メンバーとして残ります。</p>
+              <div className="flex gap-2">
+                <button onClick={() => setTransferTarget(null)} className="flex-1 rounded-lg border py-2 text-sm" style={{ borderColor: "var(--color-border)" }}>キャンセル</button>
+                <button onClick={() => handleTransfer(transferTarget)} disabled={transferring} className="flex-1 rounded-lg py-2 text-sm font-bold text-white disabled:opacity-50" style={{ backgroundColor: "var(--color-primary)" }}>
+                  {transferring ? "変更中..." : "変更する"}
+                </button>
+              </div>
+            </div>
+          )}
         </section>
 
         {/* Owner settings */}
         {isOwner && (
           <>
-            {/* Group name edit */}
             <section>
               <h2 className="mb-2 text-sm font-bold" style={{ color: "var(--color-text-secondary)" }}>グループ名</h2>
               <input type="text" value={editName} onChange={(e) => setEditName(e.target.value)} maxLength={30}
@@ -273,7 +317,6 @@ export default function GroupDetailPage() {
                 style={{ backgroundColor: "var(--color-surface)", borderColor: "var(--color-border)" }} />
             </section>
 
-            {/* Notification threshold */}
             <section>
               <h2 className="mb-2 text-sm font-bold" style={{ color: "var(--color-text-secondary)" }}>「集まったっていい」の条件</h2>
               <div className="flex items-center gap-3">
@@ -287,10 +330,8 @@ export default function GroupDetailPage() {
               <p className="mt-1 text-xs" style={{ color: "var(--color-text-secondary)" }}>※ 設定は自動で保存されます</p>
             </section>
 
-            {/* LINE Link */}
             <section className="rounded-2xl border p-4 space-y-3" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-surface)" }}>
               <h2 className="text-sm font-bold" style={{ color: "var(--color-text)" }}>LINE通知連携</h2>
-
               {lineLinked ? (
                 <div className="space-y-3">
                   <div className="flex items-center gap-2 rounded-xl p-3" style={{ backgroundColor: "#f0fdf4" }}>
@@ -325,22 +366,14 @@ export default function GroupDetailPage() {
               ) : (
                 <div className="space-y-4">
                   <p className="text-xs" style={{ color: "var(--color-text-secondary)" }}>LINEグループと連携すると、ヒマな人が集まった時に自動で通知が届きます。</p>
-
-                  {/* Bot友だち追加 */}
                   <div className="rounded-xl p-3 space-y-2" style={{ backgroundColor: "var(--color-bg)" }}>
                     <p className="text-xs font-bold" style={{ color: "var(--color-text)" }}>まずBotを友だち追加</p>
                     <p className="text-xs" style={{ color: "var(--color-text-secondary)" }}>LINEグループに招待するには、先にBotを友だちに追加してください。</p>
-                    <a
-                      href="https://line.me/R/ti/p/@156samjs"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex w-full items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-bold text-white"
-                      style={{ backgroundColor: "#06C755" }}
-                    >
+                    <a href="https://line.me/R/ti/p/@156samjs" target="_blank" rel="noopener noreferrer"
+                      className="flex w-full items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-bold text-white" style={{ backgroundColor: "#06C755" }}>
                       友だち追加する
                     </a>
                   </div>
-
                   <button onClick={handleGenerateLinkCode} disabled={generatingCode}
                     className="w-full rounded-xl py-3 text-sm font-bold text-white transition-transform active:scale-[0.97] disabled:opacity-50" style={{ backgroundColor: "#06C755" }}>
                     {generatingCode ? "発行中..." : "LINE連携コードを発行"}
@@ -352,43 +385,32 @@ export default function GroupDetailPage() {
         )}
 
         {/* Leave / Delete */}
-        {isOwner ? (
-          <section>
-            {showDeleteConfirm ? (
-              <div className="rounded-xl border border-red-200 bg-red-50 p-4 space-y-3">
-                <p className="text-sm text-red-600">グループを削除すると全メンバーが外れます。元に戻せません。</p>
-                <div className="flex gap-2">
-                  <button onClick={() => setShowDeleteConfirm(false)} className="flex-1 rounded-lg border py-2 text-sm" style={{ borderColor: "var(--color-border)" }}>キャンセル</button>
+        <section>
+          {showDeleteConfirm ? (
+            <div className="rounded-xl border border-red-200 bg-red-50 p-4 space-y-3">
+              <p className="text-sm text-red-600">{isOwner && members.length <= 1 ? "グループを削除すると元に戻せません。" : "本当にこのグループを退出しますか？"}</p>
+              {isOwner && members.length > 1 && (
+                <p className="text-xs text-red-500">管理者は自動的に他のメンバーに引き継がれます。</p>
+              )}
+              <div className="flex gap-2">
+                <button onClick={() => setShowDeleteConfirm(false)} className="flex-1 rounded-lg border py-2 text-sm" style={{ borderColor: "var(--color-border)" }}>キャンセル</button>
+                {isOwner && members.length <= 1 ? (
                   <button onClick={handleDelete} disabled={deleting} className="flex-1 rounded-lg bg-red-500 py-2 text-sm font-bold text-white disabled:opacity-50">
                     {deleting ? "削除中..." : "削除する"}
                   </button>
-                </div>
-              </div>
-            ) : (
-              <button onClick={() => setShowDeleteConfirm(true)} className="w-full rounded-xl border py-3 text-sm text-red-500" style={{ borderColor: "var(--color-border)" }}>
-                グループを削除
-              </button>
-            )}
-          </section>
-        ) : (
-          <section>
-            {showLeaveConfirm ? (
-              <div className="rounded-xl border border-red-200 bg-red-50 p-4 space-y-3">
-                <p className="text-sm text-red-600">本当にこのグループを退出しますか？</p>
-                <div className="flex gap-2">
-                  <button onClick={() => setShowLeaveConfirm(false)} className="flex-1 rounded-lg border py-2 text-sm" style={{ borderColor: "var(--color-border)" }}>キャンセル</button>
+                ) : (
                   <button onClick={handleLeave} disabled={leaving} className="flex-1 rounded-lg bg-red-500 py-2 text-sm font-bold text-white disabled:opacity-50">
                     {leaving ? "退出中..." : "退出する"}
                   </button>
-                </div>
+                )}
               </div>
-            ) : (
-              <button onClick={() => setShowLeaveConfirm(true)} className="w-full rounded-xl border py-3 text-sm text-red-500" style={{ borderColor: "var(--color-border)" }}>
-                グループを退出
-              </button>
-            )}
-          </section>
-        )}
+            </div>
+          ) : (
+            <button onClick={() => setShowDeleteConfirm(true)} className="w-full rounded-xl border py-3 text-sm text-red-500" style={{ borderColor: "var(--color-border)" }}>
+              {isOwner && members.length <= 1 ? "グループを削除" : "グループを退出"}
+            </button>
+          )}
+        </section>
       </div>
     </div>
   );

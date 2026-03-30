@@ -122,14 +122,25 @@ export default function CalendarPage() {
             </button>
           </div>
         ) : (
-          <CalendarGrid
-            availabilities={availabilities}
-            onMonthChange={setCurrentMonth}
-            groupId={selectedGroupId}
-            notifyThreshold={groups.find(g => g.id === selectedGroupId)?.notify_threshold ?? 2}
-            currentUserId={currentUserId}
-            initialMonth={currentMonth}
-          />
+          <>
+            <CalendarGrid
+              availabilities={availabilities}
+              onMonthChange={setCurrentMonth}
+              groupId={selectedGroupId}
+              notifyThreshold={groups.find(g => g.id === selectedGroupId)?.notify_threshold ?? 2}
+              currentUserId={currentUserId}
+              initialMonth={currentMonth}
+            />
+            <div className="px-4 mt-4">
+              <button
+                onClick={() => router.push("/calendar/bulk")}
+                className="w-full rounded-xl border py-3 text-sm font-medium"
+                style={{ borderColor: "var(--color-border)", color: "var(--color-primary)" }}
+              >
+                まとめてシェア
+              </button>
+            </div>
+          </>
         )}
       </div>
     </div>
