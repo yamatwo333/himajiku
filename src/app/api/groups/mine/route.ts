@@ -60,7 +60,9 @@ export async function GET(request: NextRequest) {
       })
     );
 
-    return NextResponse.json({ groups: groupsWithCount });
+    return NextResponse.json({ groups: groupsWithCount }, {
+      headers: { "Cache-Control": "private, max-age=10, stale-while-revalidate=30" },
+    });
   } catch (err) {
     console.error("Fetch groups error:", err);
     return NextResponse.json({ error: "Failed to fetch groups" }, { status: 500 });

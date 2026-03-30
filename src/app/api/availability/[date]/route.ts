@@ -80,7 +80,9 @@ export async function GET(
       };
     });
 
-    return NextResponse.json({ availabilities: result, currentUserId: user.id });
+    return NextResponse.json({ availabilities: result, currentUserId: user.id }, {
+      headers: { "Cache-Control": "private, max-age=5, stale-while-revalidate=15" },
+    });
   } catch (err) {
     console.error("Day availability error:", err);
     return NextResponse.json({ error: "Failed" }, { status: 500 });

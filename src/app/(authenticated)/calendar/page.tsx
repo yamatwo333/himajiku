@@ -128,6 +128,7 @@ export default function CalendarPage() {
             groupId={selectedGroupId}
             notifyThreshold={groups.find(g => g.id === selectedGroupId)?.notify_threshold ?? 2}
             currentUserId={currentUserId}
+            initialMonth={currentMonth}
           />
         )}
       </div>

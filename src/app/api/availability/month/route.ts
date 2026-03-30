@@ -85,7 +85,9 @@ export async function GET(request: NextRequest) {
       };
     });
 
-    return NextResponse.json({ availabilities: result, currentUserId: user.id });
+    return NextResponse.json({ availabilities: result, currentUserId: user.id }, {
+      headers: { "Cache-Control": "private, max-age=5, stale-while-revalidate=15" },
+    });
   } catch (err) {
     console.error("Month availability error:", err);
     return NextResponse.json({ error: "Failed" }, { status: 500 });

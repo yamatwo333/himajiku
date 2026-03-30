@@ -25,10 +25,11 @@ interface Props {
   groupId?: string;
   notifyThreshold?: number;
   currentUserId?: string | null;
+  initialMonth?: Date;
 }
 
-export default function CalendarGrid({ availabilities, onMonthChange, groupId, notifyThreshold = 2, currentUserId = null }: Props) {
-  const [currentMonth, setCurrentMonth] = useState(new Date());
+export default function CalendarGrid({ availabilities, onMonthChange, groupId, notifyThreshold = 2, currentUserId = null, initialMonth }: Props) {
+  const [currentMonth, setCurrentMonth] = useState(() => initialMonth ?? new Date());
   const router = useRouter();
 
   const now = new Date();
