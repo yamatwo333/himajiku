@@ -58,7 +58,7 @@ export default function CalendarPage() {
   useEffect(() => {
     const fetchGroups = async () => {
       try {
-        const res = await fetch("/api/groups/mine");
+        const res = await fetch("/api/groups/mine", { cache: "no-store" });
         if (res.ok) {
           const data = await res.json();
           const groupsList = data.groups || [];

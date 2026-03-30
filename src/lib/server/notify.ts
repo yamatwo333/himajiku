@@ -49,6 +49,9 @@ interface DateMatch {
   }[];
 }
 
+const LINE_MESSAGE_CHAR_LIMIT = 4500;
+const LINE_MAX_MESSAGES_PER_PUSH = 5;
+
 async function getGroupNotificationContext(groupId: string): Promise<GroupNotificationContext | null> {
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -125,6 +128,84 @@ function buildDateMatches({
   }
 
   return matches;
+}
+
+function buildLineTextMessages({
+  title,
+  intro,
+  blocks,
+  footer,
+}: {
+  title: string;
+  intro?: string;
+  blocks: string[];
+  footer?: string;
+}) {
+  const messages: string[] = [];
+  let current = [title, intro].filter(Boolean).join("\n\n");
+
+  for (const block of blocks) {
+    const candidate = current ? `${current}\n\n${block}` : block;
+
+    if (candidate.length <= LINE_MESSAGE_CHAR_LIMIT) {
+      current = candidate;
+      continue;
+    }
+
+    if (current) {
+      messages.push(current);
+    }
+
+    current = `${title}（続き）\n\n${block}`;
+  }
+
+  if (footer) {
+    const candidate = current ? `${current}\n\n${footer}` : footer;
+    if (candidate.length <= LINE_MESSAGE_CHAR_LIMIT) {
+      current = candidate;
+    } else {
+      if (current) {
+        messages.push(current);
+      }
+      current = `${title}（続き）\n\n${footer}`;
+    }
+  }
+
+  if (current) {
+    messages.push(current);
+  }
+
+  return messages.slice(0, LINE_MAX_MESSAGES_PER_PUSH);
+}
+
+async function pushLineTextMessages({
+  lineToken,
+  to,
+  texts,
+}: {
+  lineToken: string;
+  to: string;
+  texts: string[];
+}) {
+  const res = await fetch("https://api.line.me/v2/bot/message/push", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${lineToken}`,
+    },
+    body: JSON.stringify({
+      to,
+      messages: texts.map((text) => ({ type: "text", text })),
+    }),
+  });
+
+  if (!res.ok) {
+    const errorBody = await res.text();
+    console.error("LINE push error:", errorBody);
+    return { ok: false };
+  }
+
+  return { ok: true };
 }
 
 export async function sendGroupAvailabilityNotification({
@@ -226,30 +307,21 @@ export async function sendGroupAvailabilityNotification({
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://sharehima.vercel.app";
   const detailLink = `${appUrl}/calendar/${date}?group=${groupId}`;
-  const message = [
-    `🎉 [${group.name}] ${dateLabel}`,
-    "",
-    ...slotMessages,
-    "",
-    `シェアヒマで詳細を見る 👀\n${detailLink}`,
-  ].join("\n");
+  const title = `🎉 [${group.name}] ${dateLabel}`;
+  const texts = buildLineTextMessages({
+    title,
+    blocks: slotMessages,
+    footer: `シェアヒマで詳細を見る 👀\n${detailLink}`,
+  });
 
   try {
-    const res = await fetch("https://api.line.me/v2/bot/message/push", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${lineToken}`,
-      },
-      body: JSON.stringify({
-        to: group.line_group_id,
-        messages: [{ type: "text", text: message }],
-      }),
+    const result = await pushLineTextMessages({
+      lineToken,
+      to: group.line_group_id,
+      texts,
     });
 
-    if (!res.ok) {
-      const errorBody = await res.text();
-      console.error("LINE push error:", errorBody);
+    if (!result.ok) {
       return { sent: false, error: "LINE API error" };
     }
 
@@ -304,8 +376,7 @@ export async function sendGroupAvailabilityDigestNotification({
     return { sent: false, reason: "LINE not configured", matchedDates: matches.length };
   }
 
-  const visibleMatches = matches.slice(0, 5);
-  const lines = visibleMatches.flatMap((match) => {
+  const blocks = matches.map((match) => {
     const parsedDate = parse(match.date, "yyyy-MM-dd", new Date());
     const dateLabel = format(parsedDate, "M/d (E)", { locale: ja });
     const slotSummary = match.matchingSlots
@@ -321,38 +392,24 @@ export async function sendGroupAvailabilityDigestNotification({
     return [
       `・${dateLabel} ${slotSummary}`,
       peopleSummary ? `  ${peopleSummary}` : null,
-    ].filter(Boolean);
+    ].filter(Boolean).join("\n");
   });
 
-  if (matches.length > visibleMatches.length) {
-    lines.push(`・ほか ${matches.length - visibleMatches.length} 日`);
-  }
-
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://sharehima.vercel.app";
-  const message = [
-    `🎉 [${group.name}] 参加後に条件を満たしていた日があります`,
-    "",
-    ...lines,
-    "",
-    `カレンダーを見る 👀\n${appUrl}/calendar?group=${groupId}`,
-  ].join("\n");
+  const texts = buildLineTextMessages({
+    title: `🎉 [${group.name}] 参加後に条件を満たしていた日があります`,
+    blocks,
+    footer: `カレンダーを見る 👀\n${appUrl}/calendar?group=${groupId}`,
+  });
 
   try {
-    const res = await fetch("https://api.line.me/v2/bot/message/push", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${lineToken}`,
-      },
-      body: JSON.stringify({
-        to: group.line_group_id,
-        messages: [{ type: "text", text: message }],
-      }),
+    const result = await pushLineTextMessages({
+      lineToken,
+      to: group.line_group_id,
+      texts,
     });
 
-    if (!res.ok) {
-      const errorBody = await res.text();
-      console.error("LINE digest push error:", errorBody);
+    if (!result.ok) {
       return { sent: false, error: "LINE API error" };
     }
 
