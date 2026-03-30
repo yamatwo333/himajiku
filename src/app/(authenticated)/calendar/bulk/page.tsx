@@ -156,7 +156,7 @@ export default function BulkSharePage() {
         <h1 className="text-lg font-bold">ヒマな日をまとめてシェア</h1>
       </header>
 
-      <div className="flex-1 px-4 pt-4 pb-24 space-y-2">
+      <div className="flex-1 px-4 pt-4 pb-32 space-y-2">
         {/* Month selector */}
         <div className="flex items-center justify-between mb-2">
           <button
@@ -241,8 +241,8 @@ export default function BulkSharePage() {
         )}
       </div>
 
-      {/* Fixed bottom save button */}
-      <div className="fixed bottom-16 left-0 right-0 px-4 pb-3 pt-2" style={{ maxWidth: 480, margin: "0 auto", backgroundColor: "var(--color-bg)" }}>
+      {/* Fixed bottom save button - above BottomNav */}
+      <div className="fixed bottom-[57px] left-1/2 w-full max-w-[480px] -translate-x-1/2 px-4 pb-2 pt-2" style={{ backgroundColor: "var(--color-bg)" }}>
         <button
           onClick={handleSave}
           disabled={saving || entriesToSave.length === 0}
