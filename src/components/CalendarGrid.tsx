@@ -92,18 +92,21 @@ export default function CalendarGrid({ availabilities, onMonthChange, groupId, n
             <polyline points="12,4 6,10 12,16" />
           </svg>
         </button>
-        <select
-          value={format(currentMonth, "yyyy-MM")}
-          onChange={(e) => jumpToMonth(e.target.value)}
-          className="appearance-none rounded-lg bg-transparent px-3 py-1 text-center text-lg font-bold outline-none"
-          style={{ color: "var(--color-text)" }}
-        >
-          {monthOptions.map((m) => (
-            <option key={format(m, "yyyy-MM")} value={format(m, "yyyy-MM")}>
-              {format(m, "yyyy年 M月", { locale: ja })}
-            </option>
-          ))}
-        </select>
+        <div className="relative">
+          <select
+            value={format(currentMonth, "yyyy-MM")}
+            onChange={(e) => jumpToMonth(e.target.value)}
+            className="appearance-none rounded-xl border px-4 py-1.5 pr-8 text-center text-base font-bold outline-none"
+            style={{ color: "var(--color-text)", borderColor: "var(--color-border)", backgroundColor: "var(--color-surface)" }}
+          >
+            {monthOptions.map((m) => (
+              <option key={format(m, "yyyy-MM")} value={format(m, "yyyy-MM")}>
+                {format(m, "yyyy年 M月", { locale: ja })}
+              </option>
+            ))}
+          </select>
+          <span className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-xs" style={{ color: "var(--color-text-secondary)" }}>&#x25BC;</span>
+        </div>
         <button
           onClick={() => changeMonth(1)}
           disabled={!canGoNext}
