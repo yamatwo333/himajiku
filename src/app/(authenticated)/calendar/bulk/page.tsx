@@ -46,6 +46,13 @@ export default function BulkSharePage() {
   const canGoNext = currentMonth < maxMonth;
   const todayString = getTodayInTokyo();
 
+  const buildCalendarUrl = useCallback(() => {
+    if (typeof window === "undefined") return "/calendar";
+
+    const selectedGroupId = sessionStorage.getItem("selectedGroupId");
+    return selectedGroupId ? `/calendar?group=${selectedGroupId}` : "/calendar";
+  }, []);
+
   // 当月の全日付
   const daysInMonth = useMemo(() => {
     const monthStart = startOfMonth(currentMonth);
@@ -137,7 +144,7 @@ export default function BulkSharePage() {
           })
         )
       );
-      router.push("/calendar");
+      router.push(buildCalendarUrl());
       router.refresh();
       return;
     } catch {
@@ -150,7 +157,7 @@ export default function BulkSharePage() {
     if (window.history.length > 1) {
       router.back();
     } else {
-      router.push("/calendar");
+      router.push(buildCalendarUrl());
     }
   };
 

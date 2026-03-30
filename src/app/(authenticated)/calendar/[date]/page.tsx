@@ -66,11 +66,15 @@ export default function DayDetailPage() {
     }
   }, [fetchData, mounted]);
 
+  const buildCalendarUrl = useCallback(() => {
+    return groupId ? `/calendar?group=${groupId}` : "/calendar";
+  }, [groupId]);
+
   const handleBack = () => {
     if (window.history.length > 1) {
       router.back();
     } else {
-      router.push("/calendar");
+      router.push(buildCalendarUrl());
     }
   };
 
@@ -93,7 +97,7 @@ export default function DayDetailPage() {
     }
 
     setSaving(false);
-    router.push("/calendar");
+    router.push(buildCalendarUrl());
     router.refresh();
   };
 

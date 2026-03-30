@@ -39,6 +39,19 @@ export default function CalendarPage() {
   });
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
+  const syncCalendarUrl = useCallback((groupId: string) => {
+    if (typeof window === "undefined") return;
+
+    const url = new URL(window.location.href);
+    if (groupId) {
+      url.searchParams.set("group", groupId);
+    } else {
+      url.searchParams.delete("group");
+    }
+
+    window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}`);
+  }, []);
+
   // Fetch groups the user belongs to
   useEffect(() => {
     const fetchGroups = async () => {
@@ -64,9 +77,11 @@ export default function CalendarPage() {
 
             setSelectedGroupId(preferredGroupId);
             sessionStorage.setItem("selectedGroupId", preferredGroupId);
+            syncCalendarUrl(preferredGroupId);
           } else {
             setSelectedGroupId("");
             sessionStorage.removeItem("selectedGroupId");
+            syncCalendarUrl("");
           }
         }
       } catch {
@@ -75,7 +90,7 @@ export default function CalendarPage() {
       setLoading(false);
     };
     fetchGroups();
-  }, []);
+  }, [syncCalendarUrl]);
 
   const fetchAvailabilities = useCallback(async () => {
     setLoading(true);
@@ -130,7 +145,12 @@ export default function CalendarPage() {
         <div className="px-4 pt-3">
           <select
             value={selectedGroupId}
-            onChange={(e) => { setSelectedGroupId(e.target.value); sessionStorage.setItem("selectedGroupId", e.target.value); }}
+            onChange={(e) => {
+              const nextGroupId = e.target.value;
+              setSelectedGroupId(nextGroupId);
+              sessionStorage.setItem("selectedGroupId", nextGroupId);
+              syncCalendarUrl(nextGroupId);
+            }}
             className="w-full rounded-xl border px-4 py-2.5 text-sm font-medium outline-none"
             style={{ backgroundColor: "var(--color-surface)", borderColor: "var(--color-border)" }}
           >
