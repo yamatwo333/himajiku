@@ -24,7 +24,12 @@ export default function CalendarPage() {
   });
   const [loading, setLoading] = useState(true);
   const [groups, setGroups] = useState<GroupInfo[]>([]);
-  const [selectedGroupId, setSelectedGroupId] = useState<string>("");
+  const [selectedGroupId, setSelectedGroupId] = useState<string>(() => {
+    if (typeof window !== "undefined") {
+      return sessionStorage.getItem("selectedGroupId") || "";
+    }
+    return "";
+  });
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
   // Fetch groups the user belongs to
@@ -37,7 +42,12 @@ export default function CalendarPage() {
           const groupsList = data.groups || [];
           if (groupsList.length > 0) {
             setGroups(groupsList);
-            setSelectedGroupId(groupsList[0].id);
+            const savedId = sessionStorage.getItem("selectedGroupId");
+            if (savedId && groupsList.some((g: GroupInfo) => g.id === savedId)) {
+              setSelectedGroupId(savedId);
+            } else {
+              setSelectedGroupId(groupsList[0].id);
+            }
           }
         }
       } catch {
@@ -101,7 +111,7 @@ export default function CalendarPage() {
         <div className="px-4 pt-3">
           <select
             value={selectedGroupId}
-            onChange={(e) => setSelectedGroupId(e.target.value)}
+            onChange={(e) => { setSelectedGroupId(e.target.value); sessionStorage.setItem("selectedGroupId", e.target.value); }}
             className="w-full rounded-xl border px-4 py-2.5 text-sm font-medium outline-none"
             style={{ backgroundColor: "var(--color-surface)", borderColor: "var(--color-border)" }}
           >
