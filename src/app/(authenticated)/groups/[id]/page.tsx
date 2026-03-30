@@ -321,7 +321,7 @@ export default function GroupDetailPage() {
               <h2 className="mb-2 text-sm font-bold" style={{ color: "var(--color-text-secondary)" }}>「集まったっていい」の条件</h2>
               <div className="flex items-center gap-3">
                 <select value={notifyThreshold} onChange={(e) => setNotifyThreshold(Number(e.target.value))}
-                  className="rounded-xl border px-4 py-3 text-sm outline-none" style={{ backgroundColor: "var(--color-surface)", borderColor: "var(--color-border)" }}>
+                  className="rounded-xl border px-4 py-3 text-base font-medium outline-none" style={{ backgroundColor: "var(--color-surface)", borderColor: "var(--color-border)", minWidth: "110px" }}>
                   {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => (<option key={n} value={n}>{n}人以上</option>))}
                 </select>
                 <span className="text-sm" style={{ color: "var(--color-text-secondary)" }}>ヒマが重なったら</span>
