@@ -84,7 +84,7 @@ export default function CalendarGrid({ availabilities, onMonthChange, groupId, n
             <polyline points="12,4 6,10 12,16" />
           </svg>
         </button>
-        <button onClick={() => monthInputRef.current?.showPicker()} className="relative rounded-lg px-3 py-1 active:bg-gray-100">
+        <label className="relative cursor-pointer rounded-lg px-3 py-1 active:bg-gray-100">
           <h2 className="text-lg font-bold">
             {format(currentMonth, "yyyy年 M月", { locale: ja })}
             <span className="ml-1 text-xs" style={{ color: "var(--color-text-secondary)" }}>&#x25BC;</span>
@@ -97,9 +97,8 @@ export default function CalendarGrid({ availabilities, onMonthChange, groupId, n
             max={format(addMonths(now, 3), "yyyy-MM")}
             onChange={(e) => handleMonthPick(e.target.value)}
             className="absolute inset-0 opacity-0"
-            style={{ pointerEvents: "none" }}
           />
-        </button>
+        </label>
         <button
           onClick={() => changeMonth(1)}
           disabled={!canGoNext}
