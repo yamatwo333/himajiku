@@ -90,7 +90,19 @@ export default function ProfilePage() {
               シェア<span style={{ color: "var(--color-primary)" }}>ヒマ</span>とは？
             </p>
             <p className="mt-1 text-xs leading-relaxed" style={{ color: "var(--color-text-secondary)" }}>
-              ヒマな時間をシェアして、なんとなく集まれるアプリ。グループを作って友達を招待し、ヒマな日をシェアしよう。
+              <span className="block">
+                わざわざ誘うほどじゃないけど
+                <span style={{ color: "var(--color-primary)" }}>ヒマ</span>。
+              </span>
+              <span className="block">
+                <span style={{ color: "var(--color-primary)" }}>ヒマ</span>
+                な時間をシェアして、なんとなく集まれるアプリ。
+              </span>
+              <span className="block">
+                グループを作って友だちを招待し、
+                <span style={{ color: "var(--color-primary)" }}>ヒマ</span>
+                な日を気軽にシェアしよう。
+              </span>
             </p>
           </section>
 

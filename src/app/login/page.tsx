@@ -58,7 +58,10 @@ function LoginContent() {
       <div className="flex flex-1 flex-col items-center justify-center px-6">
         <div className="mb-6 text-center">
           <BrandLogo variant="lockup" className="mx-auto" />
-          <p className="mt-3 text-sm leading-relaxed" style={{ color: "var(--color-text-secondary)" }}>
+          <p
+            className="mx-auto mt-3 max-w-[320px] text-sm leading-relaxed"
+            style={{ color: "var(--color-text-secondary)" }}
+          >
             ヒマな時間をシェアして、なんとなく集まろう
           </p>
         </div>
