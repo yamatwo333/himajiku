@@ -10,6 +10,7 @@ function JoinContent() {
   const [status, setStatus] = useState<"loading" | "success" | "error">("loading");
   const [message, setMessage] = useState("");
   const [groupName, setGroupName] = useState("");
+  const [groupId, setGroupId] = useState("");
   const retryCountRef = useRef(0);
 
   useEffect(() => {
@@ -44,12 +45,12 @@ function JoinContent() {
         if (res.ok) {
           setStatus("success");
           setGroupName(data.group?.name || "");
+          setGroupId(data.group?.id || "");
         } else {
           setStatus(res.status === 409 ? "success" : "error");
           setMessage(data.error || "参加に失敗しました");
-          if (res.status === 409) {
-            setGroupName("");
-          }
+          setGroupName(data.group?.name || "");
+          setGroupId(data.group?.id || "");
         }
       } catch {
         setStatus("error");
@@ -77,10 +78,10 @@ function JoinContent() {
             </svg>
           </div>
           <h1 className="text-xl font-bold">
-            {groupName ? `「${groupName}」に参加しました！` : "すでに参加済みです"}
+            {groupName ? `「${groupName}」に${message ? "参加済みです" : "参加しました！"}` : "すでに参加済みです"}
           </h1>
           <button
-            onClick={() => router.push("/calendar")}
+            onClick={() => router.push(groupId ? `/calendar?group=${groupId}` : "/calendar")}
             className="mt-6 rounded-xl px-8 py-3 text-sm font-bold text-white"
             style={{ backgroundColor: "var(--color-primary)" }}
           >

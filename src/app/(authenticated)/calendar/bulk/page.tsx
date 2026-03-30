@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import { getTodayInTokyo } from "@/lib/date";
 import {
   format,
   startOfMonth,
@@ -23,22 +24,27 @@ interface DayEntry {
 
 export default function BulkSharePage() {
   const router = useRouter();
+  const now = new Date();
+  const minMonth = startOfMonth(now);
+  const maxMonth = startOfMonth(addMonths(now, 2));
   const [currentMonth, setCurrentMonth] = useState(() => {
     if (typeof window !== "undefined") {
       const saved = sessionStorage.getItem("calendarMonth");
-      if (saved) return new Date(saved);
+      if (saved) {
+        const parsed = new Date(saved);
+        if (parsed < minMonth) return minMonth;
+        if (parsed > maxMonth) return maxMonth;
+        return parsed;
+      }
     }
     return new Date();
   });
   const [entries, setEntries] = useState<Record<string, DayEntry>>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-
-  const now = new Date();
-  const minMonth = startOfMonth(subMonths(now, 1));
-  const maxMonth = startOfMonth(addMonths(now, 2));
   const canGoPrev = currentMonth > minMonth;
   const canGoNext = currentMonth < maxMonth;
+  const todayString = getTodayInTokyo();
 
   // 当月の全日付
   const daysInMonth = useMemo(() => {
@@ -107,10 +113,11 @@ export default function BulkSharePage() {
 
   const entriesToSave = useMemo(() => {
     return Object.values(entries).filter(e =>
+      e.date >= todayString &&
       e.timeSlots.length > 0 &&
       daysInMonth.some(d => format(d, "yyyy-MM-dd") === e.date)
     );
-  }, [entries, daysInMonth]);
+  }, [entries, daysInMonth, todayString]);
 
   const handleSave = async () => {
     if (entriesToSave.length === 0) return;
@@ -177,7 +184,7 @@ export default function BulkSharePage() {
         </div>
 
         <p className="text-xs" style={{ color: "var(--color-text-secondary)" }}>
-          各日の時間帯をタップしてヒマを設定してください
+          当日以降の日付で、各日の時間帯をタップしてヒマを設定してください
         </p>
 
         {loading ? (
@@ -191,9 +198,18 @@ export default function BulkSharePage() {
               const dayLabel = format(day, "M/d (E)", { locale: ja });
               const entry = entries[dateStr];
               const hasSlots = entry && entry.timeSlots.length > 0;
+              const isPastDate = dateStr < todayString;
 
               return (
-                <div key={dateStr} className="rounded-xl border p-3" style={{ backgroundColor: "var(--color-surface)", borderColor: hasSlots ? "var(--color-free-self)" : "var(--color-border)" }}>
+                <div
+                  key={dateStr}
+                  className="rounded-xl border p-3"
+                  style={{
+                    backgroundColor: "var(--color-surface)",
+                    borderColor: hasSlots ? "var(--color-free-self)" : "var(--color-border)",
+                    opacity: isPastDate ? 0.5 : 1,
+                  }}
+                >
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-sm font-bold" style={{ color: "var(--color-text)" }}>
                       {dayLabel}
@@ -210,7 +226,11 @@ export default function BulkSharePage() {
                       return (
                         <button
                           key={slot}
-                          onClick={() => toggleSlot(dateStr, slot)}
+                          onClick={() => {
+                            if (isPastDate) return;
+                            toggleSlot(dateStr, slot);
+                          }}
+                          disabled={isPastDate}
                           className="flex-1 rounded-md border py-1.5 text-xs font-medium transition-all active:scale-95"
                           style={{
                             backgroundColor: isSelected ? "var(--color-free-self)" : "transparent",
@@ -230,6 +250,7 @@ export default function BulkSharePage() {
                       onChange={(e) => updateComment(dateStr, e.target.value)}
                       placeholder="ひとこと"
                       maxLength={100}
+                      disabled={isPastDate}
                       className="w-full rounded-lg border px-3 py-2 text-xs outline-none focus:border-[var(--color-primary)]"
                       style={{ borderColor: "var(--color-border)" }}
                     />

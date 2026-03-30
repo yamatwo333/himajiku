@@ -1,7 +1,9 @@
-import { NextRequest, NextResponse } from "next/server";
+import { after, NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { createServerClient } from "@supabase/ssr";
+import { isDateBeforeTodayInTokyo } from "@/lib/date";
 import { ensureProfile } from "@/lib/ensure-profile";
+import { sendGroupAvailabilityNotification } from "@/lib/server/notify";
 
 export async function POST(request: NextRequest) {
   try {
@@ -31,6 +33,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "時間帯を選択してください" }, { status: 400 });
     }
 
+    if (dates.some((date: string) => isDateBeforeTodayInTokyo(date))) {
+      return NextResponse.json({ error: "当日より前の日付はシェアできません" }, { status: 400 });
+    }
+
     const supabaseAdmin = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!,
@@ -55,26 +61,29 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "保存に失敗しました" }, { status: 500 });
     }
 
-    // 通知トリガー（全グループ）
-    const { data: memberships } = await supabaseAdmin
-      .from("group_members")
-      .select("group_id")
-      .eq("user_id", user.id);
+    after(async () => {
+      try {
+        const { data: memberships } = await supabaseAdmin
+          .from("group_members")
+          .select("group_id")
+          .eq("user_id", user.id);
 
-    if (memberships && memberships.length > 0) {
-      const origin = request.nextUrl.origin;
-      Promise.allSettled(
-        dates.flatMap((date: string) =>
-          memberships.map((m: { group_id: string }) =>
-            fetch(`${origin}/api/notify`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ date, group_id: m.group_id }),
-            })
-          )
-        )
-      );
-    }
+        if (memberships?.length) {
+          await Promise.allSettled(
+            dates.flatMap((date: string) =>
+              memberships.map((membership) =>
+                sendGroupAvailabilityNotification({
+                  date,
+                  groupId: membership.group_id,
+                })
+              )
+            )
+          );
+        }
+      } catch (error) {
+        console.error("Bulk availability post-save tasks error:", error);
+      }
+    });
 
     return NextResponse.json({ success: true, count: dates.length });
   } catch (err) {

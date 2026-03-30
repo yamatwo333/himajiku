@@ -34,30 +34,38 @@ export async function GET(request: NextRequest) {
       { auth: { autoRefreshToken: false, persistSession: false } }
     );
 
-    // Get group members
-    let memberIds: string[] | null = null;
+    let memberIds: string[] = [user.id];
+
     if (groupId) {
+      const { data: membership } = await supabaseAdmin
+        .from("group_members")
+        .select("group_id")
+        .eq("group_id", groupId)
+        .eq("user_id", user.id)
+        .single();
+
+      if (!membership) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      }
+
       const { data: members } = await supabaseAdmin
         .from("group_members")
         .select("user_id")
         .eq("group_id", groupId);
+
       if (!members || members.length === 0) {
         return NextResponse.json({ availabilities: [], currentUserId: user.id });
       }
-      memberIds = members.map((m) => m.user_id);
+
+      memberIds = members.map((member) => member.user_id);
     }
 
-    let query = supabaseAdmin
+    const { data: avails } = await supabaseAdmin
       .from("availability")
       .select("*")
       .gte("date", start)
-      .lte("date", end);
-
-    if (memberIds) {
-      query = query.in("user_id", memberIds);
-    }
-
-    const { data: avails } = await query;
+      .lte("date", end)
+      .in("user_id", memberIds);
 
     if (!avails) {
       return NextResponse.json({ availabilities: [], currentUserId: user.id });

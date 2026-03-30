@@ -32,26 +32,35 @@ export async function GET(
       { auth: { autoRefreshToken: false, persistSession: false } }
     );
 
-    // If group specified, only show group members' availability
-    let memberIds: string[] | null = null;
+    let memberIds: string[] = [user.id];
+
     if (groupId) {
+      const { data: membership } = await supabaseAdmin
+        .from("group_members")
+        .select("group_id")
+        .eq("group_id", groupId)
+        .eq("user_id", user.id)
+        .single();
+
+      if (!membership) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      }
+
       const { data: members } = await supabaseAdmin
         .from("group_members")
         .select("user_id")
         .eq("group_id", groupId);
-      if (members) memberIds = members.map((m) => m.user_id);
+
+      if (members?.length) {
+        memberIds = members.map((member) => member.user_id);
+      }
     }
 
-    let query = supabaseAdmin
+    const { data: avails } = await supabaseAdmin
       .from("availability")
       .select("*")
-      .eq("date", date);
-
-    if (memberIds) {
-      query = query.in("user_id", memberIds);
-    }
-
-    const { data: avails } = await query;
+      .eq("date", date)
+      .in("user_id", memberIds);
 
     if (!avails) {
       return NextResponse.json({ availabilities: [], currentUserId: user.id });

@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { format, parse, isValid } from "date-fns";
 import { ja } from "date-fns/locale";
+import { getTodayInTokyo } from "@/lib/date";
 import { TimeSlot, AvailabilityWithUser } from "@/lib/types";
 import TimeSlotPicker from "@/components/TimeSlotPicker";
 import FriendAvailabilityList from "@/components/FriendAvailabilityList";
@@ -27,6 +28,7 @@ export default function DayDetailPage() {
   const date = dateStr ? parse(dateStr, "yyyy-MM-dd", new Date()) : new Date();
   const dateValid = isValid(date);
   const dateLabel = dateValid ? format(date, "M月d日 (E)", { locale: ja }) : dateStr;
+  const isPastDate = dateStr < getTodayInTokyo();
 
   useEffect(() => {
     setMounted(true);
@@ -73,7 +75,7 @@ export default function DayDetailPage() {
   };
 
   const handleSave = async () => {
-    if (!currentUserId) return;
+    if (!currentUserId || isPastDate) return;
     setSaving(true);
 
     try {
@@ -139,8 +141,10 @@ export default function DayDetailPage() {
       <div className="space-y-6 px-4 pt-5 pb-8">
         <section>
           <h2 className="mb-3 text-sm font-bold" style={{ color: "var(--color-text-secondary)" }}>この日ヒマ？</h2>
-          <TimeSlotPicker selected={selectedSlots} onChange={setSelectedSlots} />
-          <p className="mt-2 text-xs" style={{ color: "var(--color-text-secondary)" }}>ヒマな時間帯をタップ（複数選択OK）</p>
+          <TimeSlotPicker selected={selectedSlots} onChange={setSelectedSlots} disabled={isPastDate} />
+          <p className="mt-2 text-xs" style={{ color: "var(--color-text-secondary)" }}>
+            {isPastDate ? "当日より前の日付はヒマをシェアできません" : "ヒマな時間帯をタップ（複数選択OK）"}
+          </p>
           <p className="mt-1 text-xs" style={{ color: "var(--color-text-secondary)" }}>※ ヒマのシェアは参加中の全グループに反映されます</p>
         </section>
 
@@ -152,12 +156,13 @@ export default function DayDetailPage() {
             onChange={(e) => setComment(e.target.value)}
             placeholder="何したい？（例: 飲みたい、どこか行きたい）"
             maxLength={100}
+            disabled={isPastDate}
             className="w-full rounded-xl border px-4 py-3 text-sm outline-none transition-colors focus:border-[var(--color-primary)]"
             style={{ backgroundColor: "var(--color-surface)", borderColor: "var(--color-border)" }}
           />
         </section>
 
-        {(isFree || hasExisting) && (
+        {!isPastDate && (isFree || hasExisting) && (
           <button
             onClick={handleSave}
             disabled={saving}

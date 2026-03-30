@@ -1,7 +1,14 @@
-import { NextRequest, NextResponse } from "next/server";
+import { after, NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { createServerClient } from "@supabase/ssr";
+import { getTodayInTokyo } from "@/lib/date";
 import { ensureProfile } from "@/lib/ensure-profile";
+import { sendGroupAvailabilityNotification } from "@/lib/server/notify";
+
+interface AvailabilityRow {
+  date: string;
+  time_slots: string[] | null;
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -41,7 +48,7 @@ export async function POST(request: NextRequest) {
     // Find group by invite code
     const { data: group } = await supabaseAdmin
       .from("groups")
-      .select("id, name")
+      .select("id, name, notify_threshold, line_group_id")
       .eq("invite_code", invite_code.trim().toUpperCase())
       .single();
 
@@ -58,7 +65,60 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (existing) {
-      return NextResponse.json({ error: "すでにこのグループに参加しています" }, { status: 409 });
+      return NextResponse.json(
+        { error: "すでにこのグループに参加しています", group },
+        { status: 409 }
+      );
+    }
+
+    const today = getTodayInTokyo();
+    const { data: currentMembers } = await supabaseAdmin
+      .from("group_members")
+      .select("user_id")
+      .eq("group_id", group.id);
+
+    const currentMemberIds = currentMembers?.map((member) => member.user_id) ?? [];
+
+    const { data: myFutureAvailabilities } = await supabaseAdmin
+      .from("availability")
+      .select("date, time_slots")
+      .eq("user_id", user.id)
+      .gte("date", today);
+
+    const notificationSlotsByDate = new Map<string, Set<string>>();
+
+    if (myFutureAvailabilities?.length) {
+      const futureDates = [...new Set(myFutureAvailabilities.map((availability) => availability.date))];
+      let existingAvailabilities: AvailabilityRow[] = [];
+
+      if (currentMemberIds.length) {
+        const { data } = await supabaseAdmin
+          .from("availability")
+          .select("date, time_slots")
+          .in("user_id", currentMemberIds)
+          .in("date", futureDates);
+
+        existingAvailabilities = (data as AvailabilityRow[] | null) ?? [];
+      }
+
+      for (const availability of myFutureAvailabilities as AvailabilityRow[]) {
+        for (const slot of availability.time_slots ?? []) {
+          const beforeCount = existingAvailabilities.filter(
+            (existingAvailability) =>
+              existingAvailability.date === availability.date &&
+              existingAvailability.time_slots?.includes(slot)
+          ).length;
+
+          if (
+            beforeCount < group.notify_threshold &&
+            beforeCount + 1 >= group.notify_threshold
+          ) {
+            const slots = notificationSlotsByDate.get(availability.date) ?? new Set<string>();
+            slots.add(slot);
+            notificationSlotsByDate.set(availability.date, slots);
+          }
+        }
+      }
     }
 
     // Join
@@ -72,6 +132,20 @@ export async function POST(request: NextRequest) {
     if (joinError) {
       console.error("Join error:", joinError);
       return NextResponse.json({ error: "参加に失敗しました" }, { status: 500 });
+    }
+
+    if (group.line_group_id && notificationSlotsByDate.size > 0) {
+      after(async () => {
+        await Promise.allSettled(
+          Array.from(notificationSlotsByDate.entries()).map(([date, slots]) =>
+            sendGroupAvailabilityNotification({
+              date,
+              groupId: group.id,
+              slots: Array.from(slots),
+            })
+          )
+        );
+      });
     }
 
     return NextResponse.json({ group });

@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
+import { getTodayInTokyo } from "@/lib/date";
 import {
   format,
   startOfMonth,
@@ -29,19 +30,23 @@ interface Props {
 }
 
 export default function CalendarGrid({ availabilities, onMonthChange, groupId, notifyThreshold = 2, currentUserId = null, initialMonth }: Props) {
-  const [currentMonth, setCurrentMonth] = useState(() => initialMonth ?? new Date());
-  const router = useRouter();
-
   const now = new Date();
-  const minMonth = startOfMonth(subMonths(now, 1));
+  const minMonth = startOfMonth(now);
   const maxMonth = startOfMonth(addMonths(now, 2));
+  const [currentMonth, setCurrentMonth] = useState(() => {
+    const month = initialMonth ?? now;
+    if (month < minMonth) return minMonth;
+    if (month > maxMonth) return maxMonth;
+    return month;
+  });
+  const router = useRouter();
   const canGoPrev = currentMonth > minMonth;
   const canGoNext = currentMonth < maxMonth;
+  const todayString = getTodayInTokyo();
 
-  // 選択可能な月リスト（前月〜2ヶ月後）
   const monthOptions = useMemo(() => {
     const months: Date[] = [];
-    for (let i = -1; i <= 2; i++) {
+    for (let i = 0; i <= 2; i++) {
       months.push(addMonths(startOfMonth(now), i));
     }
     return months;
@@ -139,6 +144,7 @@ export default function CalendarGrid({ availabilities, onMonthChange, groupId, n
           const dateStr = format(day, "yyyy-MM-dd");
           const dayAvails = availByDate[dateStr] || [];
           const inMonth = isSameMonth(day, currentMonth);
+          const isPast = dateStr < todayString;
           const selfFree = dayAvails.some(
             (a) => a.userId === currentUserId
           );
@@ -150,10 +156,14 @@ export default function CalendarGrid({ availabilities, onMonthChange, groupId, n
           return (
             <button
               key={dateStr}
-              onClick={() => router.push(`/calendar/${dateStr}${groupId ? `?group=${groupId}` : ""}`)}
+              onClick={() => {
+                if (isPast) return;
+                router.push(`/calendar/${dateStr}${groupId ? `?group=${groupId}` : ""}`);
+              }}
+              disabled={isPast}
               className="relative flex flex-col items-center rounded-lg py-2 transition-colors active:bg-gray-100"
               style={{
-                opacity: inMonth ? 1 : 0.3,
+                opacity: inMonth ? (isPast ? 0.35 : 1) : isPast ? 0.15 : 0.3,
               }}
             >
               {/* Date number */}

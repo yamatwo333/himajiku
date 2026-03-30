@@ -384,6 +384,47 @@ export default function GroupDetailPage() {
           </>
         )}
 
+        {!isOwner && (
+          <>
+            <section>
+              <h2 className="mb-2 text-sm font-bold" style={{ color: "var(--color-text-secondary)" }}>グループ名</h2>
+              <div
+                className="w-full rounded-xl border px-4 py-3 text-sm"
+                style={{ backgroundColor: "var(--color-surface)", borderColor: "var(--color-border)" }}
+              >
+                {group.name}
+              </div>
+              <p className="mt-2 text-xs" style={{ color: "var(--color-text-secondary)" }}>※ 管理者のみ変更できます</p>
+            </section>
+
+            <section>
+              <h2 className="mb-2 text-sm font-bold" style={{ color: "var(--color-text-secondary)" }}>「集まったっていい」の条件</h2>
+              <div
+                className="rounded-xl border px-4 py-3 text-sm"
+                style={{ backgroundColor: "var(--color-surface)", borderColor: "var(--color-border)" }}
+              >
+                {notifyThreshold}人以上がヒマ
+              </div>
+              <p className="mt-2 text-xs" style={{ color: "var(--color-text-secondary)" }}>※ カレンダーの<span className="inline-block h-2 w-2 rounded-full align-middle" style={{ backgroundColor: "var(--color-hot)" }} />マークとLINE通知の基準です</p>
+            </section>
+
+            <section className="rounded-2xl border p-4 space-y-3" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-surface)" }}>
+              <h2 className="text-sm font-bold" style={{ color: "var(--color-text)" }}>LINE通知連携</h2>
+              <div className="rounded-xl border p-3" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-bg)" }}>
+                <p className="text-sm font-medium" style={{ color: "var(--color-text)" }}>
+                  {lineLinked ? "連携済み" : "未連携"}
+                </p>
+                <p className="mt-1 text-xs leading-relaxed" style={{ color: "var(--color-text-secondary)" }}>
+                  {lineLinked
+                    ? "条件を満たすと、連携先のLINEグループに通知が届きます。"
+                    : "LINEグループにまだ連携されていません。"}
+                </p>
+              </div>
+              <p className="text-xs" style={{ color: "var(--color-text-secondary)" }}>※ 管理者のみ連携設定を変更できます</p>
+            </section>
+          </>
+        )}
+
         {/* Leave / Delete */}
         <section>
           {showDeleteConfirm ? (

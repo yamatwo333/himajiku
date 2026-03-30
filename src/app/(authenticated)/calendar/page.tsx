@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { startOfMonth, endOfMonth, startOfWeek, endOfWeek, format } from "date-fns";
+import { addMonths, endOfMonth, format, startOfMonth, startOfWeek, endOfWeek } from "date-fns";
 import CalendarGrid from "@/components/CalendarGrid";
 import { AvailabilityWithUser } from "@/lib/types";
 
@@ -15,10 +15,17 @@ interface GroupInfo {
 export default function CalendarPage() {
   const router = useRouter();
   const [availabilities, setAvailabilities] = useState<AvailabilityWithUser[]>([]);
+  const minMonth = startOfMonth(new Date());
+  const maxMonth = startOfMonth(addMonths(new Date(), 2));
   const [currentMonth, setCurrentMonth] = useState(() => {
     if (typeof window !== "undefined") {
       const saved = sessionStorage.getItem("calendarMonth");
-      if (saved) return new Date(saved);
+      if (saved) {
+        const parsed = new Date(saved);
+        if (parsed < minMonth) return minMonth;
+        if (parsed > maxMonth) return maxMonth;
+        return parsed;
+      }
     }
     return new Date();
   });
@@ -40,14 +47,26 @@ export default function CalendarPage() {
         if (res.ok) {
           const data = await res.json();
           const groupsList = data.groups || [];
+          setGroups(groupsList);
+
           if (groupsList.length > 0) {
-            setGroups(groupsList);
+            const requestedGroupId =
+              typeof window !== "undefined"
+                ? new URLSearchParams(window.location.search).get("group")
+                : null;
             const savedId = sessionStorage.getItem("selectedGroupId");
-            if (savedId && groupsList.some((g: GroupInfo) => g.id === savedId)) {
-              setSelectedGroupId(savedId);
-            } else {
-              setSelectedGroupId(groupsList[0].id);
-            }
+            const preferredGroupId =
+              requestedGroupId && groupsList.some((group: GroupInfo) => group.id === requestedGroupId)
+                ? requestedGroupId
+                : savedId && groupsList.some((group: GroupInfo) => group.id === savedId)
+                  ? savedId
+                  : groupsList[0].id;
+
+            setSelectedGroupId(preferredGroupId);
+            sessionStorage.setItem("selectedGroupId", preferredGroupId);
+          } else {
+            setSelectedGroupId("");
+            sessionStorage.removeItem("selectedGroupId");
           }
         }
       } catch {
@@ -59,20 +78,22 @@ export default function CalendarPage() {
   }, []);
 
   const fetchAvailabilities = useCallback(async () => {
-    if (!selectedGroupId) {
-      setAvailabilities([]);
-      return;
-    }
-
     setLoading(true);
-    // カレンダーグリッド全体（前後の週を含む）をフェッチ
     const monthStart = format(startOfWeek(startOfMonth(currentMonth), { weekStartsOn: 0 }), "yyyy-MM-dd");
     const monthEnd = format(endOfWeek(endOfMonth(currentMonth), { weekStartsOn: 0 }), "yyyy-MM-dd");
 
     try {
-      const res = await fetch(
-        `/api/availability/month?group=${selectedGroupId}&start=${monthStart}&end=${monthEnd}`
-      );
+      const params = new URLSearchParams({
+        start: monthStart,
+        end: monthEnd,
+      });
+
+      if (selectedGroupId) {
+        params.set("group", selectedGroupId);
+      }
+
+      const res = await fetch(`/api/availability/month?${params.toString()}`);
+
       if (res.ok) {
         const data = await res.json();
         setAvailabilities(data.availabilities || []);
@@ -85,9 +106,7 @@ export default function CalendarPage() {
   }, [currentMonth, selectedGroupId]);
 
   useEffect(() => {
-    if (selectedGroupId) {
-      fetchAvailabilities();
-    }
+    fetchAvailabilities();
   }, [fetchAvailabilities, selectedGroupId]);
 
   const handleMonthChange = useCallback((month: Date) => {
@@ -124,27 +143,33 @@ export default function CalendarPage() {
 
       <div className="pt-3">
         {loading ? (
-          <div className="flex items-center justify-center py-20">
-            <div className="h-8 w-8 animate-spin rounded-full border-2 border-t-transparent" style={{ borderColor: "var(--color-border)", borderTopColor: "transparent" }} />
-          </div>
-        ) : groups.length === 0 ? (
-          <div className="px-4 py-16 text-center">
-            <p className="text-sm font-medium" style={{ color: "var(--color-text)" }}>
-              まだグループに参加していません
-            </p>
-            <p className="mt-1 text-xs" style={{ color: "var(--color-text-secondary)" }}>
-              グループを作って友達を招待しよう
-            </p>
-            <button
-              onClick={() => router.push("/groups")}
-              className="mt-4 rounded-xl px-6 py-2.5 text-sm font-bold text-white"
-              style={{ backgroundColor: "var(--color-primary)" }}
-            >
-              グループを作成・参加
-            </button>
-          </div>
+        <div className="flex items-center justify-center py-20">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-t-transparent" style={{ borderColor: "var(--color-border)", borderTopColor: "transparent" }} />
+        </div>
         ) : (
           <>
+            {groups.length === 0 && (
+              <div className="px-4 pb-3">
+                <div
+                  className="rounded-xl border p-4"
+                  style={{ backgroundColor: "var(--color-surface)", borderColor: "var(--color-border)" }}
+                >
+                  <p className="text-sm font-bold" style={{ color: "var(--color-text)" }}>
+                    ひとりでも先にヒマをシェアできます
+                  </p>
+                  <p className="mt-1 text-xs leading-relaxed" style={{ color: "var(--color-text-secondary)" }}>
+                    グループに参加すると、友達のヒマや「集まったっていい」の表示も見られるようになります。
+                  </p>
+                  <button
+                    onClick={() => router.push("/groups")}
+                    className="mt-3 rounded-lg px-4 py-2 text-xs font-bold text-white"
+                    style={{ backgroundColor: "var(--color-primary)" }}
+                  >
+                    グループを作成・参加
+                  </button>
+                </div>
+              </div>
+            )}
             <CalendarGrid
               availabilities={availabilities}
               onMonthChange={handleMonthChange}

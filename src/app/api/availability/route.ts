@@ -1,7 +1,9 @@
-import { NextRequest, NextResponse } from "next/server";
+import { after, NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { createServerClient } from "@supabase/ssr";
+import { isDateBeforeTodayInTokyo } from "@/lib/date";
 import { ensureProfile } from "@/lib/ensure-profile";
+import { sendGroupAvailabilityNotification } from "@/lib/server/notify";
 
 export async function POST(request: NextRequest) {
   try {
@@ -22,6 +24,14 @@ export async function POST(request: NextRequest) {
     }
 
     const { date, time_slots, comment } = await request.json();
+
+    if (!date || typeof date !== "string") {
+      return NextResponse.json({ error: "日付を指定してください" }, { status: 400 });
+    }
+
+    if (isDateBeforeTodayInTokyo(date)) {
+      return NextResponse.json({ error: "当日より前の日付はシェアできません" }, { status: 400 });
+    }
 
     const supabaseAdmin = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -58,50 +68,39 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "保存に失敗しました" }, { status: 500 });
     }
 
-    // 保存成功後、ユーザーが所属する全グループの通知を自動チェック（非同期）
-    triggerNotifications(supabaseAdmin, user.id, date, request.nextUrl.origin);
+    after(async () => {
+      try {
+        const { data: memberships } = await supabaseAdmin
+          .from("group_members")
+          .select("group_id")
+          .eq("user_id", user.id);
 
-    // 3ヶ月以上前のデータを自動削除（非同期）
-    const cutoffDate = new Date();
-    cutoffDate.setMonth(cutoffDate.getMonth() - 3);
-    supabaseAdmin
-      .from("availability")
-      .delete()
-      .lt("date", cutoffDate.toISOString().split("T")[0])
-      .then(() => {});
+        if (memberships?.length) {
+          await Promise.allSettled(
+            memberships.map((membership) =>
+              sendGroupAvailabilityNotification({
+                date,
+                groupId: membership.group_id,
+              })
+            )
+          );
+        }
+
+        const cutoffDate = new Date();
+        cutoffDate.setMonth(cutoffDate.getMonth() - 3);
+
+        await supabaseAdmin
+          .from("availability")
+          .delete()
+          .lt("date", cutoffDate.toISOString().split("T")[0]);
+      } catch (error) {
+        console.error("Availability post-save tasks error:", error);
+      }
+    });
 
     return NextResponse.json({ success: true, action: "saved" });
   } catch (err) {
     console.error("Availability error:", err);
     return NextResponse.json({ error: "予期しないエラー" }, { status: 500 });
-  }
-}
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function triggerNotifications(
-  supabase: any,
-  userId: string,
-  date: string,
-  origin: string
-) {
-  try {
-    const { data: memberships } = await supabase
-      .from("group_members")
-      .select("group_id")
-      .eq("user_id", userId);
-
-    if (!memberships || memberships.length === 0) return;
-
-    await Promise.allSettled(
-      memberships.map((m: { group_id: string }) =>
-        fetch(`${origin}/api/notify`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ date, group_id: m.group_id }),
-        })
-      )
-    );
-  } catch {
-    // 通知失敗は無視
   }
 }
