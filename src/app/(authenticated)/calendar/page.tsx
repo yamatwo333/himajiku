@@ -1,11 +1,22 @@
 "use client";
 
 import BrandLogo from "@/components/BrandLogo";
-import { useState, useEffect, useCallback } from "react";
+import CalendarGroupSelector from "@/components/calendar/CalendarGroupSelector";
+import CalendarNoGroupState from "@/components/calendar/CalendarNoGroupState";
+import CalendarPageHeader from "@/components/calendar/CalendarPageHeader";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { addMonths, endOfMonth, format, startOfMonth, startOfWeek, endOfWeek } from "date-fns";
+import { endOfMonth, format, startOfMonth, startOfWeek, endOfWeek } from "date-fns";
 import CalendarGrid from "@/components/CalendarGrid";
 import { AvailabilityWithUser } from "@/lib/types";
+import {
+  getRequestedGroupIdFromLocation,
+  persistCalendarMonth,
+  persistSelectedGroupId,
+  readSelectedGroupId,
+  readStoredCalendarMonth,
+  replaceCalendarGroupInUrl,
+} from "@/lib/calendar";
 
 interface GroupInfo {
   id: string;
@@ -16,43 +27,19 @@ interface GroupInfo {
 export default function CalendarPage() {
   const router = useRouter();
   const [availabilities, setAvailabilities] = useState<AvailabilityWithUser[]>([]);
-  const minMonth = startOfMonth(new Date());
-  const maxMonth = startOfMonth(addMonths(new Date(), 2));
-  const [currentMonth, setCurrentMonth] = useState(() => {
-    if (typeof window !== "undefined") {
-      const saved = sessionStorage.getItem("calendarMonth");
-      if (saved) {
-        const parsed = new Date(saved);
-        if (parsed < minMonth) return minMonth;
-        if (parsed > maxMonth) return maxMonth;
-        return parsed;
-      }
-    }
-    return new Date();
-  });
-  const [loading, setLoading] = useState(true);
+  const baseDate = useMemo(() => new Date(), []);
+  const [currentMonth, setCurrentMonth] = useState(() => readStoredCalendarMonth(baseDate));
+  const [groupsLoading, setGroupsLoading] = useState(true);
+  const [availabilitiesLoading, setAvailabilitiesLoading] = useState(true);
   const [groups, setGroups] = useState<GroupInfo[]>([]);
   const [selectedGroupId, setSelectedGroupId] = useState<string>(() => {
-    if (typeof window !== "undefined") {
-      const requestedGroupId = new URLSearchParams(window.location.search).get("group");
-      return requestedGroupId || sessionStorage.getItem("selectedGroupId") || "";
-    }
-    return "";
+    const requestedGroupId = getRequestedGroupIdFromLocation();
+    return requestedGroupId || readSelectedGroupId();
   });
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
   const syncCalendarUrl = useCallback((groupId: string) => {
-    if (typeof window === "undefined") return;
-
-    const url = new URL(window.location.href);
-    if (groupId) {
-      url.searchParams.set("group", groupId);
-    } else {
-      url.searchParams.delete("group");
-    }
-
-    window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}`);
-    window.dispatchEvent(new Event("selected-group-change"));
+    replaceCalendarGroupInUrl(groupId);
   }, []);
 
   // Fetch groups the user belongs to
@@ -66,11 +53,8 @@ export default function CalendarPage() {
           setGroups(groupsList);
 
           if (groupsList.length > 0) {
-            const requestedGroupId =
-              typeof window !== "undefined"
-                ? new URLSearchParams(window.location.search).get("group")
-                : null;
-            const savedId = sessionStorage.getItem("selectedGroupId");
+            const requestedGroupId = getRequestedGroupIdFromLocation();
+            const savedId = readSelectedGroupId();
             const preferredGroupId =
               requestedGroupId && groupsList.some((group: GroupInfo) => group.id === requestedGroupId)
                 ? requestedGroupId
@@ -79,24 +63,24 @@ export default function CalendarPage() {
                   : groupsList[0].id;
 
             setSelectedGroupId(preferredGroupId);
-            sessionStorage.setItem("selectedGroupId", preferredGroupId);
+            persistSelectedGroupId(preferredGroupId);
             syncCalendarUrl(preferredGroupId);
           } else {
             setSelectedGroupId("");
-            sessionStorage.removeItem("selectedGroupId");
+            persistSelectedGroupId("");
             syncCalendarUrl("");
           }
         }
       } catch {
         // ignore
       }
-      setLoading(false);
+      setGroupsLoading(false);
     };
     fetchGroups();
   }, [syncCalendarUrl]);
 
   const fetchAvailabilities = useCallback(async () => {
-    setLoading(true);
+    setAvailabilitiesLoading(true);
     const monthStart = format(startOfWeek(startOfMonth(currentMonth), { weekStartsOn: 0 }), "yyyy-MM-dd");
     const monthEnd = format(endOfWeek(endOfMonth(currentMonth), { weekStartsOn: 0 }), "yyyy-MM-dd");
 
@@ -120,49 +104,43 @@ export default function CalendarPage() {
     } catch {
       // ignore
     }
-    setLoading(false);
+    setAvailabilitiesLoading(false);
   }, [currentMonth, selectedGroupId]);
 
   useEffect(() => {
+    if (groupsLoading) {
+      return;
+    }
+
     fetchAvailabilities();
-  }, [fetchAvailabilities, selectedGroupId]);
+  }, [fetchAvailabilities, groupsLoading]);
 
   const handleMonthChange = useCallback((month: Date) => {
     setCurrentMonth(month);
-    sessionStorage.setItem("calendarMonth", month.toISOString());
+    persistCalendarMonth(month);
   }, []);
+
+  const selectedGroup = useMemo(
+    () => groups.find((group) => group.id === selectedGroupId),
+    [groups, selectedGroupId]
+  );
+  const loading = groupsLoading || availabilitiesLoading;
 
   return (
     <div>
-      <header
-        className="sticky top-0 z-10 border-b px-4 py-3"
-        style={{ backgroundColor: "var(--color-bg)", borderColor: "var(--color-border)" }}
-      >
-        <div className="flex justify-center">
-          <BrandLogo variant="wordmark" />
-        </div>
-      </header>
+      <CalendarPageHeader backgroundColor="var(--color-bg)">
+        <BrandLogo variant="wordmark" />
+      </CalendarPageHeader>
 
-      {/* Group selector */}
-      {groups.length > 0 && (
-        <div className="px-4 pt-3">
-          <select
-            value={selectedGroupId}
-            onChange={(e) => {
-              const nextGroupId = e.target.value;
-              setSelectedGroupId(nextGroupId);
-              sessionStorage.setItem("selectedGroupId", nextGroupId);
-              syncCalendarUrl(nextGroupId);
-            }}
-            className="w-full rounded-xl border px-4 py-2.5 text-sm font-medium outline-none"
-            style={{ backgroundColor: "var(--color-surface)", borderColor: "var(--color-border)" }}
-          >
-            {groups.map((g) => (
-              <option key={g.id} value={g.id}>{g.name}</option>
-            ))}
-          </select>
-        </div>
-      )}
+      <CalendarGroupSelector
+        groups={groups}
+        selectedGroupId={selectedGroupId}
+        onChange={(nextGroupId) => {
+          setSelectedGroupId(nextGroupId);
+          persistSelectedGroupId(nextGroupId);
+          syncCalendarUrl(nextGroupId);
+        }}
+      />
 
       <div className="pt-3">
         {loading ? (
@@ -172,32 +150,13 @@ export default function CalendarPage() {
         ) : (
           <>
             {groups.length === 0 && (
-              <div className="px-4 pb-3">
-                <div
-                  className="rounded-xl border p-4"
-                  style={{ backgroundColor: "var(--color-surface)", borderColor: "var(--color-border)" }}
-                >
-                  <p className="text-sm font-bold" style={{ color: "var(--color-text)" }}>
-                    ひとりでも先にヒマをシェアできます
-                  </p>
-                  <p className="mt-1 text-xs leading-relaxed" style={{ color: "var(--color-text-secondary)" }}>
-                    グループに参加すると、友達のヒマや「集まったっていい」の表示も見られるようになります。
-                  </p>
-                  <button
-                    onClick={() => router.push("/groups")}
-                    className="mt-3 rounded-lg px-4 py-2 text-xs font-bold text-white"
-                    style={{ backgroundColor: "var(--color-primary)" }}
-                  >
-                    グループを作成・参加
-                  </button>
-                </div>
-              </div>
+              <CalendarNoGroupState onOpenGroups={() => router.push("/groups")} />
             )}
             <CalendarGrid
               availabilities={availabilities}
               onMonthChange={handleMonthChange}
               groupId={selectedGroupId}
-              notifyThreshold={groups.find(g => g.id === selectedGroupId)?.notify_threshold ?? 2}
+              notifyThreshold={selectedGroup?.notify_threshold ?? 2}
               currentUserId={currentUserId}
               initialMonth={currentMonth}
             />

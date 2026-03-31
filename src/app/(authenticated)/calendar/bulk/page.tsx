@@ -2,6 +2,9 @@
 
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import BulkDayCard from "@/components/calendar/BulkDayCard";
+import CalendarMonthSwitcher from "@/components/calendar/CalendarMonthSwitcher";
+import CalendarPageHeader from "@/components/calendar/CalendarPageHeader";
 import { getTodayInTokyo } from "@/lib/date";
 import {
   format,
@@ -12,9 +15,15 @@ import {
   subMonths,
 } from "date-fns";
 import { ja } from "date-fns/locale";
-import { TimeSlot, TIME_SLOT_LABELS } from "@/lib/types";
-
-const SLOTS: TimeSlot[] = ["morning", "afternoon", "evening", "late_night"];
+import { createBulkAvailabilityPayloads, type BulkAvailabilityEntry } from "@/lib/availability";
+import {
+  buildCalendarUrl as buildCalendarUrlForGroup,
+  getCalendarMonthBounds,
+  persistCalendarMonth,
+  readSelectedGroupId,
+  readStoredCalendarMonth,
+} from "@/lib/calendar";
+import { TimeSlot } from "@/lib/types";
 
 interface DayEntry {
   date: string;
@@ -24,21 +33,12 @@ interface DayEntry {
 
 export default function BulkSharePage() {
   const router = useRouter();
-  const now = new Date();
-  const minMonth = startOfMonth(now);
-  const maxMonth = startOfMonth(addMonths(now, 2));
-  const [currentMonth, setCurrentMonth] = useState(() => {
-    if (typeof window !== "undefined") {
-      const saved = sessionStorage.getItem("calendarMonth");
-      if (saved) {
-        const parsed = new Date(saved);
-        if (parsed < minMonth) return minMonth;
-        if (parsed > maxMonth) return maxMonth;
-        return parsed;
-      }
-    }
-    return new Date();
-  });
+  const baseDate = useMemo(() => new Date(), []);
+  const { minMonth, maxMonth } = useMemo(
+    () => getCalendarMonthBounds(baseDate),
+    [baseDate]
+  );
+  const [currentMonth, setCurrentMonth] = useState(() => readStoredCalendarMonth(baseDate));
   const [entries, setEntries] = useState<Record<string, DayEntry>>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -46,11 +46,8 @@ export default function BulkSharePage() {
   const canGoNext = currentMonth < maxMonth;
   const todayString = getTodayInTokyo();
 
-  const buildCalendarUrl = useCallback(() => {
-    if (typeof window === "undefined") return "/calendar";
-
-    const selectedGroupId = sessionStorage.getItem("selectedGroupId");
-    return selectedGroupId ? `/calendar?group=${selectedGroupId}` : "/calendar";
+  const getCalendarUrl = useCallback(() => {
+    return buildCalendarUrlForGroup(readSelectedGroupId());
   }, []);
 
   // 当月の全日付
@@ -101,16 +98,6 @@ export default function BulkSharePage() {
     fetchExisting();
   }, [fetchExisting]);
 
-  const toggleSlot = (dateStr: string, slot: TimeSlot) => {
-    setEntries(prev => {
-      const entry = prev[dateStr] || { date: dateStr, timeSlots: [], comment: "" };
-      const newSlots = entry.timeSlots.includes(slot)
-        ? entry.timeSlots.filter(s => s !== slot)
-        : [...entry.timeSlots, slot];
-      return { ...prev, [dateStr]: { ...entry, timeSlots: newSlots } };
-    });
-  };
-
   const updateComment = (dateStr: string, comment: string) => {
     setEntries(prev => {
       const entry = prev[dateStr] || { date: dateStr, timeSlots: [], comment: "" };
@@ -126,25 +113,35 @@ export default function BulkSharePage() {
     );
   }, [entries, daysInMonth, todayString]);
 
+  const savePayloads = useMemo(
+    () => createBulkAvailabilityPayloads(entriesToSave as BulkAvailabilityEntry[]),
+    [entriesToSave]
+  );
+
   const handleSave = async () => {
-    if (entriesToSave.length === 0) return;
+    if (savePayloads.length === 0) return;
     setSaving(true);
 
     try {
-      await Promise.all(
-        entriesToSave.map(entry =>
-          fetch("/api/availability", {
+      const responses = await Promise.all(
+        savePayloads.map((payload) =>
+          fetch("/api/availability/bulk", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              date: entry.date,
-              time_slots: entry.timeSlots,
-              comment: entry.comment,
+              dates: payload.dates,
+              time_slots: payload.time_slots,
+              comment: payload.comment,
             }),
           })
         )
       );
-      router.push(buildCalendarUrl());
+      const allSucceeded = responses.every((response) => response.ok);
+      if (!allSucceeded) {
+        setSaving(false);
+        return;
+      }
+      router.push(getCalendarUrl());
       router.refresh();
       return;
     } catch {
@@ -157,38 +154,30 @@ export default function BulkSharePage() {
     if (window.history.length > 1) {
       router.back();
     } else {
-      router.push(buildCalendarUrl());
+      router.push(getCalendarUrl());
     }
   };
 
   return (
     <div className="flex flex-col min-h-dvh">
-      <header className="sticky top-0 z-10 flex items-center border-b px-4 py-3" style={{ backgroundColor: "var(--color-surface)", borderColor: "var(--color-border)" }}>
-        <button onClick={handleBack} className="mr-3 rounded-lg p-1 active:bg-gray-100">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="15,6 9,12 15,18" /></svg>
-        </button>
-        <h1 className="text-lg font-bold">ヒマな日をまとめてシェア</h1>
-      </header>
+      <CalendarPageHeader title="ヒマな日をまとめてシェア" onBack={handleBack} />
 
       <div className="flex-1 px-4 pt-4 pb-32 space-y-2">
-        {/* Month selector */}
-        <div className="flex items-center justify-between mb-2">
-          <button
-            onClick={() => canGoPrev && setCurrentMonth(subMonths(currentMonth, 1))}
-            disabled={!canGoPrev}
-            className="rounded-lg p-2 active:bg-gray-100 disabled:opacity-20"
-          >
-            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="12,4 6,10 12,16" /></svg>
-          </button>
-          <span className="text-sm font-bold">{format(currentMonth, "yyyy年 M月", { locale: ja })}</span>
-          <button
-            onClick={() => canGoNext && setCurrentMonth(addMonths(currentMonth, 1))}
-            disabled={!canGoNext}
-            className="rounded-lg p-2 active:bg-gray-100 disabled:opacity-20"
-          >
-            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="8,4 14,10 8,16" /></svg>
-          </button>
-        </div>
+        <CalendarMonthSwitcher
+          currentMonth={currentMonth}
+          canGoPrev={canGoPrev}
+          canGoNext={canGoNext}
+          onPrev={() => {
+            const nextMonth = subMonths(currentMonth, 1);
+            setCurrentMonth(nextMonth);
+            persistCalendarMonth(nextMonth);
+          }}
+          onNext={() => {
+            const nextMonth = addMonths(currentMonth, 1);
+            setCurrentMonth(nextMonth);
+            persistCalendarMonth(nextMonth);
+          }}
+        />
 
         <p className="text-xs" style={{ color: "var(--color-text-secondary)" }}>
           当日以降の日付で、各日の時間帯をタップしてヒマを設定してください
@@ -204,65 +193,28 @@ export default function BulkSharePage() {
               const dateStr = format(day, "yyyy-MM-dd");
               const dayLabel = format(day, "M/d (E)", { locale: ja });
               const entry = entries[dateStr];
-              const hasSlots = entry && entry.timeSlots.length > 0;
               const isPastDate = dateStr < todayString;
 
               return (
-                <div
+                <BulkDayCard
                   key={dateStr}
-                  className="rounded-xl border p-3"
-                  style={{
-                    backgroundColor: "var(--color-surface)",
-                    borderColor: hasSlots ? "var(--color-free-self)" : "var(--color-border)",
-                    opacity: isPastDate ? 0.5 : 1,
+                  dayLabel={dayLabel}
+                  selectedSlots={entry?.timeSlots ?? []}
+                  comment={entry?.comment ?? ""}
+                  isPastDate={isPastDate}
+                  onSlotsChange={(slots) => {
+                    if (isPastDate) return;
+                    setEntries((prev) => ({
+                      ...prev,
+                      [dateStr]: {
+                        date: dateStr,
+                        timeSlots: slots,
+                        comment: prev[dateStr]?.comment ?? "",
+                      },
+                    }));
                   }}
-                >
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-bold" style={{ color: "var(--color-text)" }}>
-                      {dayLabel}
-                    </span>
-                    {hasSlots && (
-                      <span className="text-[10px] font-medium px-1.5 py-0.5 rounded" style={{ backgroundColor: "var(--color-free-self)", color: "white" }}>
-                        シェア中
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex gap-1.5 mb-2">
-                    {SLOTS.map(slot => {
-                      const isSelected = entry?.timeSlots.includes(slot);
-                      return (
-                        <button
-                          key={slot}
-                          onClick={() => {
-                            if (isPastDate) return;
-                            toggleSlot(dateStr, slot);
-                          }}
-                          disabled={isPastDate}
-                          className="flex-1 rounded-md border py-1.5 text-xs font-medium transition-all active:scale-95"
-                          style={{
-                            backgroundColor: isSelected ? "var(--color-free-self)" : "transparent",
-                            color: isSelected ? "white" : "var(--color-text-secondary)",
-                            borderColor: isSelected ? "var(--color-free-self)" : "var(--color-border)",
-                          }}
-                        >
-                          {TIME_SLOT_LABELS[slot]}
-                        </button>
-                      );
-                    })}
-                  </div>
-                  {hasSlots && (
-                    <input
-                      type="text"
-                      value={entry?.comment || ""}
-                      onChange={(e) => updateComment(dateStr, e.target.value)}
-                      placeholder="ひとこと"
-                      maxLength={100}
-                      disabled={isPastDate}
-                      className="w-full rounded-lg border px-3 py-2 text-xs outline-none focus:border-[var(--color-primary)]"
-                      style={{ borderColor: "var(--color-border)" }}
-                    />
-                  )}
-                </div>
+                  onCommentChange={(nextComment) => updateComment(dateStr, nextComment)}
+                />
               );
             })}
           </div>
@@ -273,7 +225,7 @@ export default function BulkSharePage() {
       <div className="fixed bottom-[57px] left-1/2 w-full max-w-[480px] -translate-x-1/2 px-4 pb-2 pt-2" style={{ backgroundColor: "var(--color-bg)" }}>
         <button
           onClick={handleSave}
-          disabled={saving || entriesToSave.length === 0}
+          disabled={saving || savePayloads.length === 0}
           className="w-full rounded-xl py-3.5 text-base font-bold text-white shadow-md transition-transform active:scale-[0.97] disabled:opacity-30"
           style={{ backgroundColor: "var(--color-free-self)" }}
         >

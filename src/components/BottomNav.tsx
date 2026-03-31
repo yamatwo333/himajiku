@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
+import { buildCalendarUrl, readSelectedGroupId } from "@/lib/calendar";
 
 const NAV_ITEMS = [
   {
@@ -47,8 +48,7 @@ export default function BottomNav() {
 
   useEffect(() => {
     const updateCalendarHref = () => {
-      const selectedGroupId = sessionStorage.getItem("selectedGroupId");
-      setCalendarHref(selectedGroupId ? `/calendar?group=${selectedGroupId}` : "/calendar");
+      setCalendarHref(buildCalendarUrl(readSelectedGroupId()));
     };
 
     updateCalendarHref();

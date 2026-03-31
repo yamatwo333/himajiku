@@ -2,12 +2,14 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
+import CalendarPageHeader from "@/components/calendar/CalendarPageHeader";
 import { format, parse, isValid } from "date-fns";
 import { ja } from "date-fns/locale";
 import { getTodayInTokyo } from "@/lib/date";
 import { TimeSlot, AvailabilityWithUser } from "@/lib/types";
 import TimeSlotPicker from "@/components/TimeSlotPicker";
 import FriendAvailabilityList from "@/components/FriendAvailabilityList";
+import { buildCalendarUrl as buildCalendarUrlForGroup } from "@/lib/calendar";
 
 export default function DayDetailPage() {
   const params = useParams();
@@ -66,15 +68,15 @@ export default function DayDetailPage() {
     }
   }, [fetchData, mounted]);
 
-  const buildCalendarUrl = useCallback(() => {
-    return groupId ? `/calendar?group=${groupId}` : "/calendar";
+  const getCalendarUrl = useCallback(() => {
+    return buildCalendarUrlForGroup(groupId);
   }, [groupId]);
 
   const handleBack = () => {
     if (window.history.length > 1) {
       router.back();
     } else {
-      router.push(buildCalendarUrl());
+      router.push(getCalendarUrl());
     }
   };
 
@@ -97,7 +99,7 @@ export default function DayDetailPage() {
     }
 
     setSaving(false);
-    router.push(buildCalendarUrl());
+    router.push(getCalendarUrl());
     router.refresh();
   };
 
@@ -109,12 +111,7 @@ export default function DayDetailPage() {
   if (!mounted || loading) {
     return (
       <div>
-        <header className="sticky top-0 z-10 flex items-center border-b px-4 py-3" style={{ backgroundColor: "var(--color-surface)", borderColor: "var(--color-border)" }}>
-          <button onClick={handleBack} className="mr-3 rounded-lg p-1 active:bg-gray-100">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="15,6 9,12 15,18" /></svg>
-          </button>
-          <h1 className="text-lg font-bold">{dateLabel}</h1>
-        </header>
+        <CalendarPageHeader title={dateLabel} onBack={handleBack} />
         <div className="flex items-center justify-center py-20">
           <div className="h-8 w-8 animate-spin rounded-full border-2 border-t-transparent" style={{ borderColor: "var(--color-border)", borderTopColor: "transparent" }} />
         </div>
@@ -124,23 +121,23 @@ export default function DayDetailPage() {
 
   return (
     <div>
-      <header className="sticky top-0 z-10 flex items-center border-b px-4 py-3" style={{ backgroundColor: "var(--color-surface)", borderColor: "var(--color-border)" }}>
-        <button onClick={handleBack} className="mr-3 rounded-lg p-1 active:bg-gray-100">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="15,6 9,12 15,18" /></svg>
-        </button>
-        <h1 className="text-lg font-bold">{dateLabel}</h1>
-        {friendCount > 0 && (
-          <span
-            className="ml-2 rounded-full px-2 py-0.5 text-xs font-bold"
-            style={{
-              backgroundColor: "var(--color-bg)",
-              color: "var(--color-text)",
-            }}
-          >
-            {friendCount}人がヒマ
-          </span>
-        )}
-      </header>
+      <CalendarPageHeader
+        title={dateLabel}
+        onBack={handleBack}
+        trailing={
+          friendCount > 0 ? (
+            <span
+              className="rounded-full px-2 py-0.5 text-xs font-bold"
+              style={{
+                backgroundColor: "var(--color-bg)",
+                color: "var(--color-text)",
+              }}
+            >
+              {friendCount}人がヒマ
+            </span>
+          ) : null
+        }
+      />
 
       <div className="space-y-6 px-4 pt-5 pb-8">
         <section>
