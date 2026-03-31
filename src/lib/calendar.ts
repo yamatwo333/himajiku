@@ -2,6 +2,15 @@ import { addMonths, startOfMonth } from "date-fns";
 
 export const CALENDAR_MONTH_STORAGE_KEY = "calendarMonth";
 export const SELECTED_GROUP_STORAGE_KEY = "selectedGroupId";
+export const CALENDAR_STATE_CHANGE_EVENT = "calendar-state-change";
+
+function dispatchCalendarStateChange() {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  window.dispatchEvent(new Event(CALENDAR_STATE_CHANGE_EVENT));
+}
 
 export function getCalendarMonthBounds(now: Date = new Date()) {
   const minMonth = startOfMonth(now);
@@ -43,6 +52,7 @@ export function persistCalendarMonth(month: Date) {
     CALENDAR_MONTH_STORAGE_KEY,
     startOfMonth(month).toISOString()
   );
+  dispatchCalendarStateChange();
 }
 
 export function readSelectedGroupId() {
@@ -60,10 +70,12 @@ export function persistSelectedGroupId(groupId: string) {
 
   if (groupId) {
     sessionStorage.setItem(SELECTED_GROUP_STORAGE_KEY, groupId);
+    dispatchCalendarStateChange();
     return;
   }
 
   sessionStorage.removeItem(SELECTED_GROUP_STORAGE_KEY);
+  dispatchCalendarStateChange();
 }
 
 export function getRequestedGroupIdFromLocation() {
@@ -74,7 +86,27 @@ export function getRequestedGroupIdFromLocation() {
   return new URLSearchParams(window.location.search).get("group") ?? "";
 }
 
-export function replaceCalendarGroupInUrl(groupId: string) {
+export function getRequestedCalendarMonthFromLocation() {
+  if (typeof window === "undefined") {
+    return "";
+  }
+
+  const month = new URLSearchParams(window.location.search).get("month") ?? "";
+  return /^\d{4}-\d{2}$/.test(month) ? month : "";
+}
+
+export function formatCalendarMonthParam(month: Date) {
+  const normalizedMonth = startOfMonth(month);
+  return `${normalizedMonth.getFullYear()}-${String(normalizedMonth.getMonth() + 1).padStart(2, "0")}`;
+}
+
+export function replaceCalendarViewInUrl({
+  groupId,
+  month,
+}: {
+  groupId?: string;
+  month?: Date;
+}) {
   if (typeof window === "undefined") {
     return;
   }
@@ -86,10 +118,30 @@ export function replaceCalendarGroupInUrl(groupId: string) {
     url.searchParams.delete("group");
   }
 
+  if (month) {
+    url.searchParams.set("month", formatCalendarMonthParam(month));
+  } else {
+    url.searchParams.delete("month");
+  }
+
   window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}`);
-  window.dispatchEvent(new Event("selected-group-change"));
+  dispatchCalendarStateChange();
 }
 
-export function buildCalendarUrl(groupId: string = "") {
-  return groupId ? `/calendar?group=${groupId}` : "/calendar";
+export function buildCalendarUrl(groupId: string = "", month?: Date | string) {
+  const params = new URLSearchParams();
+
+  if (groupId) {
+    params.set("group", groupId);
+  }
+
+  if (month) {
+    params.set(
+      "month",
+      typeof month === "string" ? month : formatCalendarMonthParam(month)
+    );
+  }
+
+  const query = params.toString();
+  return query ? `/calendar?${query}` : "/calendar";
 }

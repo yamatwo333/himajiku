@@ -8,7 +8,10 @@ import FriendAvailabilityList from "@/components/FriendAvailabilityList";
 import PageHeader from "@/components/PageHeader";
 import TimeSlotPicker from "@/components/TimeSlotPicker";
 import { getTodayInTokyo } from "@/lib/date";
-import { buildCalendarUrl as buildCalendarUrlForGroup } from "@/lib/calendar";
+import {
+  buildCalendarUrl as buildCalendarUrlForGroup,
+  readStoredCalendarMonth,
+} from "@/lib/calendar";
 import type { AvailabilityWithUser, TimeSlot } from "@/lib/types";
 
 interface DayDetailClientProps {
@@ -39,7 +42,7 @@ export default function DayDetailClient({
   const [saving, setSaving] = useState(false);
   const hasExisting = Boolean(myAvailability);
 
-  const getCalendarUrl = () => buildCalendarUrlForGroup(groupId);
+  const getCalendarUrl = () => buildCalendarUrlForGroup(groupId, readStoredCalendarMonth());
 
   const handleBack = () => {
     if (window.history.length > 1) {

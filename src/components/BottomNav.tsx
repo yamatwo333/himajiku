@@ -3,7 +3,12 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
-import { buildCalendarUrl, readSelectedGroupId } from "@/lib/calendar";
+import {
+  buildCalendarUrl,
+  CALENDAR_STATE_CHANGE_EVENT,
+  readSelectedGroupId,
+  readStoredCalendarMonth,
+} from "@/lib/calendar";
 
 const NAV_ITEMS = [
   {
@@ -48,15 +53,15 @@ export default function BottomNav() {
 
   useEffect(() => {
     const updateCalendarHref = () => {
-      setCalendarHref(buildCalendarUrl(readSelectedGroupId()));
+      setCalendarHref(buildCalendarUrl(readSelectedGroupId(), readStoredCalendarMonth()));
     };
 
     updateCalendarHref();
-    window.addEventListener("selected-group-change", updateCalendarHref);
+    window.addEventListener(CALENDAR_STATE_CHANGE_EVENT, updateCalendarHref);
     window.addEventListener("storage", updateCalendarHref);
 
     return () => {
-      window.removeEventListener("selected-group-change", updateCalendarHref);
+      window.removeEventListener(CALENDAR_STATE_CHANGE_EVENT, updateCalendarHref);
       window.removeEventListener("storage", updateCalendarHref);
     };
   }, []);

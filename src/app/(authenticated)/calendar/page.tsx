@@ -1,16 +1,20 @@
 import { redirect } from "next/navigation";
 import CalendarPageClient from "@/components/calendar/CalendarPageClient";
 import { getRequestUserId } from "@/lib/request-user";
-import { getAvailabilityRangeForUser, getCalendarMonthRange } from "@/lib/server/availability";
+import {
+  getAvailabilityRangeForUser,
+  getCalendarMonthRange,
+  parseCalendarMonthParam,
+} from "@/lib/server/availability";
 import { getGroupSummariesForUser } from "@/lib/server/groups";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export default async function CalendarPage({
   searchParams,
 }: {
-  searchParams: Promise<{ group?: string }>;
+  searchParams: Promise<{ group?: string; month?: string }>;
 }) {
-  const [{ group: requestedGroupId }, userId] = await Promise.all([
+  const [{ group: requestedGroupId, month: requestedMonth }, userId] = await Promise.all([
     searchParams,
     getRequestUserId(),
   ]);
@@ -25,7 +29,7 @@ export default async function CalendarPage({
     requestedGroupId && groups.some((group) => group.id === requestedGroupId)
       ? requestedGroupId
       : groups[0]?.id ?? "";
-  const initialMonth = new Date();
+  const initialMonth = parseCalendarMonthParam(requestedMonth);
   const monthRange = getCalendarMonthRange(initialMonth);
   const availabilityResult = await getAvailabilityRangeForUser(supabaseAdmin, {
     userId,

@@ -56,7 +56,7 @@ export default function BulkShareClient({
   const monthKey = useMemo(() => format(currentMonth, "yyyy-MM"), [currentMonth]);
 
   const getCalendarUrl = useCallback(() => {
-    return buildCalendarUrlForGroup(readSelectedGroupId());
+    return buildCalendarUrlForGroup(readSelectedGroupId(), readStoredCalendarMonth());
   }, []);
 
   const daysInMonth = useMemo(() => {

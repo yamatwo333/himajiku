@@ -11,12 +11,13 @@ import PageHeader from "@/components/PageHeader";
 import PageSpinner from "@/components/PageSpinner";
 import type { AvailabilityWithUser } from "@/lib/types";
 import {
+  getRequestedCalendarMonthFromLocation,
   getRequestedGroupIdFromLocation,
+  replaceCalendarViewInUrl,
   persistCalendarMonth,
   persistSelectedGroupId,
   readSelectedGroupId,
   readStoredCalendarMonth,
-  replaceCalendarGroupInUrl,
 } from "@/lib/calendar";
 
 interface CalendarGroupInfo {
@@ -70,8 +71,8 @@ export default function CalendarPageClient({
     [currentMonth, selectedGroupId]
   );
 
-  const syncCalendarUrl = useCallback((groupId: string) => {
-    replaceCalendarGroupInUrl(groupId);
+  const syncCalendarUrl = useCallback((groupId: string, month: Date) => {
+    replaceCalendarViewInUrl({ groupId, month });
   }, []);
 
   const fetchAvailabilities = useCallback(async () => {
@@ -117,6 +118,7 @@ export default function CalendarPageClient({
 
   useEffect(() => {
     const requestedGroupId = getRequestedGroupIdFromLocation();
+    const requestedMonth = getRequestedCalendarMonthFromLocation();
     const savedGroupId = readSelectedGroupId();
     const savedMonth = readStoredCalendarMonth(baseDate);
     let nextGroupId = initialSelectedGroupId;
@@ -130,12 +132,11 @@ export default function CalendarPageClient({
       savedGroupId !== initialSelectedGroupId
     ) {
       setSelectedGroupId(savedGroupId);
-      syncCalendarUrl(savedGroupId);
       nextGroupId = savedGroupId;
       changed = true;
     }
 
-    if (savedMonth.getTime() !== initialMonth.getTime()) {
+    if (!requestedMonth && savedMonth.getTime() !== initialMonth.getTime()) {
       setCurrentMonth(savedMonth);
       nextMonth = savedMonth;
       changed = true;
@@ -146,6 +147,7 @@ export default function CalendarPageClient({
 
     if (changed) {
       setAvailabilitiesLoading(true);
+      syncCalendarUrl(nextGroupId, nextMonth);
     }
 
     restoredStateRef.current = changed;
@@ -187,7 +189,8 @@ export default function CalendarPageClient({
   const handleMonthChange = useCallback((month: Date) => {
     setCurrentMonth(month);
     persistCalendarMonth(month);
-  }, []);
+    syncCalendarUrl(selectedGroupId, month);
+  }, [selectedGroupId, syncCalendarUrl]);
 
   const selectedGroup = useMemo(
     () => groups.find((group) => group.id === selectedGroupId),
@@ -206,7 +209,7 @@ export default function CalendarPageClient({
         onChange={(nextGroupId) => {
           setSelectedGroupId(nextGroupId);
           persistSelectedGroupId(nextGroupId);
-          syncCalendarUrl(nextGroupId);
+          syncCalendarUrl(nextGroupId, currentMonth);
         }}
       />
 
