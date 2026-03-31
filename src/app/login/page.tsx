@@ -54,12 +54,12 @@ function LoginContent() {
   };
 
   return (
-    <div className="flex min-h-dvh flex-col" style={{ backgroundColor: "var(--color-bg)" }}>
-      <div className="flex flex-1 flex-col items-center justify-center px-6">
-        <div className="mb-6 text-center">
+    <div className="flex min-h-svh flex-col" style={{ backgroundColor: "var(--color-bg)" }}>
+      <div className="flex flex-1 flex-col items-center px-6 pt-[calc(env(safe-area-inset-top)+2.75rem)]">
+        <div className="mb-7 text-center">
           <BrandLogo variant="lockup" className="mx-auto" />
           <p
-            className="mx-auto mt-3 max-w-[320px] text-sm leading-relaxed"
+            className="mx-auto mt-4 max-w-[320px] text-sm leading-relaxed"
             style={{ color: "var(--color-text-secondary)" }}
           >
             ヒマな時間をシェアして、なんとなく集まろう
@@ -127,7 +127,7 @@ function LoginContent() {
       </div>
 
       {/* Login button */}
-      <div className="px-6 pb-10 pt-6">
+      <div className="px-6 pb-[calc(env(safe-area-inset-bottom)+2rem)] pt-6">
         <div className="mx-auto w-full max-w-xs space-y-3">
           {error && (
             <div className="rounded-xl bg-red-50 px-4 py-3 text-center text-sm text-red-600">
