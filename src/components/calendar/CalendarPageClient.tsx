@@ -53,12 +53,36 @@ export default function CalendarPageClient({
   const restoredStateRef = useRef(false);
   const fetchedOnceRef = useRef(false);
   const pendingInitialStateRef = useRef<{ groupId: string; monthTime: number } | null>(null);
+  const cacheRef = useRef(
+    new Map<
+      string,
+      { availabilities: AvailabilityWithUser[]; currentUserId: string | null }
+    >([
+      [
+        `${initialSelectedGroupId}:${format(initialMonth, "yyyy-MM")}`,
+        { availabilities: initialAvailabilities, currentUserId: initialCurrentUserId },
+      ],
+    ])
+  );
+
+  const cacheKey = useMemo(
+    () => `${selectedGroupId}:${format(currentMonth, "yyyy-MM")}`,
+    [currentMonth, selectedGroupId]
+  );
 
   const syncCalendarUrl = useCallback((groupId: string) => {
     replaceCalendarGroupInUrl(groupId);
   }, []);
 
   const fetchAvailabilities = useCallback(async () => {
+    const cached = cacheRef.current.get(cacheKey);
+    if (cached) {
+      setAvailabilities(cached.availabilities);
+      setCurrentUserId(cached.currentUserId);
+      setAvailabilitiesLoading(false);
+      return;
+    }
+
     setAvailabilitiesLoading(true);
 
     try {
@@ -75,15 +99,21 @@ export default function CalendarPageClient({
 
       if (res.ok) {
         const data = await res.json();
-        setAvailabilities(data.availabilities || []);
-        if (data.currentUserId) setCurrentUserId(data.currentUserId);
+        const nextAvailabilities = data.availabilities || [];
+        const nextCurrentUserId = data.currentUserId || null;
+        cacheRef.current.set(cacheKey, {
+          availabilities: nextAvailabilities,
+          currentUserId: nextCurrentUserId,
+        });
+        setAvailabilities(nextAvailabilities);
+        setCurrentUserId(nextCurrentUserId);
       }
     } catch {
       // ignore
     }
 
     setAvailabilitiesLoading(false);
-  }, [currentMonth, selectedGroupId]);
+  }, [cacheKey, currentMonth, selectedGroupId]);
 
   useEffect(() => {
     const requestedGroupId = getRequestedGroupIdFromLocation();

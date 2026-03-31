@@ -1,5 +1,4 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { getProfileMap } from "@/lib/server/profiles";
 
 export interface ServerGroupSummary {
   id: string;
@@ -145,7 +144,7 @@ export async function getGroupDetailForUser(
       .maybeSingle(),
     supabase
       .from("group_members")
-      .select("user_id, joined_at")
+      .select("user_id, joined_at, user:profiles(display_name, avatar_url)")
       .eq("group_id", groupId)
       .order("joined_at", { ascending: true }),
   ]);
@@ -154,13 +153,8 @@ export async function getGroupDetailForUser(
     return null;
   }
 
-  const profileMap = await getProfileMap(
-    supabase,
-    (members ?? []).map((member) => member.user_id)
-  );
-
   const memberProfiles = (members ?? []).map((member) => {
-    const profile = profileMap.get(member.user_id);
+    const profile = Array.isArray(member.user) ? member.user[0] : member.user;
 
     return {
       user_id: member.user_id,

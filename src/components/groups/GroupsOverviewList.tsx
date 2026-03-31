@@ -1,16 +1,15 @@
+import Link from "next/link";
 import type { GroupSummary } from "@/components/groups/types";
 import PageSpinner from "@/components/PageSpinner";
 
 interface GroupsOverviewListProps {
   groups: GroupSummary[];
   loading: boolean;
-  onOpenGroup: (groupId: string) => void;
 }
 
 export default function GroupsOverviewList({
   groups,
   loading,
-  onOpenGroup,
 }: GroupsOverviewListProps) {
   if (loading) {
     return <PageSpinner className="flex items-center justify-center py-16" />;
@@ -34,9 +33,9 @@ export default function GroupsOverviewList({
   return (
     <div className="space-y-3">
       {groups.map((group) => (
-        <button
+        <Link
           key={group.id}
-          onClick={() => onOpenGroup(group.id)}
+          href={`/groups/${group.id}`}
           className="flex w-full items-center justify-between rounded-xl border p-4 text-left transition-colors active:bg-gray-50"
           style={{
             backgroundColor: "var(--color-surface)",
@@ -60,7 +59,7 @@ export default function GroupsOverviewList({
           >
             <polyline points="6,4 10,8 6,12" />
           </svg>
-        </button>
+        </Link>
       ))}
     </div>
   );

@@ -49,9 +49,11 @@ export default function BulkShareClient({
   const restoredStateRef = useRef(false);
   const fetchedOnceRef = useRef(false);
   const pendingInitialMonthRef = useRef<number | null>(null);
+  const loadedMonthsRef = useRef(new Set([format(initialMonth, "yyyy-MM")]));
   const canGoPrev = currentMonth > minMonth;
   const canGoNext = currentMonth < maxMonth;
   const todayString = getTodayInTokyo();
+  const monthKey = useMemo(() => format(currentMonth, "yyyy-MM"), [currentMonth]);
 
   const getCalendarUrl = useCallback(() => {
     return buildCalendarUrlForGroup(readSelectedGroupId());
@@ -64,6 +66,11 @@ export default function BulkShareClient({
   }, [currentMonth]);
 
   const fetchExisting = useCallback(async () => {
+    if (loadedMonthsRef.current.has(monthKey)) {
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -97,13 +104,14 @@ export default function BulkShareClient({
 
           return merged;
         });
+        loadedMonthsRef.current.add(monthKey);
       }
     } catch {
       // ignore
     }
 
     setLoading(false);
-  }, [currentMonth]);
+  }, [currentMonth, monthKey]);
 
   useEffect(() => {
     const savedMonth = readStoredCalendarMonth(baseDate);
@@ -191,7 +199,6 @@ export default function BulkShareClient({
       }
 
       router.push(getCalendarUrl());
-      router.refresh();
       return;
     } catch {
       // ignore

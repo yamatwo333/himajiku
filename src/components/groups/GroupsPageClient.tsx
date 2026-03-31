@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { useRouter } from "next/navigation";
 import PageHeader from "@/components/PageHeader";
 import GroupsComposerSection from "@/components/groups/GroupsComposerSection";
 import GroupsOverviewList from "@/components/groups/GroupsOverviewList";
@@ -14,7 +13,6 @@ interface GroupsPageClientProps {
 export default function GroupsPageClient({
   initialGroups,
 }: GroupsPageClientProps) {
-  const router = useRouter();
   const [groups, setGroups] = useState<GroupSummary[]>(initialGroups);
   const [loading, setLoading] = useState(false);
   const [activeMode, setActiveMode] = useState<"create" | "join" | null>(null);
@@ -131,7 +129,6 @@ export default function GroupsPageClient({
         <GroupsOverviewList
           groups={groups}
           loading={loading}
-          onOpenGroup={(groupId) => router.push(`/groups/${groupId}`)}
         />
       </div>
     </div>

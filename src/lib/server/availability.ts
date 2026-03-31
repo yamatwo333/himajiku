@@ -3,7 +3,6 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { clampCalendarMonth } from "@/lib/calendar";
 import type { AvailabilityWithUser, TimeSlot } from "@/lib/types";
 import { getGroupMemberIds, isGroupMember } from "@/lib/server/groups";
-import { getProfileMap } from "@/lib/server/profiles";
 
 interface AvailabilityRow {
   id: string;
@@ -11,6 +10,10 @@ interface AvailabilityRow {
   date: string;
   time_slots: string[] | null;
   comment: string;
+  user:
+    | { display_name: string | null; avatar_url: string | null }
+    | { display_name: string | null; avatar_url: string | null }[]
+    | null;
 }
 
 interface AvailabilityQueryParams {
@@ -33,12 +36,13 @@ async function resolveScopedMemberIds(
   return getGroupMemberIds(supabase, groupId);
 }
 
-function mapAvailabilityRows(
-  rows: AvailabilityRow[],
-  profileMap: Map<string, { display_name: string | null; avatar_url: string | null }>
-) {
+function getJoinedProfile(row: AvailabilityRow) {
+  return Array.isArray(row.user) ? row.user[0] : row.user;
+}
+
+function mapAvailabilityRows(rows: AvailabilityRow[]) {
   return rows.map((availability) => {
-    const profile = profileMap.get(availability.user_id);
+    const profile = getJoinedProfile(availability);
 
     return {
       id: availability.id,
@@ -97,19 +101,15 @@ export async function getAvailabilityRangeForUser(
 
   const { data } = await supabase
     .from("availability")
-    .select("id, user_id, date, time_slots, comment")
+    .select("id, user_id, date, time_slots, comment, user:profiles(display_name, avatar_url)")
     .gte("date", start)
     .lte("date", end)
     .in("user_id", memberIds);
 
   const rows = (data ?? []) as AvailabilityRow[];
-  const profileMap = await getProfileMap(
-    supabase,
-    rows.map((availability) => availability.user_id)
-  );
 
   return {
-    availabilities: mapAvailabilityRows(rows, profileMap),
+    availabilities: mapAvailabilityRows(rows),
     currentUserId: userId,
   };
 }
@@ -134,18 +134,14 @@ export async function getAvailabilityForDateForUser(
 
   const { data } = await supabase
     .from("availability")
-    .select("id, user_id, date, time_slots, comment")
+    .select("id, user_id, date, time_slots, comment, user:profiles(display_name, avatar_url)")
     .eq("date", date)
     .in("user_id", memberIds);
 
   const rows = (data ?? []) as AvailabilityRow[];
-  const profileMap = await getProfileMap(
-    supabase,
-    rows.map((availability) => availability.user_id)
-  );
 
   return {
-    availabilities: mapAvailabilityRows(rows, profileMap),
+    availabilities: mapAvailabilityRows(rows),
     currentUserId: userId,
   };
 }

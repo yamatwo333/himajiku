@@ -70,7 +70,6 @@ export default function DayDetailClient({
 
     setSaving(false);
     router.push(getCalendarUrl());
-    router.refresh();
   };
 
   const isFree = selectedSlots.length > 0;
