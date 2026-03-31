@@ -12,6 +12,7 @@ export interface GroupSummary {
   name: string;
   invite_code: string;
   created_by: string;
+  notify_threshold?: number;
   member_count: number;
 }
 

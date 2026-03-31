@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getGroupOwnerId, isGroupMember } from "@/lib/server/groups";
-import { getProfileMap } from "@/lib/server/profiles";
+import { getGroupDetailForUser, getGroupOwnerId } from "@/lib/server/groups";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getRouteUser } from "@/lib/supabase/route";
 
@@ -16,53 +15,13 @@ export async function GET(
     }
 
     const supabaseAdmin = createAdminClient();
+    const result = await getGroupDetailForUser(supabaseAdmin, groupId, user.id);
 
-    if (!(await isGroupMember(supabaseAdmin, groupId, user.id))) {
+    if (!result) {
       return NextResponse.json({ error: "Not a member" }, { status: 403 });
     }
 
-    // Get group
-    const { data: group } = await supabaseAdmin
-      .from("groups")
-      .select("*")
-      .eq("id", groupId)
-      .single();
-
-    if (!group) {
-      return NextResponse.json({ error: "Group not found" }, { status: 404 });
-    }
-
-    // Get members with profiles
-    const { data: members } = await supabaseAdmin
-      .from("group_members")
-      .select("user_id, joined_at")
-      .eq("group_id", groupId)
-      .order("joined_at", { ascending: true });
-
-    let memberProfiles: {
-      user_id: string;
-      display_name: string;
-      avatar_url: string | null;
-      joined_at: string;
-    }[] = [];
-    if (members) {
-      const profileMap = await getProfileMap(
-        supabaseAdmin,
-        members.map((member) => member.user_id)
-      );
-
-      memberProfiles = members.map((m) => {
-        const profile = profileMap.get(m.user_id);
-        return {
-          user_id: m.user_id,
-          display_name: profile?.display_name || "ユーザー",
-          avatar_url: profile?.avatar_url || null,
-          joined_at: m.joined_at,
-        };
-      });
-    }
-
-    return NextResponse.json({ group, members: memberProfiles });
+    return NextResponse.json(result);
   } catch (err) {
     console.error("Group detail error:", err);
     return NextResponse.json({ error: "Failed" }, { status: 500 });

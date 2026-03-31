@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { countMembersByGroupIds, getUserGroupIds } from "@/lib/server/groups";
+import { getGroupSummariesForUser } from "@/lib/server/groups";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getRouteUser } from "@/lib/supabase/route";
 
@@ -11,29 +11,10 @@ export async function GET(request: NextRequest) {
     }
 
     const supabaseAdmin = createAdminClient();
-    const groupIds = await getUserGroupIds(supabaseAdmin, user.id);
+    const groups = await getGroupSummariesForUser(supabaseAdmin, user.id);
 
-    if (groupIds.length === 0) {
-      return NextResponse.json({ groups: [] });
-    }
-
-    const { data: groups } = await supabaseAdmin
-      .from("groups")
-      .select("*")
-      .in("id", groupIds);
-
-    if (!groups) {
-      return NextResponse.json({ groups: [] });
-    }
-
-    const memberCounts = await countMembersByGroupIds(supabaseAdmin, groupIds);
-    const groupsWithCount = groups.map((group) => ({
-      ...group,
-      member_count: memberCounts.get(group.id) ?? 0,
-    }));
-
-    return NextResponse.json({ groups: groupsWithCount }, {
-      headers: { "Cache-Control": "no-store" },
+    return NextResponse.json({ groups }, {
+      headers: { "Cache-Control": "private, max-age=10, stale-while-revalidate=30" },
     });
   } catch (err) {
     console.error("Fetch groups error:", err);

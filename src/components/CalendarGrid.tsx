@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getTodayInTokyo } from "@/lib/date";
 import {
@@ -56,6 +56,19 @@ export default function CalendarGrid({ availabilities, onMonthChange, groupId, n
   const monthOptions = useMemo(() => {
     return Array.from({ length: 3 }, (_, index) => addMonths(baseMonth, index));
   }, [baseMonth]);
+
+  useEffect(() => {
+    if (!initialMonth) {
+      return;
+    }
+
+    const month = startOfMonth(initialMonth);
+    if (month < minMonth || month > maxMonth) {
+      return;
+    }
+
+    setCurrentMonth(month);
+  }, [initialMonth, maxMonth, minMonth]);
 
   const changeMonth = (direction: number) => {
     const next = direction > 0 ? addMonths(currentMonth, 1) : subMonths(currentMonth, 1);

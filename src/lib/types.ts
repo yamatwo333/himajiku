@@ -17,7 +17,7 @@ export const TIME_SLOT_LABELS: Record<TimeSlot, string> = {
 export interface User {
   id: string;
   displayName: string;
-  avatarUrl?: string;
+  avatarUrl?: string | null;
 }
 
 export interface Availability {

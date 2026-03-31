@@ -1,4 +1,30 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { getProfileMap } from "@/lib/server/profiles";
+
+export interface ServerGroupSummary {
+  id: string;
+  name: string;
+  invite_code: string;
+  created_by: string;
+  notify_threshold: number;
+  member_count: number;
+}
+
+export interface ServerGroupDetail {
+  id: string;
+  name: string;
+  invite_code: string;
+  created_by: string;
+  notify_threshold: number;
+  line_group_id: string | null;
+}
+
+export interface ServerGroupMember {
+  user_id: string;
+  display_name: string;
+  avatar_url: string | null;
+  joined_at: string;
+}
 
 export async function getUserGroupIds(
   supabase: SupabaseClient,
@@ -76,4 +102,76 @@ export async function getGroupOwnerId(
     .maybeSingle();
 
   return data?.created_by ?? null;
+}
+
+export async function getGroupSummariesForUser(
+  supabase: SupabaseClient,
+  userId: string
+) {
+  const groupIds = await getUserGroupIds(supabase, userId);
+
+  if (groupIds.length === 0) {
+    return [];
+  }
+
+  const [{ data: groups }, memberCounts] = await Promise.all([
+    supabase
+      .from("groups")
+      .select("id, name, invite_code, created_by, notify_threshold")
+      .in("id", groupIds),
+    countMembersByGroupIds(supabase, groupIds),
+  ]);
+
+  return (groups ?? []).map((group) => ({
+    ...group,
+    member_count: memberCounts.get(group.id) ?? 0,
+  })) satisfies ServerGroupSummary[];
+}
+
+export async function getGroupDetailForUser(
+  supabase: SupabaseClient,
+  groupId: string,
+  userId: string
+) {
+  if (!(await isGroupMember(supabase, groupId, userId))) {
+    return null;
+  }
+
+  const [{ data: group }, { data: members }] = await Promise.all([
+    supabase
+      .from("groups")
+      .select("id, name, invite_code, created_by, notify_threshold, line_group_id")
+      .eq("id", groupId)
+      .maybeSingle(),
+    supabase
+      .from("group_members")
+      .select("user_id, joined_at")
+      .eq("group_id", groupId)
+      .order("joined_at", { ascending: true }),
+  ]);
+
+  if (!group) {
+    return null;
+  }
+
+  const profileMap = await getProfileMap(
+    supabase,
+    (members ?? []).map((member) => member.user_id)
+  );
+
+  const memberProfiles = (members ?? []).map((member) => {
+    const profile = profileMap.get(member.user_id);
+
+    return {
+      user_id: member.user_id,
+      display_name: profile?.display_name || "ユーザー",
+      avatar_url: profile?.avatar_url || null,
+      joined_at: member.joined_at,
+    };
+  }) satisfies ServerGroupMember[];
+
+  return {
+    group: group satisfies ServerGroupDetail,
+    members: memberProfiles,
+  };
 }

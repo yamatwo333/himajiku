@@ -1,176 +1,53 @@
-"use client";
+import { redirect } from "next/navigation";
+import CalendarPageClient from "@/components/calendar/CalendarPageClient";
+import { getAvailabilityRangeForUser, getCalendarMonthRange } from "@/lib/server/availability";
+import { getGroupSummariesForUser } from "@/lib/server/groups";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { createClient } from "@/lib/supabase/server";
 
-import BrandLogo from "@/components/BrandLogo";
-import CalendarGroupSelector from "@/components/calendar/CalendarGroupSelector";
-import CalendarNoGroupState from "@/components/calendar/CalendarNoGroupState";
-import PageHeader from "@/components/PageHeader";
-import { useState, useEffect, useCallback, useMemo } from "react";
-import { useRouter } from "next/navigation";
-import { endOfMonth, format, startOfMonth, startOfWeek, endOfWeek } from "date-fns";
-import CalendarGrid from "@/components/CalendarGrid";
-import PageSpinner from "@/components/PageSpinner";
-import { AvailabilityWithUser } from "@/lib/types";
-import {
-  getRequestedGroupIdFromLocation,
-  persistCalendarMonth,
-  persistSelectedGroupId,
-  readSelectedGroupId,
-  readStoredCalendarMonth,
-  replaceCalendarGroupInUrl,
-} from "@/lib/calendar";
+export default async function CalendarPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ group?: string }>;
+}) {
+  const [{ group: requestedGroupId }, supabase] = await Promise.all([
+    searchParams,
+    createClient(),
+  ]);
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
-interface GroupInfo {
-  id: string;
-  name: string;
-  notify_threshold: number;
-}
+  if (!user) {
+    redirect("/login?redirect=%2Fcalendar");
+  }
 
-export default function CalendarPage() {
-  const router = useRouter();
-  const [availabilities, setAvailabilities] = useState<AvailabilityWithUser[]>([]);
-  const baseDate = useMemo(() => new Date(), []);
-  const [currentMonth, setCurrentMonth] = useState(() => readStoredCalendarMonth(baseDate));
-  const [groupsLoading, setGroupsLoading] = useState(true);
-  const [availabilitiesLoading, setAvailabilitiesLoading] = useState(true);
-  const [groups, setGroups] = useState<GroupInfo[]>([]);
-  const [selectedGroupId, setSelectedGroupId] = useState<string>(() => {
-    const requestedGroupId = getRequestedGroupIdFromLocation();
-    return requestedGroupId || readSelectedGroupId();
+  const supabaseAdmin = createAdminClient();
+  const groups = await getGroupSummariesForUser(supabaseAdmin, user.id);
+  const selectedGroupId =
+    requestedGroupId && groups.some((group) => group.id === requestedGroupId)
+      ? requestedGroupId
+      : groups[0]?.id ?? "";
+  const initialMonth = new Date();
+  const monthRange = getCalendarMonthRange(initialMonth);
+  const availabilityResult = await getAvailabilityRangeForUser(supabaseAdmin, {
+    userId: user.id,
+    groupId: selectedGroupId || undefined,
+    start: monthRange.start,
+    end: monthRange.end,
   });
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
-
-  const syncCalendarUrl = useCallback((groupId: string) => {
-    replaceCalendarGroupInUrl(groupId);
-  }, []);
-
-  // Fetch groups the user belongs to
-  useEffect(() => {
-    const fetchGroups = async () => {
-      try {
-        const res = await fetch("/api/groups/mine", { cache: "no-store" });
-        if (res.ok) {
-          const data = await res.json();
-          const groupsList = data.groups || [];
-          setGroups(groupsList);
-
-          if (groupsList.length > 0) {
-            const requestedGroupId = getRequestedGroupIdFromLocation();
-            const savedId = readSelectedGroupId();
-            const preferredGroupId =
-              requestedGroupId && groupsList.some((group: GroupInfo) => group.id === requestedGroupId)
-                ? requestedGroupId
-                : savedId && groupsList.some((group: GroupInfo) => group.id === savedId)
-                  ? savedId
-                  : groupsList[0].id;
-
-            setSelectedGroupId(preferredGroupId);
-            persistSelectedGroupId(preferredGroupId);
-            syncCalendarUrl(preferredGroupId);
-          } else {
-            setSelectedGroupId("");
-            persistSelectedGroupId("");
-            syncCalendarUrl("");
-          }
-        }
-      } catch {
-        // ignore
-      }
-      setGroupsLoading(false);
-    };
-    fetchGroups();
-  }, [syncCalendarUrl]);
-
-  const fetchAvailabilities = useCallback(async () => {
-    setAvailabilitiesLoading(true);
-    const monthStart = format(startOfWeek(startOfMonth(currentMonth), { weekStartsOn: 0 }), "yyyy-MM-dd");
-    const monthEnd = format(endOfWeek(endOfMonth(currentMonth), { weekStartsOn: 0 }), "yyyy-MM-dd");
-
-    try {
-      const params = new URLSearchParams({
-        start: monthStart,
-        end: monthEnd,
-      });
-
-      if (selectedGroupId) {
-        params.set("group", selectedGroupId);
-      }
-
-      const res = await fetch(`/api/availability/month?${params.toString()}`);
-
-      if (res.ok) {
-        const data = await res.json();
-        setAvailabilities(data.availabilities || []);
-        if (data.currentUserId) setCurrentUserId(data.currentUserId);
-      }
-    } catch {
-      // ignore
-    }
-    setAvailabilitiesLoading(false);
-  }, [currentMonth, selectedGroupId]);
-
-  useEffect(() => {
-    if (groupsLoading) {
-      return;
-    }
-
-    fetchAvailabilities();
-  }, [fetchAvailabilities, groupsLoading]);
-
-  const handleMonthChange = useCallback((month: Date) => {
-    setCurrentMonth(month);
-    persistCalendarMonth(month);
-  }, []);
-
-  const selectedGroup = useMemo(
-    () => groups.find((group) => group.id === selectedGroupId),
-    [groups, selectedGroupId]
-  );
-  const loading = groupsLoading || availabilitiesLoading;
 
   return (
-    <div>
-      <PageHeader backgroundColor="var(--color-bg)">
-        <BrandLogo variant="wordmark" />
-      </PageHeader>
-
-      <CalendarGroupSelector
-        groups={groups}
-        selectedGroupId={selectedGroupId}
-        onChange={(nextGroupId) => {
-          setSelectedGroupId(nextGroupId);
-          persistSelectedGroupId(nextGroupId);
-          syncCalendarUrl(nextGroupId);
-        }}
-      />
-
-      <div className="pt-3">
-        {loading ? (
-          <PageSpinner />
-        ) : (
-          <>
-            {groups.length === 0 && (
-              <CalendarNoGroupState onOpenGroups={() => router.push("/groups")} />
-            )}
-            <CalendarGrid
-              availabilities={availabilities}
-              onMonthChange={handleMonthChange}
-              groupId={selectedGroupId}
-              notifyThreshold={selectedGroup?.notify_threshold ?? 2}
-              currentUserId={currentUserId}
-              initialMonth={currentMonth}
-            />
-            <div className="px-4 mt-4">
-              <button
-                onClick={() => router.push("/calendar/bulk")}
-                className="w-full rounded-xl border py-3 text-sm font-medium"
-                style={{ borderColor: "var(--color-border)", color: "var(--color-primary)" }}
-              >
-                ヒマな日をまとめてシェア
-              </button>
-            </div>
-          </>
-        )}
-      </div>
-    </div>
+    <CalendarPageClient
+      initialAvailabilities={availabilityResult?.availabilities ?? []}
+      initialCurrentUserId={availabilityResult?.currentUserId ?? user.id}
+      initialGroups={groups.map((group) => ({
+        id: group.id,
+        name: group.name,
+        notify_threshold: group.notify_threshold,
+      }))}
+      initialSelectedGroupId={selectedGroupId}
+      initialMonthIso={monthRange.month.toISOString()}
+    />
   );
 }
