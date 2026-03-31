@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
-import { createServerClient } from "@supabase/ssr";
 import { ensureProfile } from "@/lib/ensure-profile";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { getRouteUser } from "@/lib/supabase/route";
 
 function generateCode() {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -14,22 +14,8 @@ function generateCode() {
 
 export async function POST(request: NextRequest) {
   try {
-    // Get current user from session
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll() {
-            return request.cookies.getAll();
-          },
-          setAll() {},
-        },
-      }
-    );
-
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
+    const user = await getRouteUser(request);
+    if (!user) {
       return NextResponse.json(
         { error: "ログインが必要です。再度ログインしてください。" },
         { status: 401 }
@@ -42,11 +28,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "グループ名を入力してください" }, { status: 400 });
     }
 
-    const supabaseAdmin = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      { auth: { autoRefreshToken: false, persistSession: false } }
-    );
+    const supabaseAdmin = createAdminClient();
 
     // Ensure profile exists (may not exist if trigger failed during signup)
     await ensureProfile(supabaseAdmin, user);

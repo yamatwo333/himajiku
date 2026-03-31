@@ -1,7 +1,7 @@
-import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { createServerClient } from "@supabase/ssr";
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
 
   const supabase = createServerClient(
@@ -30,9 +30,12 @@ export async function middleware(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   const pathname = request.nextUrl.pathname;
-  const isPublicPath = pathname.startsWith("/login") || pathname.startsWith("/auth") || pathname.startsWith("/api") || pathname.startsWith("/join");
+  const isPublicPath =
+    pathname.startsWith("/login") ||
+    pathname.startsWith("/auth") ||
+    pathname.startsWith("/api") ||
+    pathname.startsWith("/join");
 
-  // 未ログインで保護ページにアクセス → ログインページへ
   if (!user && !isPublicPath) {
     const url = request.nextUrl.clone();
     const redirectTo = pathname + request.nextUrl.search;
@@ -42,18 +45,20 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // ログイン済みでログインページにアクセス → リダイレクト先 or カレンダーへ
   if (user && pathname === "/login") {
     const redirect = request.nextUrl.searchParams.get("redirect");
     const url = request.nextUrl.clone();
+
     if (redirect && redirect.startsWith("/") && !redirect.startsWith("/login")) {
       url.pathname = redirect.split("?")[0];
-      const redirectSearch = redirect.includes("?") ? redirect.substring(redirect.indexOf("?")) : "";
-      url.search = redirectSearch;
+      url.search = redirect.includes("?")
+        ? redirect.substring(redirect.indexOf("?"))
+        : "";
     } else {
       url.pathname = "/calendar";
       url.search = "";
     }
+
     return NextResponse.redirect(url);
   }
 

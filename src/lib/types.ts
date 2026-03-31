@@ -1,5 +1,12 @@
 export type TimeSlot = "morning" | "afternoon" | "evening" | "late_night";
 
+export const TIME_SLOTS: TimeSlot[] = [
+  "morning",
+  "afternoon",
+  "evening",
+  "late_night",
+];
+
 export const TIME_SLOT_LABELS: Record<TimeSlot, string> = {
   morning: "午前",
   afternoon: "午後",

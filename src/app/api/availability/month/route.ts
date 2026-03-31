@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
-import { createServerClient } from "@supabase/ssr";
+import { getGroupMemberIds, isGroupMember } from "@/lib/server/groups";
+import { getProfileMap } from "@/lib/server/profiles";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { getRouteUser } from "@/lib/supabase/route";
 
 export async function GET(request: NextRequest) {
   try {
@@ -12,52 +14,25 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "start and end required" }, { status: 400 });
     }
 
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll() { return request.cookies.getAll(); },
-          setAll() {},
-        },
-      }
-    );
-
-    const { data: { user } } = await supabase.auth.getUser();
+    const user = await getRouteUser(request);
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const supabaseAdmin = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      { auth: { autoRefreshToken: false, persistSession: false } }
-    );
+    const supabaseAdmin = createAdminClient();
 
     let memberIds: string[] = [user.id];
 
     if (groupId) {
-      const { data: membership } = await supabaseAdmin
-        .from("group_members")
-        .select("group_id")
-        .eq("group_id", groupId)
-        .eq("user_id", user.id)
-        .single();
-
-      if (!membership) {
+      if (!(await isGroupMember(supabaseAdmin, groupId, user.id))) {
         return NextResponse.json({ error: "Forbidden" }, { status: 403 });
       }
 
-      const { data: members } = await supabaseAdmin
-        .from("group_members")
-        .select("user_id")
-        .eq("group_id", groupId);
+      memberIds = await getGroupMemberIds(supabaseAdmin, groupId);
 
-      if (!members || members.length === 0) {
+      if (memberIds.length === 0) {
         return NextResponse.json({ availabilities: [], currentUserId: user.id });
       }
-
-      memberIds = members.map((member) => member.user_id);
     }
 
     const { data: avails } = await supabaseAdmin
@@ -71,14 +46,13 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ availabilities: [], currentUserId: user.id });
     }
 
-    const userIds = [...new Set(avails.map((a) => a.user_id))];
-    const { data: profiles } = await supabaseAdmin
-      .from("profiles")
-      .select("id, display_name, avatar_url")
-      .in("id", userIds);
+    const profileMap = await getProfileMap(
+      supabaseAdmin,
+      avails.map((availability) => availability.user_id)
+    );
 
     const result = avails.map((a) => {
-      const profile = profiles?.find((p) => p.id === a.user_id);
+      const profile = profileMap.get(a.user_id);
       return {
         id: a.id,
         userId: a.user_id,

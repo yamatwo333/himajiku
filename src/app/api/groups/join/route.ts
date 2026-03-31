@@ -1,26 +1,13 @@
 import { after, NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
-import { createServerClient } from "@supabase/ssr";
 import { getTodayInTokyo } from "@/lib/date";
 import { ensureProfile } from "@/lib/ensure-profile";
 import { sendGroupAvailabilityDigestNotification } from "@/lib/server/notify";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { getRouteUser } from "@/lib/supabase/route";
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll() {
-            return request.cookies.getAll();
-          },
-          setAll() {},
-        },
-      }
-    );
-
-    const { data: { user } } = await supabase.auth.getUser();
+    const user = await getRouteUser(request);
     if (!user) {
       return NextResponse.json({ error: "ログインが必要です" }, { status: 401 });
     }
@@ -31,11 +18,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "招待コードを入力してください" }, { status: 400 });
     }
 
-    const supabaseAdmin = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      { auth: { autoRefreshToken: false, persistSession: false } }
-    );
+    const supabaseAdmin = createAdminClient();
 
     // Ensure profile exists
     await ensureProfile(supabaseAdmin, user);

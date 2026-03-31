@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
-import { createServerClient } from "@supabase/ssr";
+import { getGroupOwnerId, isGroupMember } from "@/lib/server/groups";
+import { getProfileMap } from "@/lib/server/profiles";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { getRouteUser } from "@/lib/supabase/route";
 
 export async function GET(
   request: NextRequest,
@@ -8,38 +10,14 @@ export async function GET(
 ) {
   try {
     const { id: groupId } = await params;
-
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll() { return request.cookies.getAll(); },
-          setAll() {},
-        },
-      }
-    );
-
-    const { data: { user } } = await supabase.auth.getUser();
+    const user = await getRouteUser(request);
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const supabaseAdmin = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      { auth: { autoRefreshToken: false, persistSession: false } }
-    );
+    const supabaseAdmin = createAdminClient();
 
-    // Check user is a member
-    const { data: membership } = await supabaseAdmin
-      .from("group_members")
-      .select("*")
-      .eq("group_id", groupId)
-      .eq("user_id", user.id)
-      .single();
-
-    if (!membership) {
+    if (!(await isGroupMember(supabaseAdmin, groupId, user.id))) {
       return NextResponse.json({ error: "Not a member" }, { status: 403 });
     }
 
@@ -58,18 +36,23 @@ export async function GET(
     const { data: members } = await supabaseAdmin
       .from("group_members")
       .select("user_id, joined_at")
-      .eq("group_id", groupId);
+      .eq("group_id", groupId)
+      .order("joined_at", { ascending: true });
 
-    let memberProfiles: any[] = [];
+    let memberProfiles: {
+      user_id: string;
+      display_name: string;
+      avatar_url: string | null;
+      joined_at: string;
+    }[] = [];
     if (members) {
-      const userIds = members.map((m) => m.user_id);
-      const { data: profiles } = await supabaseAdmin
-        .from("profiles")
-        .select("id, display_name, avatar_url")
-        .in("id", userIds);
+      const profileMap = await getProfileMap(
+        supabaseAdmin,
+        members.map((member) => member.user_id)
+      );
 
       memberProfiles = members.map((m) => {
-        const profile = profiles?.find((p) => p.id === m.user_id);
+        const profile = profileMap.get(m.user_id);
         return {
           user_id: m.user_id,
           display_name: profile?.display_name || "ユーザー",
@@ -92,37 +75,13 @@ export async function DELETE(
 ) {
   try {
     const { id: groupId } = await params;
-
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll() { return request.cookies.getAll(); },
-          setAll() {},
-        },
-      }
-    );
-
-    const { data: { user } } = await supabase.auth.getUser();
+    const user = await getRouteUser(request);
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const supabaseAdmin = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      { auth: { autoRefreshToken: false, persistSession: false } }
-    );
-
-    // Verify ownership
-    const { data: group } = await supabaseAdmin
-      .from("groups")
-      .select("created_by")
-      .eq("id", groupId)
-      .single();
-
-    if (!group || group.created_by !== user.id) {
+    const supabaseAdmin = createAdminClient();
+    if ((await getGroupOwnerId(supabaseAdmin, groupId)) !== user.id) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 

@@ -1,24 +1,14 @@
 import { after, NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
-import { createServerClient } from "@supabase/ssr";
 import { isDateBeforeTodayInTokyo } from "@/lib/date";
 import { ensureProfile } from "@/lib/ensure-profile";
+import { getUserGroupIds } from "@/lib/server/groups";
 import { sendGroupAvailabilityNotification } from "@/lib/server/notify";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { getRouteUser } from "@/lib/supabase/route";
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll() { return request.cookies.getAll(); },
-          setAll() {},
-        },
-      }
-    );
-
-    const { data: { user } } = await supabase.auth.getUser();
+    const user = await getRouteUser(request);
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -33,11 +23,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "当日より前の日付はシェアできません" }, { status: 400 });
     }
 
-    const supabaseAdmin = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      { auth: { autoRefreshToken: false, persistSession: false } }
-    );
+    const supabaseAdmin = createAdminClient();
 
     await ensureProfile(supabaseAdmin, user);
 
@@ -70,17 +56,14 @@ export async function POST(request: NextRequest) {
 
     after(async () => {
       try {
-        const { data: memberships } = await supabaseAdmin
-          .from("group_members")
-          .select("group_id")
-          .eq("user_id", user.id);
+        const groupIds = await getUserGroupIds(supabaseAdmin, user.id);
 
-        if (memberships?.length) {
+        if (groupIds.length > 0) {
           await Promise.allSettled(
-            memberships.map((membership) =>
+            groupIds.map((groupId) =>
               sendGroupAvailabilityNotification({
                 date,
-                groupId: membership.group_id,
+                groupId,
               })
             )
           );

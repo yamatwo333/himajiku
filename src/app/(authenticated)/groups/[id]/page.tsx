@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 
@@ -30,7 +31,6 @@ export default function GroupDetailPage() {
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
   const [copiedUrl, setCopiedUrl] = useState(false);
-  const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
   const [leaving, setLeaving] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -264,7 +264,14 @@ export default function GroupDetailPage() {
             {members.map((m) => (
               <div key={m.user_id} className="flex items-center gap-3 rounded-xl border p-3" style={{ backgroundColor: "var(--color-surface)", borderColor: "var(--color-border)" }}>
                 {m.avatar_url ? (
-                  <img src={m.avatar_url} alt={m.display_name} className="h-10 w-10 rounded-full object-cover" />
+                  <Image
+                    src={m.avatar_url}
+                    alt={m.display_name}
+                    width={40}
+                    height={40}
+                    className="h-10 w-10 rounded-full object-cover"
+                    unoptimized
+                  />
                 ) : (
                   <div className="flex h-10 w-10 items-center justify-center rounded-full text-sm font-bold text-white" style={{ backgroundColor: "var(--color-primary)" }}>
                     {m.display_name.charAt(0)}

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
-import { createServerClient } from "@supabase/ssr";
+import { getGroupOwnerId } from "@/lib/server/groups";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { getRouteUser } from "@/lib/supabase/route";
 
 export async function POST(
   request: NextRequest,
@@ -8,41 +9,20 @@ export async function POST(
 ) {
   try {
     const { id: groupId } = await params;
-
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll() { return request.cookies.getAll(); },
-          setAll() {},
-        },
-      }
-    );
-
-    const { data: { user } } = await supabase.auth.getUser();
+    const user = await getRouteUser(request);
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const supabaseAdmin = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      { auth: { autoRefreshToken: false, persistSession: false } }
-    );
+    const supabaseAdmin = createAdminClient();
 
-    // グループ情報を取得
-    const { data: group } = await supabaseAdmin
-      .from("groups")
-      .select("created_by")
-      .eq("id", groupId)
-      .single();
+    const ownerId = await getGroupOwnerId(supabaseAdmin, groupId);
 
-    if (!group) {
+    if (!ownerId) {
       return NextResponse.json({ error: "グループが見つかりません" }, { status: 404 });
     }
 
-    const isOwner = group.created_by === user.id;
+    const isOwner = ownerId === user.id;
 
     if (isOwner) {
       // 管理者の場合：他のメンバーがいれば引き継ぎ、いなければグループ削除

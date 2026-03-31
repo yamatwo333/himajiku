@@ -16,10 +16,18 @@ import {
   subMonths,
 } from "date-fns";
 import { ja } from "date-fns/locale";
-import { AvailabilityWithUser } from "@/lib/types";
+import { AvailabilityWithUser, TIME_SLOTS, type TimeSlot } from "@/lib/types";
 
 const WEEKDAYS = ["日", "月", "火", "水", "木", "金", "土"];
-const TIME_SLOTS = ["morning", "afternoon", "evening", "late_night"] as const;
+
+function createSlotCounts(): Record<TimeSlot, number> {
+  return {
+    morning: 0,
+    afternoon: 0,
+    evening: 0,
+    late_night: 0,
+  };
+}
 
 interface Props {
   availabilities: AvailabilityWithUser[];
@@ -31,11 +39,11 @@ interface Props {
 }
 
 export default function CalendarGrid({ availabilities, onMonthChange, groupId, notifyThreshold = 2, currentUserId = null, initialMonth }: Props) {
-  const now = new Date();
-  const minMonth = startOfMonth(now);
-  const maxMonth = startOfMonth(addMonths(now, 2));
+  const baseMonth = useMemo(() => startOfMonth(new Date()), []);
+  const minMonth = baseMonth;
+  const maxMonth = useMemo(() => addMonths(baseMonth, 2), [baseMonth]);
   const [currentMonth, setCurrentMonth] = useState(() => {
-    const month = initialMonth ?? now;
+    const month = startOfMonth(initialMonth ?? baseMonth);
     if (month < minMonth) return minMonth;
     if (month > maxMonth) return maxMonth;
     return month;
@@ -46,13 +54,8 @@ export default function CalendarGrid({ availabilities, onMonthChange, groupId, n
   const todayString = getTodayInTokyo();
 
   const monthOptions = useMemo(() => {
-    const months: Date[] = [];
-    for (let i = 0; i <= 2; i++) {
-      months.push(addMonths(startOfMonth(now), i));
-    }
-    return months;
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    return Array.from({ length: 3 }, (_, index) => addMonths(baseMonth, index));
+  }, [baseMonth]);
 
   const changeMonth = (direction: number) => {
     const next = direction > 0 ? addMonths(currentMonth, 1) : subMonths(currentMonth, 1);
@@ -76,14 +79,46 @@ export default function CalendarGrid({ availabilities, onMonthChange, groupId, n
     return eachDayOfInterval({ start: calStart, end: calEnd });
   }, [currentMonth]);
 
-  const availByDate = useMemo(() => {
-    const map: Record<string, AvailabilityWithUser[]> = {};
-    for (const a of availabilities) {
-      if (!map[a.date]) map[a.date] = [];
-      map[a.date].push(a);
+  const daySummaryByDate = useMemo(() => {
+    const map: Record<
+      string,
+      {
+        selfFree: boolean;
+        friendFree: boolean;
+        isHot: boolean;
+        slotCounts: Record<TimeSlot, number>;
+      }
+    > = {};
+
+    for (const availability of availabilities) {
+      const summary =
+        map[availability.date] ??
+        {
+          selfFree: false,
+          friendFree: false,
+          isHot: false,
+          slotCounts: createSlotCounts(),
+        };
+
+      if (availability.userId === currentUserId) {
+        summary.selfFree = true;
+      } else {
+        summary.friendFree = true;
+      }
+
+      for (const slot of availability.timeSlots) {
+        summary.slotCounts[slot] += 1;
+      }
+
+      summary.isHot = TIME_SLOTS.some(
+        (slot) => summary.slotCounts[slot] >= notifyThreshold
+      );
+
+      map[availability.date] = summary;
     }
+
     return map;
-  }, [availabilities]);
+  }, [availabilities, currentUserId, notifyThreshold]);
 
   return (
     <div className="px-4">
@@ -143,18 +178,12 @@ export default function CalendarGrid({ availabilities, onMonthChange, groupId, n
       <div className="grid grid-cols-7 gap-[2px]">
         {days.map((day) => {
           const dateStr = format(day, "yyyy-MM-dd");
-          const dayAvails = availByDate[dateStr] || [];
+          const daySummary = daySummaryByDate[dateStr];
           const inMonth = isSameMonth(day, currentMonth);
           const isPast = dateStr < todayString;
-          const selfFree = dayAvails.some(
-            (a) => a.userId === currentUserId
-          );
-          const friendCount = dayAvails.filter(
-            (a) => a.userId !== currentUserId
-          ).length;
-          const isHot = TIME_SLOTS.some((slot) =>
-            dayAvails.filter((availability) => availability.timeSlots.includes(slot)).length >= notifyThreshold
-          );
+          const selfFree = daySummary?.selfFree ?? false;
+          const friendFree = daySummary?.friendFree ?? false;
+          const isHot = daySummary?.isHot ?? false;
 
           return (
             <button
@@ -194,7 +223,7 @@ export default function CalendarGrid({ availabilities, onMonthChange, groupId, n
                     style={{ backgroundColor: "var(--color-free-self)" }}
                   />
                 )}
-                {friendCount > 0 && (
+                {friendFree && (
                   <div
                     className="h-2 w-2 rounded-full"
                     style={{ backgroundColor: "var(--color-free-friend)" }}

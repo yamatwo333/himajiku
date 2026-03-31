@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
-import { createClient } from "@supabase/supabase-js";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -51,11 +51,7 @@ export async function GET(request: NextRequest) {
     const email = `line_${profile.userId}@sharehima.app`;
 
     // 3. Supabase Admin client
-    const supabaseAdmin = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      { auth: { autoRefreshToken: false, persistSession: false } }
-    );
+    const supabaseAdmin = createAdminClient();
 
     // 4. Create user (ignore error if already exists)
     const { error: createError } =
@@ -99,7 +95,7 @@ export async function GET(request: NextRequest) {
       // セキュリティ: 相対パスのみ許可
       if (!redirectTo.startsWith("/")) redirectTo = "/calendar";
     }
-    let supabaseResponse = NextResponse.redirect(`${origin}${redirectTo}`);
+    const supabaseResponse = NextResponse.redirect(`${origin}${redirectTo}`);
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,

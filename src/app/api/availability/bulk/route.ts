@@ -1,31 +1,27 @@
 import { after, NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
-import { createServerClient } from "@supabase/ssr";
 import { isDateBeforeTodayInTokyo } from "@/lib/date";
 import { ensureProfile } from "@/lib/ensure-profile";
+import { getUserGroupIds } from "@/lib/server/groups";
 import { sendGroupAvailabilityNotification } from "@/lib/server/notify";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { getRouteUser } from "@/lib/supabase/route";
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll() { return request.cookies.getAll(); },
-          setAll() {},
-        },
-      }
-    );
-
-    const { data: { user } } = await supabase.auth.getUser();
+    const user = await getRouteUser(request);
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const { dates, time_slots, comment } = await request.json();
+    const rawDates = Array.isArray(dates) ? dates : [];
+    const uniqueDates: string[] = [
+      ...new Set(
+        rawDates.filter((date): date is string => typeof date === "string")
+      ),
+    ];
 
-    if (!dates || !Array.isArray(dates) || dates.length === 0) {
+    if (uniqueDates.length === 0) {
       return NextResponse.json({ error: "日付を選択してください" }, { status: 400 });
     }
 
@@ -33,19 +29,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "時間帯を選択してください" }, { status: 400 });
     }
 
-    if (dates.some((date: string) => isDateBeforeTodayInTokyo(date))) {
+    if (uniqueDates.some((date) => isDateBeforeTodayInTokyo(date))) {
       return NextResponse.json({ error: "当日より前の日付はシェアできません" }, { status: 400 });
     }
 
-    const supabaseAdmin = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      { auth: { autoRefreshToken: false, persistSession: false } }
-    );
+    const supabaseAdmin = createAdminClient();
 
     await ensureProfile(supabaseAdmin, user);
 
-    const records = dates.map((date: string) => ({
+    const records = uniqueDates.map((date) => ({
       user_id: user.id,
       date,
       time_slots,
@@ -63,18 +55,15 @@ export async function POST(request: NextRequest) {
 
     after(async () => {
       try {
-        const { data: memberships } = await supabaseAdmin
-          .from("group_members")
-          .select("group_id")
-          .eq("user_id", user.id);
+        const groupIds = await getUserGroupIds(supabaseAdmin, user.id);
 
-        if (memberships?.length) {
+        if (groupIds.length > 0) {
           await Promise.allSettled(
-            dates.flatMap((date: string) =>
-              memberships.map((membership) =>
+            uniqueDates.flatMap((date) =>
+              groupIds.map((groupId) =>
                 sendGroupAvailabilityNotification({
                   date,
-                  groupId: membership.group_id,
+                  groupId,
                 })
               )
             )
@@ -85,7 +74,7 @@ export async function POST(request: NextRequest) {
       }
     });
 
-    return NextResponse.json({ success: true, count: dates.length });
+    return NextResponse.json({ success: true, count: uniqueDates.length });
   } catch (err) {
     console.error("Bulk availability error:", err);
     return NextResponse.json({ error: "予期しないエラー" }, { status: 500 });

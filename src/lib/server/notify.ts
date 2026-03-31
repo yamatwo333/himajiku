@@ -1,20 +1,13 @@
-import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { format, parse } from "date-fns";
 import { ja } from "date-fns/locale";
-
-const TIME_SLOT_LABELS: Record<string, string> = {
-  morning: "午前",
-  afternoon: "午後",
-  evening: "夜",
-  late_night: "夜中",
-};
-
-const ALL_SLOTS = ["morning", "afternoon", "evening", "late_night"];
+import { createAdminClient } from "@/lib/supabase/admin";
+import { TIME_SLOT_LABELS, TIME_SLOTS, type TimeSlot } from "@/lib/types";
 
 interface NotifyParams {
   date: string;
   groupId: string;
-  slots?: string[];
+  slots?: TimeSlot[];
 }
 
 interface NotifyDigestParams {
@@ -44,7 +37,7 @@ interface GroupNotificationContext {
 interface DateMatch {
   date: string;
   matchingSlots: {
-    slot: string;
+    slot: TimeSlot;
     people: AvailabilityRow[];
   }[];
 }
@@ -53,11 +46,7 @@ const LINE_MESSAGE_CHAR_LIMIT = 4500;
 const LINE_MAX_MESSAGES_PER_PUSH = 5;
 
 async function getGroupNotificationContext(groupId: string): Promise<GroupNotificationContext | null> {
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    { auth: { autoRefreshToken: false, persistSession: false } }
-  );
+  const supabase = createAdminClient();
 
   const { data: group } = await supabase
     .from("groups")
@@ -107,15 +96,26 @@ function buildDateMatches({
   notifyThreshold: number;
   slotsByDate?: Map<string, string[]>;
 }) {
+  const availabilitiesByDate = new Map<string, AvailabilityRow[]>();
+
+  for (const availability of availabilities) {
+    if (!availability.date) continue;
+
+    const dayAvailabilities = availabilitiesByDate.get(availability.date) ?? [];
+    dayAvailabilities.push(availability);
+    availabilitiesByDate.set(availability.date, dayAvailabilities);
+  }
+
   const matches: DateMatch[] = [];
 
   for (const date of dates) {
-    const dayAvailabilities = availabilities.filter((availability) => availability.date === date);
-    if (dayAvailabilities.length === 0) continue;
+    const dayAvailabilities = availabilitiesByDate.get(date);
+    if (!dayAvailabilities?.length) continue;
 
-    const targetSlots = slotsByDate?.get(date)?.length
-      ? ALL_SLOTS.filter((slot) => slotsByDate.get(date)?.includes(slot))
-      : ALL_SLOTS;
+    const slotsForDate = slotsByDate?.get(date);
+    const targetSlots = slotsForDate?.length
+      ? TIME_SLOTS.filter((slot) => slotsForDate.includes(slot))
+      : TIME_SLOTS;
 
     const matchingSlots = targetSlots.flatMap((slot) => {
       const people = dayAvailabilities.filter((availability) => availability.time_slots?.includes(slot));
@@ -220,8 +220,8 @@ export async function sendGroupAvailabilityNotification({
 
   const { group, memberIds, lineToken, supabase } = context;
   const targetSlots = slots?.length
-    ? ALL_SLOTS.filter((slot) => slots.includes(slot))
-    : ALL_SLOTS;
+    ? TIME_SLOTS.filter((slot) => slots.includes(slot))
+    : TIME_SLOTS;
 
   if (targetSlots.length === 0) {
     return { sent: false, reason: "no target slots" };
@@ -242,7 +242,7 @@ export async function sendGroupAvailabilityNotification({
       return { sent: false, reason: "no availabilities" };
     }
 
-    const matches: Record<string, number> = {};
+    const matches: Partial<Record<TimeSlot, number>> = {};
 
     for (const slot of targetSlots) {
       const count = avails.filter((avail) =>
@@ -271,7 +271,7 @@ export async function sendGroupAvailabilityNotification({
     return { sent: false, reason: "no availabilities" };
   }
 
-  const matchingSlots: { slot: string; people: AvailabilityRow[] }[] = [];
+  const matchingSlots: { slot: TimeSlot; people: AvailabilityRow[] }[] = [];
 
   for (const slot of targetSlots) {
     const matching = (avails as AvailabilityRow[]).filter((avail) =>
