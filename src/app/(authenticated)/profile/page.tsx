@@ -3,22 +3,20 @@ import PageHeader from "@/components/PageHeader";
 import ProfileAboutCard from "@/components/profile/ProfileAboutCard";
 import ProfileLogoutButton from "@/components/profile/ProfileLogoutButton";
 import ProfileSummaryCard from "@/components/profile/ProfileSummaryCard";
-import { createClient } from "@/lib/supabase/server";
+import { getRequestUserId } from "@/lib/request-user";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 export default async function ProfilePage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const userId = await getRequestUserId();
 
-  if (!user) {
+  if (!userId) {
     redirect("/login?redirect=%2Fprofile");
   }
 
-  const { data: profile } = await supabase
+  const { data: profile } = await createAdminClient()
     .from("profiles")
     .select("display_name, avatar_url")
-    .eq("id", user.id)
+    .eq("id", userId)
     .maybeSingle();
 
   return (

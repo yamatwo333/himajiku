@@ -1,8 +1,8 @@
 import { redirect } from "next/navigation";
 import GroupDetailClient from "@/components/groups/GroupDetailClient";
+import { getRequestUserId } from "@/lib/request-user";
 import { getGroupDetailForUser } from "@/lib/server/groups";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { createClient } from "@/lib/supabase/server";
 
 export default async function GroupDetailPage({
   params,
@@ -10,16 +10,13 @@ export default async function GroupDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id: groupId } = await params;
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const userId = await getRequestUserId();
 
-  if (!user) {
+  if (!userId) {
     redirect(`/login?redirect=${encodeURIComponent(`/groups/${groupId}`)}`);
   }
 
-  const result = await getGroupDetailForUser(createAdminClient(), groupId, user.id);
+  const result = await getGroupDetailForUser(createAdminClient(), groupId, userId);
 
   if (!result) {
     redirect("/groups");
@@ -27,7 +24,7 @@ export default async function GroupDetailPage({
 
   return (
     <GroupDetailClient
-      currentUserId={user.id}
+      currentUserId={userId}
       groupId={groupId}
       initialGroup={result.group}
       initialMembers={result.members}

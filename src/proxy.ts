@@ -1,5 +1,14 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
+import { REQUEST_USER_ID_HEADER } from "@/lib/request-user";
+
+function createForwardResponse(headers: Headers) {
+  return NextResponse.next({
+    request: {
+      headers,
+    },
+  });
+}
 
 export async function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
@@ -12,7 +21,8 @@ export async function proxy(request: NextRequest) {
     return NextResponse.next({ request });
   }
 
-  let supabaseResponse = NextResponse.next({ request });
+  const requestHeaders = new Headers(request.headers);
+  let supabaseResponse = createForwardResponse(requestHeaders);
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -26,7 +36,7 @@ export async function proxy(request: NextRequest) {
           cookiesToSet.forEach(({ name, value }) =>
             request.cookies.set(name, value)
           );
-          supabaseResponse = NextResponse.next({ request });
+          supabaseResponse = createForwardResponse(requestHeaders);
           cookiesToSet.forEach(({ name, value, options }) =>
             supabaseResponse.cookies.set(name, value, options)
           );
@@ -46,6 +56,16 @@ export async function proxy(request: NextRequest) {
     url.search = "";
     url.searchParams.set("redirect", redirectTo);
     return NextResponse.redirect(url);
+  }
+
+  if (user) {
+    requestHeaders.set(REQUEST_USER_ID_HEADER, user.id);
+
+    const nextResponse = createForwardResponse(requestHeaders);
+    for (const cookie of supabaseResponse.cookies.getAll()) {
+      nextResponse.cookies.set(cookie);
+    }
+    supabaseResponse = nextResponse;
   }
 
   if (user && pathname === "/login") {

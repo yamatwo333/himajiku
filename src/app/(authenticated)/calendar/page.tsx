@@ -1,29 +1,26 @@
 import { redirect } from "next/navigation";
 import CalendarPageClient from "@/components/calendar/CalendarPageClient";
+import { getRequestUserId } from "@/lib/request-user";
 import { getAvailabilityRangeForUser, getCalendarMonthRange } from "@/lib/server/availability";
 import { getGroupSummariesForUser } from "@/lib/server/groups";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { createClient } from "@/lib/supabase/server";
 
 export default async function CalendarPage({
   searchParams,
 }: {
   searchParams: Promise<{ group?: string }>;
 }) {
-  const [{ group: requestedGroupId }, supabase] = await Promise.all([
+  const [{ group: requestedGroupId }, userId] = await Promise.all([
     searchParams,
-    createClient(),
+    getRequestUserId(),
   ]);
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
 
-  if (!user) {
+  if (!userId) {
     redirect("/login?redirect=%2Fcalendar");
   }
 
   const supabaseAdmin = createAdminClient();
-  const groups = await getGroupSummariesForUser(supabaseAdmin, user.id);
+  const groups = await getGroupSummariesForUser(supabaseAdmin, userId);
   const selectedGroupId =
     requestedGroupId && groups.some((group) => group.id === requestedGroupId)
       ? requestedGroupId
@@ -31,7 +28,7 @@ export default async function CalendarPage({
   const initialMonth = new Date();
   const monthRange = getCalendarMonthRange(initialMonth);
   const availabilityResult = await getAvailabilityRangeForUser(supabaseAdmin, {
-    userId: user.id,
+    userId,
     groupId: selectedGroupId || undefined,
     start: monthRange.start,
     end: monthRange.end,
@@ -40,7 +37,7 @@ export default async function CalendarPage({
   return (
     <CalendarPageClient
       initialAvailabilities={availabilityResult?.availabilities ?? []}
-      initialCurrentUserId={availabilityResult?.currentUserId ?? user.id}
+      initialCurrentUserId={availabilityResult?.currentUserId ?? userId}
       initialGroups={groups.map((group) => ({
         id: group.id,
         name: group.name,

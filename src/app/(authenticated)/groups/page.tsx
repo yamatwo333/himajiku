@@ -1,20 +1,17 @@
 import { redirect } from "next/navigation";
 import GroupsPageClient from "@/components/groups/GroupsPageClient";
+import { getRequestUserId } from "@/lib/request-user";
 import { getGroupSummariesForUser } from "@/lib/server/groups";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { createClient } from "@/lib/supabase/server";
 
 export default async function GroupsPage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const userId = await getRequestUserId();
 
-  if (!user) {
+  if (!userId) {
     redirect("/login?redirect=%2Fgroups");
   }
 
-  const groups = await getGroupSummariesForUser(createAdminClient(), user.id);
+  const groups = await getGroupSummariesForUser(createAdminClient(), userId);
 
   return <GroupsPageClient initialGroups={groups} />;
 }

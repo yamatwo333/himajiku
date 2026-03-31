@@ -1,8 +1,8 @@
 import { redirect } from "next/navigation";
 import DayDetailClient from "@/components/calendar/DayDetailClient";
+import { getRequestUserId } from "@/lib/request-user";
 import { getAvailabilityForDateForUser } from "@/lib/server/availability";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { createClient } from "@/lib/supabase/server";
 
 export default async function DayDetailPage({
   params,
@@ -12,17 +12,14 @@ export default async function DayDetailPage({
   searchParams: Promise<{ group?: string }>;
 }) {
   const [{ date }, { group }] = await Promise.all([params, searchParams]);
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const userId = await getRequestUserId();
 
-  if (!user) {
+  if (!userId) {
     redirect(`/login?redirect=${encodeURIComponent(`/calendar/${date}${group ? `?group=${group}` : ""}`)}`);
   }
 
   const result = await getAvailabilityForDateForUser(createAdminClient(), {
-    userId: user.id,
+    userId,
     groupId: group || undefined,
     date,
   });

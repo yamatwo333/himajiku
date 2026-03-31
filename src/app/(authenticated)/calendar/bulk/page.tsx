@@ -1,22 +1,19 @@
 import { redirect } from "next/navigation";
 import BulkShareClient from "@/components/calendar/BulkShareClient";
+import { getRequestUserId } from "@/lib/request-user";
 import { getOwnAvailabilityEntriesForMonth } from "@/lib/server/availability";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { createClient } from "@/lib/supabase/server";
 
 export default async function BulkSharePage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const userId = await getRequestUserId();
 
-  if (!user) {
+  if (!userId) {
     redirect("/login?redirect=%2Fcalendar%2Fbulk");
   }
 
   const initialMonth = new Date();
   const initialEntries = await getOwnAvailabilityEntriesForMonth(createAdminClient(), {
-    userId: user.id,
+    userId,
     month: initialMonth,
   });
 
