@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import CalendarPageHeader from "@/components/calendar/CalendarPageHeader";
+import PageHeader from "@/components/PageHeader";
+import PageSpinner from "@/components/PageSpinner";
 import { format, parse, isValid } from "date-fns";
 import { ja } from "date-fns/locale";
 import { getTodayInTokyo } from "@/lib/date";
@@ -111,17 +112,15 @@ export default function DayDetailPage() {
   if (!mounted || loading) {
     return (
       <div>
-        <CalendarPageHeader title={dateLabel} onBack={handleBack} />
-        <div className="flex items-center justify-center py-20">
-          <div className="h-8 w-8 animate-spin rounded-full border-2 border-t-transparent" style={{ borderColor: "var(--color-border)", borderTopColor: "transparent" }} />
-        </div>
+        <PageHeader title={dateLabel} onBack={handleBack} />
+        <PageSpinner />
       </div>
     );
   }
 
   return (
     <div>
-      <CalendarPageHeader
+      <PageHeader
         title={dateLabel}
         onBack={handleBack}
         trailing={

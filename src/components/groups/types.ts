@@ -7,6 +7,14 @@ export interface GroupDetail {
   line_group_id: string | null;
 }
 
+export interface GroupSummary {
+  id: string;
+  name: string;
+  invite_code: string;
+  created_by: string;
+  member_count: number;
+}
+
 export interface GroupMember {
   user_id: string;
   display_name: string;

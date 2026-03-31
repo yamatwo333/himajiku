@@ -1,8 +1,12 @@
 "use client";
 
-import Image from "next/image";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import PageHeader from "@/components/PageHeader";
+import PageSpinner from "@/components/PageSpinner";
+import ProfileAboutCard from "@/components/profile/ProfileAboutCard";
+import ProfileLogoutButton from "@/components/profile/ProfileLogoutButton";
+import ProfileSummaryCard from "@/components/profile/ProfileSummaryCard";
 import { createClient } from "@/lib/supabase/client";
 
 export default function ProfilePage() {
@@ -17,7 +21,7 @@ export default function ProfilePage() {
       if (data.user) {
         supabase
           .from("profiles")
-          .select("*")
+          .select("display_name, avatar_url")
           .eq("id", data.user.id)
           .single()
           .then(({ data: profile }) => {
@@ -27,7 +31,10 @@ export default function ProfilePage() {
             }
             setLoading(false);
           });
+        return;
       }
+
+      setLoading(false);
     });
   }, []);
 
@@ -39,87 +46,15 @@ export default function ProfilePage() {
 
   return (
     <div>
-      <header
-        className="sticky top-0 z-10 border-b px-4 py-3"
-        style={{
-          backgroundColor: "var(--color-surface)",
-          borderColor: "var(--color-border)",
-        }}
-      >
-        <h1 className="text-center text-lg font-bold">マイページ</h1>
-      </header>
+      <PageHeader title="マイページ" />
 
       {loading ? (
-        <div className="flex items-center justify-center py-20">
-          <div
-            className="h-8 w-8 animate-spin rounded-full border-2 border-t-transparent"
-            style={{ borderColor: "var(--color-border)", borderTopColor: "transparent" }}
-          />
-        </div>
+        <PageSpinner />
       ) : (
         <div className="space-y-6 px-4 pt-6">
-          {/* User info */}
-          <section className="flex items-center gap-4">
-            {avatarUrl ? (
-              <Image
-                src={avatarUrl}
-                alt={displayName}
-                width={56}
-                height={56}
-                className="h-14 w-14 rounded-full object-cover"
-                unoptimized
-              />
-            ) : (
-              <div
-                className="flex h-14 w-14 items-center justify-center rounded-full text-xl font-bold text-white"
-                style={{ backgroundColor: "var(--color-primary)" }}
-              >
-                {displayName.charAt(0)}
-              </div>
-            )}
-            <div>
-              <p className="text-lg font-bold">{displayName}</p>
-              <p
-                className="text-sm"
-                style={{ color: "var(--color-text-secondary)" }}
-              >
-                LINE連携済み
-              </p>
-            </div>
-          </section>
-
-          {/* App info */}
-          <section className="rounded-xl border p-4" style={{ backgroundColor: "var(--color-surface)", borderColor: "var(--color-border)" }}>
-            <p className="text-sm font-bold" style={{ color: "var(--color-text)" }}>
-              シェア<span style={{ color: "var(--color-primary)" }}>ヒマ</span>とは？
-            </p>
-            <p className="mt-1 text-xs leading-relaxed" style={{ color: "var(--color-text-secondary)" }}>
-              <span className="block">
-                わざわざ誘うほどじゃないけど
-                <span style={{ color: "var(--color-primary)" }}>ヒマ</span>。
-              </span>
-              <span className="block">
-                <span style={{ color: "var(--color-primary)" }}>ヒマ</span>
-                な時間をシェアして、なんとなく集まれるアプリ。
-              </span>
-              <span className="block">
-                グループを作って友だちを招待し、
-                <span style={{ color: "var(--color-primary)" }}>ヒマ</span>
-                な日を気軽にシェアしよう。
-              </span>
-            </p>
-          </section>
-
-          {/* Logout */}
-          <section>
-            <button
-              onClick={handleLogout}
-              className="w-full rounded-xl border py-3 text-sm text-red-500"
-              style={{ borderColor: "var(--color-border)" }}
-            >
-              ログアウト
-            </button>
-          </section>
+          <ProfileSummaryCard displayName={displayName} avatarUrl={avatarUrl} />
+          <ProfileAboutCard />
+          <ProfileLogoutButton onLogout={handleLogout} />
         </div>
       )}
     </div>

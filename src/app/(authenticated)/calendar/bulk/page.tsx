@@ -4,7 +4,8 @@ import { useState, useEffect, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import BulkDayCard from "@/components/calendar/BulkDayCard";
 import CalendarMonthSwitcher from "@/components/calendar/CalendarMonthSwitcher";
-import CalendarPageHeader from "@/components/calendar/CalendarPageHeader";
+import PageHeader from "@/components/PageHeader";
+import PageSpinner from "@/components/PageSpinner";
 import { getTodayInTokyo } from "@/lib/date";
 import {
   format,
@@ -160,7 +161,7 @@ export default function BulkSharePage() {
 
   return (
     <div className="flex flex-col min-h-dvh">
-      <CalendarPageHeader title="ヒマな日をまとめてシェア" onBack={handleBack} />
+      <PageHeader title="ヒマな日をまとめてシェア" onBack={handleBack} />
 
       <div className="flex-1 px-4 pt-4 pb-32 space-y-2">
         <CalendarMonthSwitcher
@@ -184,9 +185,7 @@ export default function BulkSharePage() {
         </p>
 
         {loading ? (
-          <div className="flex items-center justify-center py-16">
-            <div className="h-8 w-8 animate-spin rounded-full border-2 border-t-transparent" style={{ borderColor: "var(--color-border)", borderTopColor: "transparent" }} />
-          </div>
+          <PageSpinner className="flex items-center justify-center py-16" />
         ) : (
           <div className="space-y-2">
             {daysInMonth.map(day => {

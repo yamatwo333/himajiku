@@ -3,11 +3,12 @@
 import BrandLogo from "@/components/BrandLogo";
 import CalendarGroupSelector from "@/components/calendar/CalendarGroupSelector";
 import CalendarNoGroupState from "@/components/calendar/CalendarNoGroupState";
-import CalendarPageHeader from "@/components/calendar/CalendarPageHeader";
+import PageHeader from "@/components/PageHeader";
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { endOfMonth, format, startOfMonth, startOfWeek, endOfWeek } from "date-fns";
 import CalendarGrid from "@/components/CalendarGrid";
+import PageSpinner from "@/components/PageSpinner";
 import { AvailabilityWithUser } from "@/lib/types";
 import {
   getRequestedGroupIdFromLocation,
@@ -128,9 +129,9 @@ export default function CalendarPage() {
 
   return (
     <div>
-      <CalendarPageHeader backgroundColor="var(--color-bg)">
+      <PageHeader backgroundColor="var(--color-bg)">
         <BrandLogo variant="wordmark" />
-      </CalendarPageHeader>
+      </PageHeader>
 
       <CalendarGroupSelector
         groups={groups}
@@ -144,9 +145,7 @@ export default function CalendarPage() {
 
       <div className="pt-3">
         {loading ? (
-        <div className="flex items-center justify-center py-20">
-          <div className="h-8 w-8 animate-spin rounded-full border-2 border-t-transparent" style={{ borderColor: "var(--color-border)", borderTopColor: "transparent" }} />
-        </div>
+          <PageSpinner />
         ) : (
           <>
             {groups.length === 0 && (

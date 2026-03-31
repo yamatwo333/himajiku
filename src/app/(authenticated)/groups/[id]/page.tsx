@@ -2,8 +2,9 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import PageHeader from "@/components/PageHeader";
+import PageSpinner from "@/components/PageSpinner";
 import GroupDangerZone from "@/components/groups/GroupDangerZone";
-import GroupDetailHeader from "@/components/groups/GroupDetailHeader";
 import GroupInviteSection from "@/components/groups/GroupInviteSection";
 import GroupLineLinkSection from "@/components/groups/GroupLineLinkSection";
 import GroupMembersSection from "@/components/groups/GroupMembersSection";
@@ -252,16 +253,8 @@ export default function GroupDetailPage() {
   if (loading) {
     return (
       <div>
-        <GroupDetailHeader onBack={handleBack} />
-        <div className="flex items-center justify-center py-20">
-          <div
-            className="h-8 w-8 animate-spin rounded-full border-2 border-t-transparent"
-            style={{
-              borderColor: "var(--color-border)",
-              borderTopColor: "transparent",
-            }}
-          />
-        </div>
+        <PageHeader onBack={handleBack} />
+        <PageSpinner />
       </div>
     );
   }
@@ -269,7 +262,7 @@ export default function GroupDetailPage() {
   if (!group) {
     return (
       <div>
-        <GroupDetailHeader onBack={handleBack} />
+        <PageHeader onBack={handleBack} />
         <p className="py-20 text-center text-sm" style={{ color: "var(--color-text-secondary)" }}>
           グループが見つかりません
         </p>
@@ -279,7 +272,17 @@ export default function GroupDetailPage() {
 
   return (
     <div>
-      <GroupDetailHeader title={group.name} saving={saving} onBack={handleBack} />
+      <PageHeader
+        title={group.name}
+        onBack={handleBack}
+        trailing={
+          saving ? (
+            <span className="text-xs" style={{ color: "var(--color-text-secondary)" }}>
+              保存中...
+            </span>
+          ) : null
+        }
+      />
 
       <div className="space-y-6 px-4 pt-5 pb-8">
         <GroupInviteSection

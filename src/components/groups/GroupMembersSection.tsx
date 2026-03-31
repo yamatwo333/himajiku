@@ -1,6 +1,6 @@
 "use client";
 
-import Image from "next/image";
+import ProfileAvatar from "@/components/ProfileAvatar";
 import type { GroupMember } from "@/components/groups/types";
 
 interface GroupMembersSectionProps {
@@ -45,23 +45,11 @@ export default function GroupMembersSection({
               borderColor: "var(--color-border)",
             }}
           >
-            {member.avatar_url ? (
-              <Image
-                src={member.avatar_url}
-                alt={member.display_name}
-                width={40}
-                height={40}
-                className="h-10 w-10 rounded-full object-cover"
-                unoptimized
-              />
-            ) : (
-              <div
-                className="flex h-10 w-10 items-center justify-center rounded-full text-sm font-bold text-white"
-                style={{ backgroundColor: "var(--color-primary)" }}
-              >
-                {member.display_name.charAt(0)}
-              </div>
-            )}
+            <ProfileAvatar
+              name={member.display_name}
+              avatarUrl={member.avatar_url}
+              size="sm"
+            />
             <div className="flex-1">
               <p className="font-medium">{member.display_name}</p>
               {member.user_id === ownerId ? (

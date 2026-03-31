@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-interface CalendarPageHeaderProps {
+interface PageHeaderProps {
   title?: string;
   onBack?: () => void;
   trailing?: ReactNode;
@@ -8,13 +8,13 @@ interface CalendarPageHeaderProps {
   children?: ReactNode;
 }
 
-export default function CalendarPageHeader({
+export default function PageHeader({
   title,
   onBack,
   trailing,
   backgroundColor = "var(--color-surface)",
   children,
-}: CalendarPageHeaderProps) {
+}: PageHeaderProps) {
   return (
     <header
       className="sticky top-0 z-10 border-b px-4 py-3"
@@ -35,11 +35,11 @@ export default function CalendarPageHeader({
               <polyline points="15,6 9,12 15,18" />
             </svg>
           </button>
-          <h1 className="text-lg font-bold">{title}</h1>
-          {trailing ? <div className="ml-2">{trailing}</div> : null}
+          {title ? <h1 className="text-lg font-bold">{title}</h1> : null}
+          {trailing ? <div className="ml-auto">{trailing}</div> : null}
         </div>
       ) : (
-        <div className="flex justify-center">{children ?? <h1 className="text-lg font-bold">{title}</h1>}</div>
+        <div className="flex justify-center">{children ?? <h1 className="text-center text-lg font-bold">{title}</h1>}</div>
       )}
     </header>
   );
