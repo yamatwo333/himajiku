@@ -5,6 +5,7 @@ import { getUserGroupIds } from "@/lib/server/groups";
 import { sendGroupAvailabilityNotification } from "@/lib/server/notify";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getRouteUser } from "@/lib/supabase/route";
+import { normalizeTimeSlots } from "@/lib/types";
 
 export async function POST(request: NextRequest) {
   try {
@@ -14,6 +15,7 @@ export async function POST(request: NextRequest) {
     }
 
     const { date, time_slots, comment } = await request.json();
+    const normalizedTimeSlots = normalizeTimeSlots(time_slots);
 
     if (!date || typeof date !== "string") {
       return NextResponse.json({ error: "日付を指定してください" }, { status: 400 });
@@ -27,7 +29,7 @@ export async function POST(request: NextRequest) {
 
     await ensureProfile(supabaseAdmin, user);
 
-    if (!time_slots || time_slots.length === 0) {
+    if (normalizedTimeSlots.length === 0) {
       // Delete availability
       await supabaseAdmin
         .from("availability")
@@ -43,7 +45,7 @@ export async function POST(request: NextRequest) {
       {
         user_id: user.id,
         date,
-        time_slots,
+        time_slots: normalizedTimeSlots,
         comment: comment || "",
       },
       { onConflict: "user_id,date" }

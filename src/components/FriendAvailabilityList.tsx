@@ -48,7 +48,7 @@ export default function FriendAvailabilityList({
                   </span>
                 )}
               </div>
-              <div className="flex gap-1">
+              <div className="flex flex-wrap justify-end gap-1">
                 {a.timeSlots.map((slot) => (
                   <span
                     key={slot}

@@ -21,12 +21,10 @@ import { AvailabilityWithUser, TIME_SLOTS, type TimeSlot } from "@/lib/types";
 const WEEKDAYS = ["日", "月", "火", "水", "木", "金", "土"];
 
 function createSlotCounts(): Record<TimeSlot, number> {
-  return {
-    morning: 0,
-    afternoon: 0,
-    evening: 0,
-    late_night: 0,
-  };
+  return TIME_SLOTS.reduce((counts, slot) => {
+    counts[slot] = 0;
+    return counts;
+  }, {} as Record<TimeSlot, number>);
 }
 
 interface Props {

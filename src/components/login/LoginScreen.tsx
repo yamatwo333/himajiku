@@ -1,8 +1,7 @@
 import { Suspense } from "react";
 import BrandLogo from "@/components/BrandLogo";
 import LoginActions from "@/components/login/LoginActions";
-
-const TIME_SLOTS = ["morning", "afternoon", "evening", "late_night"] as const;
+import { TIME_SLOTS } from "@/lib/types";
 
 const MOCK_DATA: Record<string, { self: string[]; friends: string[][] }> = {
   "3": { self: ["morning"], friends: [] },

@@ -26,7 +26,7 @@ export default function TimeSlotPicker({
   };
 
   return (
-    <div className={variant === "compact" ? "flex gap-1.5" : "flex gap-2"}>
+    <div className={variant === "compact" ? "grid grid-cols-3 gap-1.5" : "grid grid-cols-3 gap-2"}>
       {TIME_SLOTS.map((slot) => {
         const isSelected = selected.includes(slot);
         return (

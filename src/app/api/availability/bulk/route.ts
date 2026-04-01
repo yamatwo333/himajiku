@@ -5,6 +5,7 @@ import { getUserGroupIds } from "@/lib/server/groups";
 import { sendGroupAvailabilityNotification } from "@/lib/server/notify";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getRouteUser } from "@/lib/supabase/route";
+import { normalizeTimeSlots } from "@/lib/types";
 
 export async function POST(request: NextRequest) {
   try {
@@ -14,6 +15,7 @@ export async function POST(request: NextRequest) {
     }
 
     const { dates, time_slots, comment } = await request.json();
+    const normalizedTimeSlots = normalizeTimeSlots(time_slots);
     const rawDates = Array.isArray(dates) ? dates : [];
     const uniqueDates: string[] = [
       ...new Set(
@@ -25,7 +27,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "日付を選択してください" }, { status: 400 });
     }
 
-    if (!time_slots || !Array.isArray(time_slots) || time_slots.length === 0) {
+    if (normalizedTimeSlots.length === 0) {
       return NextResponse.json({ error: "時間帯を選択してください" }, { status: 400 });
     }
 
@@ -40,7 +42,7 @@ export async function POST(request: NextRequest) {
     const records = uniqueDates.map((date) => ({
       user_id: user.id,
       date,
-      time_slots,
+      time_slots: normalizedTimeSlots,
       comment: comment || "",
     }));
 

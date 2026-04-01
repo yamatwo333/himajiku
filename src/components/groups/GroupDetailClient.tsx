@@ -10,6 +10,7 @@ import GroupMembersSection from "@/components/groups/GroupMembersSection";
 import GroupSettingsSection from "@/components/groups/GroupSettingsSection";
 import type { GroupDetail, GroupMember } from "@/components/groups/types";
 import { copyText } from "@/lib/clipboard";
+import { buildCalendarUrl, readStoredCalendarMonth } from "@/lib/calendar";
 
 interface GroupDetailClientProps {
   currentUserId: string;
@@ -76,6 +77,10 @@ export default function GroupDetailClient({
 
     router.push("/groups");
   }, [router]);
+
+  const handleOpenCalendar = useCallback(() => {
+    router.push(buildCalendarUrl(groupId, readStoredCalendarMonth()));
+  }, [groupId, router]);
 
   const handleCopyCode = useCallback(async () => {
     await copyText(group.invite_code);
@@ -288,6 +293,7 @@ export default function GroupDetailClient({
           notifyThreshold={notifyThreshold}
           onEditNameChange={handleEditNameChange}
           onNotifyThresholdChange={handleNotifyThresholdChange}
+          onOpenCalendar={handleOpenCalendar}
         />
 
         <GroupLineLinkSection

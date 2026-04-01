@@ -1,4 +1,4 @@
-import type { TimeSlot } from "@/lib/types";
+import { TIME_SLOTS, type TimeSlot } from "@/lib/types";
 
 export interface BulkAvailabilityEntry {
   date: string;
@@ -16,9 +16,12 @@ export function createBulkAvailabilityPayloads(
   entries: BulkAvailabilityEntry[]
 ): BulkAvailabilityPayload[] {
   const batches = new Map<string, BulkAvailabilityPayload>();
+  const slotIndex = new Map(TIME_SLOTS.map((slot, index) => [slot, index]));
 
   for (const entry of entries) {
-    const normalizedSlots = [...entry.timeSlots].sort() as TimeSlot[];
+    const normalizedSlots = [...entry.timeSlots].sort(
+      (left, right) => (slotIndex.get(left) ?? 0) - (slotIndex.get(right) ?? 0)
+    ) as TimeSlot[];
     const key = `${normalizedSlots.join(",")}::${entry.comment}`;
     const existing = batches.get(key);
 

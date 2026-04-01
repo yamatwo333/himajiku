@@ -213,6 +213,22 @@ export default function CalendarPageClient({
         }}
       />
 
+      {selectedGroupId ? (
+        <div className="px-4 pt-3">
+          <button
+            onClick={() => router.push(`/groups/${selectedGroupId}`)}
+            className="w-full rounded-xl border px-4 py-2.5 text-sm font-medium"
+            style={{
+              backgroundColor: "var(--color-surface)",
+              borderColor: "var(--color-border)",
+              color: "var(--color-primary)",
+            }}
+          >
+            このグループの設定を見る
+          </button>
+        </div>
+      ) : null}
+
       <div className="pt-3">
         {availabilitiesLoading ? (
           <PageSpinner />

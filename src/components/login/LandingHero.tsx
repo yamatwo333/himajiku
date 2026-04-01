@@ -1,7 +1,13 @@
 import Link from "next/link";
 import BrandLogo from "@/components/BrandLogo";
 
-export default function LandingHero() {
+interface LandingHeroProps {
+  ctaHref?: string;
+}
+
+export default function LandingHero({
+  ctaHref = "/login",
+}: LandingHeroProps) {
   return (
     <div className="flex min-h-svh flex-col" style={{ backgroundColor: "var(--color-bg)" }}>
       <div className="flex flex-1 flex-col items-center justify-center px-6 py-12 text-center">
@@ -42,7 +48,7 @@ export default function LandingHero() {
           </div>
 
           <Link
-            href="/calendar"
+            href={ctaHref}
             className="mt-5 flex w-full items-center justify-center gap-3 rounded-2xl px-6 py-4 text-base font-bold text-white shadow-md transition-transform active:scale-[0.97]"
             style={{ backgroundColor: "#06C755" }}
           >
