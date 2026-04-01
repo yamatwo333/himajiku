@@ -1,3 +1,6 @@
+import CharacterSticker from "@/components/CharacterSticker";
+import { CHARACTER_ASSETS } from "@/lib/characters";
+
 const BOT_URL = "https://line.me/R/ti/p/@156samjs";
 
 interface GroupLineLinkSectionProps {
@@ -44,6 +47,13 @@ export default function GroupLineLinkSection({
             backgroundColor: "var(--color-bg)",
           }}
         >
+          {!lineLinked ? (
+            <CharacterSticker
+              src={CHARACTER_ASSETS.lineUnlinked.src}
+              alt={CHARACTER_ASSETS.lineUnlinked.alt}
+              className="mx-auto mb-2 h-16 w-auto object-contain"
+            />
+          ) : null}
           <p className="text-sm font-medium" style={{ color: "var(--color-text)" }}>
             {lineLinked ? "連携済み" : "未連携"}
           </p>
@@ -134,6 +144,11 @@ export default function GroupLineLinkSection({
         </div>
       ) : (
         <div className="space-y-4">
+          <CharacterSticker
+            src={CHARACTER_ASSETS.lineUnlinked.src}
+            alt={CHARACTER_ASSETS.lineUnlinked.alt}
+            className="mx-auto h-20 w-auto object-contain"
+          />
           <p className="text-xs" style={{ color: "var(--color-text-secondary)" }}>
             LINEグループと連携すると、ヒマな人が集まった時に自動で通知が届きます。
           </p>

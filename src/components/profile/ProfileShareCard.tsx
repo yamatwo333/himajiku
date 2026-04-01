@@ -1,7 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import CharacterSticker from "@/components/CharacterSticker";
 import { copyText } from "@/lib/clipboard";
+import { CHARACTER_ASSETS } from "@/lib/characters";
 
 interface ProfileShareCardProps {
   appUrl: string;
@@ -45,9 +47,16 @@ export default function ProfileShareCard({ appUrl }: ProfileShareCardProps) {
         borderColor: "var(--color-border)",
       }}
     >
-      <p className="text-sm font-bold" style={{ color: "var(--color-text)" }}>
-        このサービスをシェア
-      </p>
+      <div className="flex items-start justify-between gap-3">
+        <p className="text-sm font-bold" style={{ color: "var(--color-text)" }}>
+          このサービスをシェア
+        </p>
+        <CharacterSticker
+          src={CHARACTER_ASSETS.profileShare.src}
+          alt={CHARACTER_ASSETS.profileShare.alt}
+          className="h-12 w-auto shrink-0 object-contain"
+        />
+      </div>
       <p
         className="mt-1 text-xs leading-relaxed"
         style={{ color: "var(--color-text-secondary)" }}

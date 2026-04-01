@@ -8,6 +8,7 @@ import FriendAvailabilityList from "@/components/FriendAvailabilityList";
 import PageHeader from "@/components/PageHeader";
 import TimeSlotPicker from "@/components/TimeSlotPicker";
 import { getTodayInTokyo } from "@/lib/date";
+import { markCalendarFlash } from "@/lib/flash";
 import { scheduleIdleTask } from "@/lib/idle";
 import {
   buildCalendarUrl as buildCalendarUrlForGroup,
@@ -90,6 +91,7 @@ export default function DayDetailClient({
 
       if (response.ok) {
         markCalendarDataStale();
+        markCalendarFlash("saved");
       }
     } catch {
       // ignore

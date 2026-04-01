@@ -1,7 +1,9 @@
 "use client";
 
+import CharacterSticker from "@/components/CharacterSticker";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Suspense, useEffect, useState, useRef } from "react";
+import { CHARACTER_ASSETS } from "@/lib/characters";
 
 function JoinLoadingFallback() {
   return (
@@ -83,11 +85,11 @@ function JoinContent() {
 
       {status === "success" && (
         <div className="text-center">
-          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full" style={{ backgroundColor: "var(--color-primary)" }}>
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="20,6 9,17 4,12" />
-            </svg>
-          </div>
+          <CharacterSticker
+            src={CHARACTER_ASSETS.joinSuccess.src}
+            alt={CHARACTER_ASSETS.joinSuccess.alt}
+            className="mx-auto mb-4 h-24 w-auto object-contain"
+          />
           <h1 className="text-xl font-bold">
             {groupName ? `「${groupName}」に${message ? "参加済みです" : "参加しました！"}` : "すでに参加済みです"}
           </h1>

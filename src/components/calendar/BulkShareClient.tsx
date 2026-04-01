@@ -9,6 +9,7 @@ import CalendarMonthSwitcher from "@/components/calendar/CalendarMonthSwitcher";
 import PageHeader from "@/components/PageHeader";
 import PageSpinner from "@/components/PageSpinner";
 import { createBulkAvailabilityPayloads, type BulkAvailabilityEntry } from "@/lib/availability";
+import { markCalendarFlash } from "@/lib/flash";
 import { scheduleIdleTask } from "@/lib/idle";
 import {
   buildCalendarUrl as buildCalendarUrlForGroup,
@@ -207,6 +208,7 @@ export default function BulkShareClient({
       }
 
       markCalendarDataStale();
+      markCalendarFlash("saved");
       router.push(getCalendarUrl());
       return;
     } catch {

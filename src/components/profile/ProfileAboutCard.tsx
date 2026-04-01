@@ -1,3 +1,6 @@
+import CharacterSticker from "@/components/CharacterSticker";
+import { CHARACTER_ASSETS } from "@/lib/characters";
+
 export default function ProfileAboutCard() {
   return (
     <section
@@ -7,9 +10,16 @@ export default function ProfileAboutCard() {
         borderColor: "var(--color-border)",
       }}
     >
-      <p className="text-sm font-bold" style={{ color: "var(--color-text)" }}>
-        シェア<span style={{ color: "var(--color-primary)" }}>ヒマ</span>とは？
-      </p>
+      <div className="flex items-start justify-between gap-3">
+        <p className="text-sm font-bold" style={{ color: "var(--color-text)" }}>
+          シェア<span style={{ color: "var(--color-primary)" }}>ヒマ</span>とは？
+        </p>
+        <CharacterSticker
+          src={CHARACTER_ASSETS.profileAbout.src}
+          alt={CHARACTER_ASSETS.profileAbout.alt}
+          className="h-12 w-auto shrink-0 object-contain"
+        />
+      </div>
       <p
         className="mt-1 text-xs leading-relaxed"
         style={{ color: "var(--color-text-secondary)" }}

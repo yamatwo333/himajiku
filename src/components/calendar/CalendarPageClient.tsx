@@ -15,8 +15,11 @@ import BrandLogo from "@/components/BrandLogo";
 import CalendarGrid from "@/components/CalendarGrid";
 import CalendarGroupSelector from "@/components/calendar/CalendarGroupSelector";
 import CalendarNoGroupState from "@/components/calendar/CalendarNoGroupState";
+import CharacterSticker from "@/components/CharacterSticker";
 import PageHeader from "@/components/PageHeader";
 import PageSpinner from "@/components/PageSpinner";
+import { CHARACTER_ASSETS } from "@/lib/characters";
+import { consumeCalendarFlash } from "@/lib/flash";
 import { scheduleIdleTask } from "@/lib/idle";
 import type { AvailabilityWithUser } from "@/lib/types";
 import {
@@ -62,6 +65,7 @@ export default function CalendarPageClient({
   const [groups] = useState<CalendarGroupInfo[]>(initialGroups);
   const [selectedGroupId, setSelectedGroupId] = useState(initialSelectedGroupId);
   const [currentUserId, setCurrentUserId] = useState<string | null>(initialCurrentUserId);
+  const [flashMessage, setFlashMessage] = useState<"saved" | null>(null);
   const initializedRef = useRef(false);
   const restoredStateRef = useRef(false);
   const pendingInitialStateRef = useRef<{ groupId: string; monthTime: number } | null>(null);
@@ -159,6 +163,20 @@ export default function CalendarPageClient({
     setAvailabilities(snapshot.availabilities);
     setCurrentUserId(snapshot.currentUserId);
   }, [currentMonth, fetchAvailabilitySnapshot, selectedGroupId]);
+
+  useEffect(() => {
+    const flash = consumeCalendarFlash();
+    if (!flash) {
+      return;
+    }
+
+    setFlashMessage(flash);
+    const timeoutId = window.setTimeout(() => setFlashMessage(null), 2400);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, []);
 
   useEffect(() => {
     const requestedGroupId = getRequestedGroupIdFromLocation();
@@ -298,6 +316,32 @@ export default function CalendarPageClient({
       <PageHeader backgroundColor="var(--color-bg)">
         <BrandLogo variant="wordmark" />
       </PageHeader>
+
+      {flashMessage === "saved" ? (
+        <div className="px-4 pt-3">
+          <div
+            className="flex items-center justify-between gap-3 rounded-2xl border px-4 py-3 shadow-sm"
+            style={{
+              backgroundColor: "rgba(255,255,255,0.92)",
+              borderColor: "rgba(14, 165, 233, 0.14)",
+            }}
+          >
+            <div className="min-w-0">
+              <p className="text-sm font-bold" style={{ color: "var(--color-text)" }}>
+                ヒマをシェアしました
+              </p>
+              <p className="mt-0.5 text-xs" style={{ color: "var(--color-text-secondary)" }}>
+                あとから日ごとに微調整もできます
+              </p>
+            </div>
+            <CharacterSticker
+              src={CHARACTER_ASSETS.saveSuccess.src}
+              alt={CHARACTER_ASSETS.saveSuccess.alt}
+              className="h-14 w-auto shrink-0 object-contain"
+            />
+          </div>
+        </div>
+      ) : null}
 
       <CalendarGroupSelector
         groups={groups}

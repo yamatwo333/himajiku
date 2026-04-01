@@ -1,6 +1,8 @@
 import Link from "next/link";
+import CharacterSticker from "@/components/CharacterSticker";
 import type { GroupSummary } from "@/components/groups/types";
 import PageSpinner from "@/components/PageSpinner";
+import { CHARACTER_ASSETS } from "@/lib/characters";
 
 interface GroupsOverviewListProps {
   groups: GroupSummary[];
@@ -18,6 +20,11 @@ export default function GroupsOverviewList({
   if (groups.length === 0) {
     return (
       <div className="py-16 text-center">
+        <CharacterSticker
+          src={CHARACTER_ASSETS.groupsEmpty.src}
+          alt={CHARACTER_ASSETS.groupsEmpty.alt}
+          className="mx-auto mb-4 h-24 w-auto object-contain"
+        />
         <p className="text-sm font-medium" style={{ color: "var(--color-text)" }}>
           まだグループに参加していません
         </p>
