@@ -3,6 +3,7 @@ import { addMonths, startOfMonth } from "date-fns";
 export const CALENDAR_MONTH_STORAGE_KEY = "calendarMonth";
 export const SELECTED_GROUP_STORAGE_KEY = "selectedGroupId";
 export const CALENDAR_STATE_CHANGE_EVENT = "calendar-state-change";
+export const CALENDAR_DATA_STALE_KEY = "calendarDataStale";
 
 function dispatchCalendarStateChange() {
   if (typeof window === "undefined") {
@@ -76,6 +77,29 @@ export function persistSelectedGroupId(groupId: string) {
 
   sessionStorage.removeItem(SELECTED_GROUP_STORAGE_KEY);
   dispatchCalendarStateChange();
+}
+
+export function markCalendarDataStale() {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  sessionStorage.setItem(CALENDAR_DATA_STALE_KEY, "1");
+  dispatchCalendarStateChange();
+}
+
+export function consumeCalendarDataStale() {
+  if (typeof window === "undefined") {
+    return false;
+  }
+
+  const isStale = sessionStorage.getItem(CALENDAR_DATA_STALE_KEY) === "1";
+
+  if (isStale) {
+    sessionStorage.removeItem(CALENDAR_DATA_STALE_KEY);
+  }
+
+  return isStale;
 }
 
 export function getRequestedGroupIdFromLocation() {

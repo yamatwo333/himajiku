@@ -12,6 +12,7 @@ import { createBulkAvailabilityPayloads, type BulkAvailabilityEntry } from "@/li
 import {
   buildCalendarUrl as buildCalendarUrlForGroup,
   getCalendarMonthBounds,
+  markCalendarDataStale,
   persistCalendarMonth,
   readSelectedGroupId,
   readStoredCalendarMonth,
@@ -198,6 +199,7 @@ export default function BulkShareClient({
         return;
       }
 
+      markCalendarDataStale();
       router.push(getCalendarUrl());
       return;
     } catch {

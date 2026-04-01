@@ -10,6 +10,7 @@ import TimeSlotPicker from "@/components/TimeSlotPicker";
 import { getTodayInTokyo } from "@/lib/date";
 import {
   buildCalendarUrl as buildCalendarUrlForGroup,
+  markCalendarDataStale,
   readStoredCalendarMonth,
 } from "@/lib/calendar";
 import {
@@ -63,7 +64,7 @@ export default function DayDetailClient({
     setSaving(true);
 
     try {
-      await fetch("/api/availability", {
+      const response = await fetch("/api/availability", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -72,6 +73,10 @@ export default function DayDetailClient({
           comment,
         }),
       });
+
+      if (response.ok) {
+        markCalendarDataStale();
+      }
     } catch {
       // ignore
     }

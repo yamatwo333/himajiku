@@ -86,6 +86,25 @@ export default function ProfileShareCard({ appUrl }: ProfileShareCardProps) {
           {copied ? "コピーしました" : "リンクをコピー"}
         </button>
       </div>
+
+      <div
+        className="mt-3 rounded-xl border px-3 py-3"
+        style={{
+          backgroundColor: "rgba(14, 165, 233, 0.05)",
+          borderColor: "rgba(14, 165, 233, 0.12)",
+        }}
+      >
+        <p className="text-xs font-bold" style={{ color: "var(--color-text)" }}>
+          すぐ開けるように保存
+        </p>
+        <p
+          className="mt-1 text-[11px] leading-relaxed"
+          style={{ color: "var(--color-text-secondary)" }}
+        >
+          ブラウザの仕様上、ブックマーク追加をこちらから直接開くことはできません。
+          SafariやChromeのメニューから、ブックマークやホーム画面への追加ができます。
+        </p>
+      </div>
     </section>
   );
 }

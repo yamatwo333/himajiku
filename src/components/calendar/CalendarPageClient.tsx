@@ -11,6 +11,7 @@ import PageHeader from "@/components/PageHeader";
 import PageSpinner from "@/components/PageSpinner";
 import type { AvailabilityWithUser } from "@/lib/types";
 import {
+  consumeCalendarDataStale,
   getRequestedCalendarMonthFromLocation,
   getRequestedGroupIdFromLocation,
   replaceCalendarViewInUrl,
@@ -54,6 +55,7 @@ export default function CalendarPageClient({
   const restoredStateRef = useRef(false);
   const fetchedOnceRef = useRef(false);
   const pendingInitialStateRef = useRef<{ groupId: string; monthTime: number } | null>(null);
+  const forceRefreshRef = useRef(false);
   const cacheRef = useRef(
     new Map<
       string,
@@ -75,9 +77,9 @@ export default function CalendarPageClient({
     replaceCalendarViewInUrl({ groupId, month });
   }, []);
 
-  const fetchAvailabilities = useCallback(async () => {
+  const fetchAvailabilities = useCallback(async (options?: { force?: boolean }) => {
     const cached = cacheRef.current.get(cacheKey);
-    if (cached) {
+    if (!options?.force && cached) {
       setAvailabilities(cached.availabilities);
       setCurrentUserId(cached.currentUserId);
       setAvailabilitiesLoading(false);
@@ -144,10 +146,13 @@ export default function CalendarPageClient({
 
     persistSelectedGroupId(nextGroupId);
     persistCalendarMonth(nextMonth);
+    forceRefreshRef.current = consumeCalendarDataStale();
 
     if (changed) {
       setAvailabilitiesLoading(true);
       syncCalendarUrl(nextGroupId, nextMonth);
+    } else if (forceRefreshRef.current) {
+      setAvailabilitiesLoading(true);
     }
 
     restoredStateRef.current = changed;
@@ -176,6 +181,12 @@ export default function CalendarPageClient({
       pendingInitialStateRef.current = null;
 
       if (!restoredStateRef.current) {
+        if (forceRefreshRef.current) {
+          forceRefreshRef.current = false;
+          fetchAvailabilities({ force: true });
+          return;
+        }
+
         fetchedOnceRef.current = true;
         return;
       }
@@ -243,30 +254,28 @@ export default function CalendarPageClient({
         </button>
 
         {selectedGroupId ? (
-          <button
-            onClick={() => router.push(`/groups/${selectedGroupId}`)}
-            className="flex w-full items-center justify-between rounded-xl border px-4 py-3 text-left text-sm font-bold shadow-sm transition-transform active:scale-[0.98]"
-            style={{
-              backgroundColor: "rgba(14, 165, 233, 0.08)",
-              borderColor: "rgba(14, 165, 233, 0.16)",
-              color: "var(--color-primary)",
-            }}
-          >
-            <span>このグループの設定を見る</span>
-            <svg
-              width="18"
-              height="18"
-              viewBox="0 0 20 20"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
+          <div className="flex justify-center">
+            <button
+              onClick={() => router.push(`/groups/${selectedGroupId}`)}
+              className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-bold transition-transform active:scale-[0.98]"
+              style={{ color: "var(--color-primary)" }}
             >
-              <path d="M4 10h12" />
-              <path d="m10 4 6 6-6 6" />
-            </svg>
-          </button>
+              <span>このグループの設定を見る</span>
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 20 20"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M4 10h12" />
+                <path d="m10 4 6 6-6 6" />
+              </svg>
+            </button>
+          </div>
         ) : null}
       </div>
     </div>
