@@ -1,5 +1,5 @@
-import LoginScreen from "@/components/login/LoginScreen";
+import LandingHero from "@/components/login/LandingHero";
 
 export default function Home() {
-  return <LoginScreen />;
+  return <LandingHero />;
 }

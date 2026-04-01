@@ -10,16 +10,8 @@ function createForwardResponse(headers: Headers) {
   });
 }
 
-function hasSupabaseAuthCookie(request: NextRequest) {
-  return request.cookies
-    .getAll()
-    .some(({ name }) => name.startsWith("sb-") && name.includes("auth-token"));
-}
-
 export async function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
-  const isRootEntry = pathname === "/";
-  const isLoginPage = pathname === "/login";
   const shouldSkipAuthLookup =
     pathname.startsWith("/auth") ||
     pathname.startsWith("/api") ||
@@ -27,31 +19,6 @@ export async function proxy(request: NextRequest) {
 
   if (shouldSkipAuthLookup) {
     return NextResponse.next({ request });
-  }
-
-  if (isLoginPage) {
-    return NextResponse.next({ request });
-  }
-
-  if (isRootEntry) {
-    if (!hasSupabaseAuthCookie(request)) {
-      return NextResponse.next({ request });
-    }
-
-    const redirect = request.nextUrl.searchParams.get("redirect");
-    const url = request.nextUrl.clone();
-
-    if (redirect && redirect.startsWith("/") && !redirect.startsWith("/login")) {
-      url.pathname = redirect.split("?")[0];
-      url.search = redirect.includes("?")
-        ? redirect.substring(redirect.indexOf("?"))
-        : "";
-    } else {
-      url.pathname = "/calendar";
-      url.search = "";
-    }
-
-    return NextResponse.redirect(url);
   }
 
   const requestHeaders = new Headers(request.headers);
@@ -106,6 +73,8 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!api|auth|join|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    "/calendar/:path*",
+    "/groups/:path*",
+    "/profile",
   ],
 };
