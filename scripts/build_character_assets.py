@@ -21,7 +21,7 @@ ASSETS = [
     },
     {
         "output": "calendar-empty-rain.png",
-        "box": (86, 1301, 410, 1519),
+        "box": (500, 1278, 830, 1501),
         "width": 220,
         "padding": 18,
     },
@@ -33,7 +33,7 @@ ASSETS = [
     },
     {
         "output": "line-unlinked-thunder.png",
-        "box": (500, 1278, 830, 1501),
+        "box": (909, 1242, 1308, 1577),
         "width": 220,
         "padding": 18,
     },
