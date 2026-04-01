@@ -56,10 +56,10 @@ function LoginContent() {
   return (
     <div className="flex min-h-svh flex-col" style={{ backgroundColor: "var(--color-bg)" }}>
       <div className="flex flex-1 flex-col items-center px-6 pt-[calc(env(safe-area-inset-top)+2.75rem)]">
-        <div className="mb-7 text-center">
-          <BrandLogo variant="lockup" className="mx-auto" />
+        <div className="mb-6 text-center">
+          <BrandLogo variant="lockup" className="mx-auto -mb-2" />
           <p
-            className="mx-auto mt-4 max-w-[320px] text-sm leading-relaxed"
+            className="mx-auto mt-2.5 max-w-[320px] text-sm leading-relaxed"
             style={{ color: "var(--color-text-secondary)" }}
           >
             ヒマな時間をシェアして、なんとなく集まろう

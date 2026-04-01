@@ -29,7 +29,7 @@ export default function BrandLogo({
 }: BrandLogoProps) {
   if (variant === "lockup") {
     return (
-      <div className={`inline-flex w-full justify-center ${className}`.trim()}>
+      <div className={`flex w-full justify-center ${className}`.trim()}>
         <Image
           src={LOGIN_LOGO.src}
           alt="シェアヒマ"
@@ -37,7 +37,7 @@ export default function BrandLogo({
           height={LOGIN_LOGO.height}
           priority
           sizes="(max-width: 480px) 276px, 276px"
-          className="h-auto w-full max-w-[276px] object-contain"
+          className="block h-auto w-full max-w-[276px] object-contain"
         />
       </div>
     );
