@@ -1,5 +1,5 @@
-import LandingHero from "@/components/login/LandingHero";
+import EntryGate from "@/components/login/EntryGate";
 
 export default function Home() {
-  return <LandingHero />;
+  return <EntryGate />;
 }

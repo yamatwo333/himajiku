@@ -213,27 +213,21 @@ export default function CalendarPageClient({
         }}
       />
 
-      <div className="space-y-3 px-4 pt-3">
+      <div className="px-4 pt-3">
         {selectedGroupId ? (
           <button
             onClick={() => router.push(`/groups/${selectedGroupId}`)}
-            className="flex w-full items-center justify-between rounded-2xl px-4 py-4 text-left shadow-sm transition-transform active:scale-[0.98]"
+            className="flex w-full items-center justify-between rounded-xl border px-4 py-3 text-left text-sm font-bold shadow-sm transition-transform active:scale-[0.98]"
             style={{
-              background:
-                "linear-gradient(135deg, rgba(14,165,233,0.16), rgba(14,165,233,0.08))",
-              border: "1px solid rgba(14,165,233,0.18)",
-              color: "var(--color-text)",
+              backgroundColor: "rgba(14, 165, 233, 0.08)",
+              borderColor: "rgba(14, 165, 233, 0.16)",
+              color: "var(--color-primary)",
             }}
           >
-            <div>
-              <p className="text-base font-bold">このグループの設定を見る</p>
-              <p className="mt-1 text-xs" style={{ color: "var(--color-text-secondary)" }}>
-                通知条件や招待情報、LINE連携を確認できます
-              </p>
-            </div>
+            <span>このグループの設定を見る</span>
             <svg
-              width="20"
-              height="20"
+              width="18"
+              height="18"
               viewBox="0 0 20 20"
               fill="none"
               stroke="currentColor"
@@ -246,37 +240,6 @@ export default function CalendarPageClient({
             </svg>
           </button>
         ) : null}
-
-        <button
-          onClick={() => router.push("/calendar/bulk")}
-          className="flex w-full items-center justify-between rounded-2xl px-4 py-4 text-left shadow-sm transition-transform active:scale-[0.98]"
-          style={{
-            background:
-              "linear-gradient(135deg, rgba(245,158,11,0.16), rgba(245,158,11,0.08))",
-            border: "1px solid rgba(245,158,11,0.2)",
-            color: "var(--color-text)",
-          }}
-        >
-          <div>
-            <p className="text-base font-bold">ヒマな日をまとめてシェア</p>
-            <p className="mt-1 text-xs" style={{ color: "var(--color-text-secondary)" }}>
-              当日以降の予定をまとめて入れて、あとから微調整できます
-            </p>
-          </div>
-          <svg
-            width="20"
-            height="20"
-            viewBox="0 0 20 20"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <path d="M4 10h12" />
-            <path d="m10 4 6 6-6 6" />
-          </svg>
-        </button>
       </div>
 
       <div className="pt-3">
@@ -297,6 +260,16 @@ export default function CalendarPageClient({
             />
           </>
         )}
+      </div>
+
+      <div className="px-4 pt-4 pb-8">
+        <button
+          onClick={() => router.push("/calendar/bulk")}
+          className="w-full rounded-xl px-4 py-3.5 text-sm font-bold text-white shadow-sm transition-transform active:scale-[0.98]"
+          style={{ backgroundColor: "var(--color-primary)" }}
+        >
+          ヒマな日をまとめてシェア
+        </button>
       </div>
     </div>
   );

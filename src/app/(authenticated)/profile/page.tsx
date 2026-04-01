@@ -2,9 +2,12 @@ import { redirect } from "next/navigation";
 import PageHeader from "@/components/PageHeader";
 import ProfileAboutCard from "@/components/profile/ProfileAboutCard";
 import ProfileLogoutButton from "@/components/profile/ProfileLogoutButton";
+import ProfileShareCard from "@/components/profile/ProfileShareCard";
 import ProfileSummaryCard from "@/components/profile/ProfileSummaryCard";
 import { getRequestUserId } from "@/lib/request-user";
 import { createAdminClient } from "@/lib/supabase/admin";
+
+const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://sharehima.vercel.app";
 
 export default async function ProfilePage() {
   const userId = await getRequestUserId();
@@ -29,6 +32,7 @@ export default async function ProfilePage() {
           avatarUrl={profile?.avatar_url || null}
         />
         <ProfileAboutCard />
+        <ProfileShareCard appUrl={appUrl} />
         <ProfileLogoutButton />
       </div>
     </div>
