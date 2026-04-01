@@ -9,6 +9,7 @@ import CalendarMonthSwitcher from "@/components/calendar/CalendarMonthSwitcher";
 import PageHeader from "@/components/PageHeader";
 import PageSpinner from "@/components/PageSpinner";
 import { createBulkAvailabilityPayloads, type BulkAvailabilityEntry } from "@/lib/availability";
+import { scheduleIdleTask } from "@/lib/idle";
 import {
   buildCalendarUrl as buildCalendarUrlForGroup,
   getCalendarMonthBounds,
@@ -48,7 +49,6 @@ export default function BulkShareClient({
   const [saving, setSaving] = useState(false);
   const initializedRef = useRef(false);
   const restoredStateRef = useRef(false);
-  const fetchedOnceRef = useRef(false);
   const pendingInitialMonthRef = useRef<number | null>(null);
   const loadedMonthsRef = useRef(new Set([format(initialMonth, "yyyy-MM")]));
   const canGoPrev = currentMonth > minMonth;
@@ -144,15 +144,22 @@ export default function BulkShareClient({
       pendingInitialMonthRef.current = null;
 
       if (!restoredStateRef.current) {
-        fetchedOnceRef.current = true;
         return;
       }
     }
 
-    fetchedOnceRef.current = true;
-
     fetchExisting();
   }, [currentMonth, fetchExisting]);
+
+  useEffect(() => {
+    const task = scheduleIdleTask(() => {
+      router.prefetch(getCalendarUrl());
+    }, 500);
+
+    return () => {
+      task.cancel();
+    };
+  }, [getCalendarUrl, router]);
 
   const updateComment = (dateStr: string, comment: string) => {
     setEntries((prev) => {

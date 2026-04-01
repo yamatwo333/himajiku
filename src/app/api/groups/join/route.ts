@@ -1,7 +1,7 @@
 import { after, NextRequest, NextResponse } from "next/server";
 import { getTodayInTokyo } from "@/lib/date";
 import { ensureProfile } from "@/lib/ensure-profile";
-import { sendGroupAvailabilityDigestNotification } from "@/lib/server/notify";
+import { runGroupJoinPostSaveJob } from "@/lib/server/jobs/availability-jobs";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getRouteUser } from "@/lib/supabase/route";
 
@@ -73,9 +73,9 @@ export async function POST(request: NextRequest) {
 
     if (group.line_group_id && futureDates.length > 0) {
       after(async () => {
-        await sendGroupAvailabilityDigestNotification({
-          dates: futureDates,
-          groupId: group.id,
+        await runGroupJoinPostSaveJob({
+          group,
+          futureDates,
         });
       });
     }

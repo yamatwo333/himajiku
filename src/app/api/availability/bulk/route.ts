@@ -1,8 +1,7 @@
 import { after, NextRequest, NextResponse } from "next/server";
 import { isDateBeforeTodayInTokyo } from "@/lib/date";
 import { ensureProfile } from "@/lib/ensure-profile";
-import { getUserGroupIds } from "@/lib/server/groups";
-import { sendGroupAvailabilityNotification } from "@/lib/server/notify";
+import { runAvailabilityPostSaveJob } from "@/lib/server/jobs/availability-jobs";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getRouteUser } from "@/lib/supabase/route";
 import { normalizeTimeSlots } from "@/lib/types";
@@ -57,20 +56,11 @@ export async function POST(request: NextRequest) {
 
     after(async () => {
       try {
-        const groupIds = await getUserGroupIds(supabaseAdmin, user.id);
-
-        if (groupIds.length > 0) {
-          await Promise.allSettled(
-            uniqueDates.flatMap((date) =>
-              groupIds.map((groupId) =>
-                sendGroupAvailabilityNotification({
-                  date,
-                  groupId,
-                })
-              )
-            )
-          );
-        }
+        await runAvailabilityPostSaveJob({
+          supabase: supabaseAdmin,
+          userId: user.id,
+          dates: uniqueDates,
+        });
       } catch (error) {
         console.error("Bulk availability post-save tasks error:", error);
       }

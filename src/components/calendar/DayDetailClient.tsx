@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { format, isValid, parse } from "date-fns";
 import { ja } from "date-fns/locale";
@@ -8,6 +8,7 @@ import FriendAvailabilityList from "@/components/FriendAvailabilityList";
 import PageHeader from "@/components/PageHeader";
 import TimeSlotPicker from "@/components/TimeSlotPicker";
 import { getTodayInTokyo } from "@/lib/date";
+import { scheduleIdleTask } from "@/lib/idle";
 import {
   buildCalendarUrl as buildCalendarUrlForGroup,
   markCalendarDataStale,
@@ -48,7 +49,20 @@ export default function DayDetailClient({
   const [saving, setSaving] = useState(false);
   const hasExisting = Boolean(myAvailability);
 
-  const getCalendarUrl = () => buildCalendarUrlForGroup(groupId, readStoredCalendarMonth());
+  const getCalendarUrl = useCallback(
+    () => buildCalendarUrlForGroup(groupId, readStoredCalendarMonth()),
+    [groupId]
+  );
+
+  useEffect(() => {
+    const task = scheduleIdleTask(() => {
+      router.prefetch(getCalendarUrl());
+    }, 500);
+
+    return () => {
+      task.cancel();
+    };
+  }, [getCalendarUrl, router]);
 
   const handleBack = () => {
     if (window.history.length > 1) {

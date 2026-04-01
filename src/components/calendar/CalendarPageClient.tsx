@@ -17,6 +17,7 @@ import CalendarGroupSelector from "@/components/calendar/CalendarGroupSelector";
 import CalendarNoGroupState from "@/components/calendar/CalendarNoGroupState";
 import PageHeader from "@/components/PageHeader";
 import PageSpinner from "@/components/PageSpinner";
+import { scheduleIdleTask } from "@/lib/idle";
 import type { AvailabilityWithUser } from "@/lib/types";
 import {
   consumeCalendarDataStale,
@@ -63,7 +64,6 @@ export default function CalendarPageClient({
   const [currentUserId, setCurrentUserId] = useState<string | null>(initialCurrentUserId);
   const initializedRef = useRef(false);
   const restoredStateRef = useRef(false);
-  const fetchedOnceRef = useRef(false);
   const pendingInitialStateRef = useRef<{ groupId: string; monthTime: number } | null>(null);
   const forceRefreshRef = useRef(false);
   const cacheRef = useRef(
@@ -228,23 +228,26 @@ export default function CalendarPageClient({
           fetchAvailabilities({ force: true });
           return;
         }
-
-        fetchedOnceRef.current = true;
         return;
       }
     }
-
-    fetchedOnceRef.current = true;
 
     fetchAvailabilities();
   }, [currentMonth, fetchAvailabilities, selectedGroupId]);
 
   useEffect(() => {
-    router.prefetch("/calendar/bulk");
+    const tasks = [
+      scheduleIdleTask(() => router.prefetch("/calendar/bulk"), 500),
+      selectedGroupId
+        ? scheduleIdleTask(() => router.prefetch(`/groups/${selectedGroupId}`), 500)
+        : null,
+    ].filter(Boolean);
 
-    if (selectedGroupId) {
-      router.prefetch(`/groups/${selectedGroupId}`);
-    }
+    return () => {
+      for (const task of tasks) {
+        task?.cancel();
+      }
+    };
   }, [router, selectedGroupId]);
 
   useEffect(() => {
@@ -256,12 +259,20 @@ export default function CalendarPageClient({
       (month) => month >= minMonth && month <= maxMonth
     );
 
-    neighborMonths.forEach((month) => {
-      void fetchAvailabilitySnapshot({
-        month,
-        groupId: selectedGroupId,
-      });
-    });
+    const tasks = neighborMonths.map((month) =>
+      scheduleIdleTask(() => {
+        void fetchAvailabilitySnapshot({
+          month,
+          groupId: selectedGroupId,
+        });
+      }, 1200)
+    );
+
+    return () => {
+      for (const task of tasks) {
+        task.cancel();
+      }
+    };
   }, [
     availabilitiesLoading,
     currentMonth,
