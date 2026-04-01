@@ -24,12 +24,29 @@ export async function proxy(request: NextRequest) {
     pathname.startsWith("/api") ||
     pathname.startsWith("/join");
 
-  if (isPublicEntry && !hasSupabaseAuthCookie(request)) {
+  if (shouldSkipAuthLookup) {
     return NextResponse.next({ request });
   }
 
-  if (shouldSkipAuthLookup) {
-    return NextResponse.next({ request });
+  if (isPublicEntry) {
+    if (!hasSupabaseAuthCookie(request)) {
+      return NextResponse.next({ request });
+    }
+
+    const redirect = request.nextUrl.searchParams.get("redirect");
+    const url = request.nextUrl.clone();
+
+    if (redirect && redirect.startsWith("/") && !redirect.startsWith("/login")) {
+      url.pathname = redirect.split("?")[0];
+      url.search = redirect.includes("?")
+        ? redirect.substring(redirect.indexOf("?"))
+        : "";
+    } else {
+      url.pathname = "/calendar";
+      url.search = "";
+    }
+
+    return NextResponse.redirect(url);
   }
 
   const requestHeaders = new Headers(request.headers);
@@ -77,23 +94,6 @@ export async function proxy(request: NextRequest) {
       nextResponse.cookies.set(cookie);
     }
     supabaseResponse = nextResponse;
-  }
-
-  if (user && (pathname === "/" || pathname === "/login")) {
-    const redirect = request.nextUrl.searchParams.get("redirect");
-    const url = request.nextUrl.clone();
-
-    if (redirect && redirect.startsWith("/") && !redirect.startsWith("/login")) {
-      url.pathname = redirect.split("?")[0];
-      url.search = redirect.includes("?")
-        ? redirect.substring(redirect.indexOf("?"))
-        : "";
-    } else {
-      url.pathname = "/calendar";
-      url.search = "";
-    }
-
-    return NextResponse.redirect(url);
   }
 
   return supabaseResponse;
