@@ -10,6 +10,12 @@ function createForwardResponse(headers: Headers) {
   });
 }
 
+function hasSupabaseAuthCookie(request: NextRequest) {
+  return request.cookies
+    .getAll()
+    .some((cookie) => cookie.name.startsWith("sb-") && cookie.name.includes("auth-token"));
+}
+
 export async function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
   const shouldSkipAuthLookup =
@@ -19,6 +25,15 @@ export async function proxy(request: NextRequest) {
 
   if (shouldSkipAuthLookup) {
     return NextResponse.next({ request });
+  }
+
+  if (!hasSupabaseAuthCookie(request)) {
+    const url = request.nextUrl.clone();
+    const redirectTo = pathname + request.nextUrl.search;
+    url.pathname = "/login";
+    url.search = "";
+    url.searchParams.set("redirect", redirectTo);
+    return NextResponse.redirect(url);
   }
 
   const requestHeaders = new Headers(request.headers);

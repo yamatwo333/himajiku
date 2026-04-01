@@ -2,7 +2,15 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { endOfMonth, endOfWeek, format, startOfMonth, startOfWeek } from "date-fns";
+import {
+  addMonths,
+  endOfMonth,
+  endOfWeek,
+  format,
+  startOfMonth,
+  startOfWeek,
+  subMonths,
+} from "date-fns";
 import BrandLogo from "@/components/BrandLogo";
 import CalendarGrid from "@/components/CalendarGrid";
 import CalendarGroupSelector from "@/components/calendar/CalendarGroupSelector";
@@ -12,6 +20,7 @@ import PageSpinner from "@/components/PageSpinner";
 import type { AvailabilityWithUser } from "@/lib/types";
 import {
   consumeCalendarDataStale,
+  getCalendarMonthBounds,
   getRequestedCalendarMonthFromLocation,
   getRequestedGroupIdFromLocation,
   replaceCalendarViewInUrl,
@@ -45,6 +54,7 @@ export default function CalendarPageClient({
   const router = useRouter();
   const baseDate = useMemo(() => new Date(initialMonthIso), [initialMonthIso]);
   const initialMonth = useMemo(() => new Date(initialMonthIso), [initialMonthIso]);
+  const { minMonth, maxMonth } = useMemo(() => getCalendarMonthBounds(), []);
   const [availabilities, setAvailabilities] = useState<AvailabilityWithUser[]>(initialAvailabilities);
   const [currentMonth, setCurrentMonth] = useState(() => initialMonth);
   const [availabilitiesLoading, setAvailabilitiesLoading] = useState(false);
@@ -68,55 +78,87 @@ export default function CalendarPageClient({
     ])
   );
 
-  const cacheKey = useMemo(
-    () => `${selectedGroupId}:${format(currentMonth, "yyyy-MM")}`,
-    [currentMonth, selectedGroupId]
-  );
-
   const syncCalendarUrl = useCallback((groupId: string, month: Date) => {
     replaceCalendarViewInUrl({ groupId, month });
   }, []);
 
-  const fetchAvailabilities = useCallback(async (options?: { force?: boolean }) => {
-    const cached = cacheRef.current.get(cacheKey);
-    if (!options?.force && cached) {
-      setAvailabilities(cached.availabilities);
-      setCurrentUserId(cached.currentUserId);
-      setAvailabilitiesLoading(false);
-      return;
-    }
+  const fetchAvailabilitySnapshot = useCallback(
+    async ({
+      month,
+      groupId,
+      force = false,
+      withLoading = false,
+    }: {
+      month: Date;
+      groupId: string;
+      force?: boolean;
+      withLoading?: boolean;
+    }) => {
+      const key = `${groupId}:${format(month, "yyyy-MM")}`;
+      const cached = cacheRef.current.get(key);
 
-    setAvailabilitiesLoading(true);
-
-    try {
-      const params = new URLSearchParams({
-        start: format(startOfWeek(startOfMonth(currentMonth), { weekStartsOn: 0 }), "yyyy-MM-dd"),
-        end: format(endOfWeek(endOfMonth(currentMonth), { weekStartsOn: 0 }), "yyyy-MM-dd"),
-      });
-
-      if (selectedGroupId) {
-        params.set("group", selectedGroupId);
+      if (!force && cached) {
+        return cached;
       }
 
-      const res = await fetch(`/api/availability/month?${params.toString()}`);
+      if (withLoading) {
+        setAvailabilitiesLoading(true);
+      }
 
-      if (res.ok) {
+      try {
+        const params = new URLSearchParams({
+          start: format(startOfWeek(startOfMonth(month), { weekStartsOn: 0 }), "yyyy-MM-dd"),
+          end: format(endOfWeek(endOfMonth(month), { weekStartsOn: 0 }), "yyyy-MM-dd"),
+        });
+
+        if (groupId) {
+          params.set("group", groupId);
+        }
+
+        const res = await fetch(`/api/availability/month?${params.toString()}`);
+
+        if (!res.ok) {
+          return null;
+        }
+
         const data = await res.json();
         const nextAvailabilities = data.availabilities || [];
         const nextCurrentUserId = data.currentUserId || null;
-        cacheRef.current.set(cacheKey, {
+
+        const snapshot = {
           availabilities: nextAvailabilities,
           currentUserId: nextCurrentUserId,
-        });
-        setAvailabilities(nextAvailabilities);
-        setCurrentUserId(nextCurrentUserId);
+        };
+
+        cacheRef.current.set(key, snapshot);
+
+        return snapshot;
+      } catch {
+        return null;
+      } finally {
+        if (withLoading) {
+          setAvailabilitiesLoading(false);
+        }
       }
-    } catch {
-      // ignore
+    },
+    []
+  );
+
+  const fetchAvailabilities = useCallback(async (options?: { force?: boolean }) => {
+    const snapshot = await fetchAvailabilitySnapshot({
+      month: currentMonth,
+      groupId: selectedGroupId,
+      force: options?.force,
+      withLoading: true,
+    });
+
+    if (!snapshot) {
+      return;
     }
 
-    setAvailabilitiesLoading(false);
-  }, [cacheKey, currentMonth, selectedGroupId]);
+    setAvailabilities(snapshot.availabilities);
+    setCurrentUserId(snapshot.currentUserId);
+  }, [currentMonth, fetchAvailabilitySnapshot, selectedGroupId]);
 
   useEffect(() => {
     const requestedGroupId = getRequestedGroupIdFromLocation();
@@ -196,6 +238,38 @@ export default function CalendarPageClient({
 
     fetchAvailabilities();
   }, [currentMonth, fetchAvailabilities, selectedGroupId]);
+
+  useEffect(() => {
+    router.prefetch("/calendar/bulk");
+
+    if (selectedGroupId) {
+      router.prefetch(`/groups/${selectedGroupId}`);
+    }
+  }, [router, selectedGroupId]);
+
+  useEffect(() => {
+    if (availabilitiesLoading) {
+      return;
+    }
+
+    const neighborMonths = [subMonths(currentMonth, 1), addMonths(currentMonth, 1)].filter(
+      (month) => month >= minMonth && month <= maxMonth
+    );
+
+    neighborMonths.forEach((month) => {
+      void fetchAvailabilitySnapshot({
+        month,
+        groupId: selectedGroupId,
+      });
+    });
+  }, [
+    availabilitiesLoading,
+    currentMonth,
+    fetchAvailabilitySnapshot,
+    maxMonth,
+    minMonth,
+    selectedGroupId,
+  ]);
 
   const handleMonthChange = useCallback((month: Date) => {
     setCurrentMonth(month);
