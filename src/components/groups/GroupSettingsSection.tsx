@@ -5,7 +5,6 @@ interface GroupSettingsSectionProps {
   notifyThreshold: number;
   onEditNameChange: (value: string) => void;
   onNotifyThresholdChange: (value: number) => void;
-  onOpenCalendar: () => void;
 }
 
 export default function GroupSettingsSection({
@@ -15,7 +14,6 @@ export default function GroupSettingsSection({
   notifyThreshold,
   onEditNameChange,
   onNotifyThresholdChange,
-  onOpenCalendar,
 }: GroupSettingsSectionProps) {
   if (isOwner) {
     return (
@@ -75,17 +73,6 @@ export default function GroupSettingsSection({
           </p>
         </section>
 
-        <button
-          onClick={onOpenCalendar}
-          className="w-full rounded-xl border px-4 py-3 text-sm font-medium"
-          style={{
-            backgroundColor: "var(--color-surface)",
-            borderColor: "var(--color-border)",
-            color: "var(--color-primary)",
-          }}
-        >
-          このグループのカレンダーを見る
-        </button>
       </>
     );
   }
@@ -132,18 +119,6 @@ export default function GroupSettingsSection({
           マークとLINE通知の基準です
         </p>
       </section>
-
-      <button
-        onClick={onOpenCalendar}
-        className="w-full rounded-xl border px-4 py-3 text-sm font-medium"
-        style={{
-          backgroundColor: "var(--color-surface)",
-          borderColor: "var(--color-border)",
-          color: "var(--color-primary)",
-        }}
-      >
-        このグループのカレンダーを見る
-      </button>
     </>
   );
 }

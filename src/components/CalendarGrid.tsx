@@ -274,7 +274,10 @@ export default function CalendarGrid({ availabilities, onMonthChange, groupId, n
       </div>
 
       {/* Legend */}
-      <div className="mt-4 flex items-center justify-center gap-4 text-xs" style={{ color: "var(--color-text-secondary)" }}>
+      <div
+        className="mx-auto mt-4 grid max-w-[320px] grid-cols-2 gap-x-4 gap-y-2 text-xs"
+        style={{ color: "var(--color-text-secondary)" }}
+      >
         <span className="flex items-center gap-1">
           <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ backgroundColor: "var(--color-free-self)" }} />
           自分がヒマ
@@ -292,7 +295,7 @@ export default function CalendarGrid({ availabilities, onMonthChange, groupId, n
             className="inline-block h-2.5 w-2.5 rounded-full border"
             style={{ borderColor: "var(--color-text-secondary)" }}
           />
-          未定あり
+          未定
         </span>
       </div>
     </div>

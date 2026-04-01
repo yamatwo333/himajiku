@@ -263,6 +263,37 @@ export default function GroupDetailClient({
       />
 
       <div className="space-y-6 px-4 pt-5 pb-8">
+        <button
+          onClick={handleOpenCalendar}
+          className="flex w-full items-center justify-between rounded-2xl px-4 py-4 text-left shadow-sm transition-transform active:scale-[0.98]"
+          style={{
+            background:
+              "linear-gradient(135deg, rgba(14,165,233,0.16), rgba(14,165,233,0.08))",
+            border: "1px solid rgba(14,165,233,0.18)",
+            color: "var(--color-text)",
+          }}
+        >
+          <div>
+            <p className="text-base font-bold">このグループのカレンダーを見る</p>
+            <p className="mt-1 text-xs" style={{ color: "var(--color-text-secondary)" }}>
+              いまの設定のまま、ヒマの重なりをすぐ確認できます
+            </p>
+          </div>
+          <svg
+            width="20"
+            height="20"
+            viewBox="0 0 20 20"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M4 10h12" />
+            <path d="m10 4 6 6-6 6" />
+          </svg>
+        </button>
+
         <GroupInviteSection
           group={group}
           copied={copied}
@@ -293,7 +324,6 @@ export default function GroupDetailClient({
           notifyThreshold={notifyThreshold}
           onEditNameChange={handleEditNameChange}
           onNotifyThresholdChange={handleNotifyThresholdChange}
-          onOpenCalendar={handleOpenCalendar}
         />
 
         <GroupLineLinkSection
