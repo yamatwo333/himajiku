@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import PerformanceMonitor from "@/components/PerformanceMonitor";
 import "./globals.css";
 
 const appUrl = "https://sharehima.vercel.app";
@@ -47,7 +48,10 @@ export default function RootLayout({
 }) {
   return (
     <html lang="ja">
-      <body>{children}</body>
+      <body>
+        <PerformanceMonitor />
+        {children}
+      </body>
     </html>
   );
 }

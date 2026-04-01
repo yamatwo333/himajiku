@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ensureProfile } from "@/lib/ensure-profile";
+import { checkRateLimit, getRateLimitKeyParts } from "@/lib/server/rate-limit";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getRouteUser } from "@/lib/supabase/route";
 
@@ -20,6 +21,16 @@ export async function POST(request: NextRequest) {
         { error: "ログインが必要です。再度ログインしてください。" },
         { status: 401 }
       );
+    }
+
+    const rateLimit = checkRateLimit({
+      key: `group-create:${getRateLimitKeyParts({ request, userId: user.id }).userId}`,
+      limit: 5,
+      windowMs: 60 * 60 * 1000,
+    });
+
+    if (!rateLimit.allowed) {
+      return NextResponse.json({ error: "グループ作成が多すぎます。時間をおいてお試しください" }, { status: 429 });
     }
 
     const body = await request.json();

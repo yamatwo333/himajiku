@@ -2,6 +2,7 @@ import { after, NextRequest, NextResponse } from "next/server";
 import { getTodayInTokyo } from "@/lib/date";
 import { ensureProfile } from "@/lib/ensure-profile";
 import { runGroupJoinPostSaveJob } from "@/lib/server/jobs/availability-jobs";
+import { checkRateLimit, getRateLimitKeyParts } from "@/lib/server/rate-limit";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getRouteUser } from "@/lib/supabase/route";
 
@@ -10,6 +11,16 @@ export async function POST(request: NextRequest) {
     const user = await getRouteUser(request);
     if (!user) {
       return NextResponse.json({ error: "ログインが必要です" }, { status: 401 });
+    }
+
+    const rateLimit = checkRateLimit({
+      key: `group-join:${getRateLimitKeyParts({ request, userId: user.id }).userId}`,
+      limit: 10,
+      windowMs: 10 * 60 * 1000,
+    });
+
+    if (!rateLimit.allowed) {
+      return NextResponse.json({ error: "参加操作が多すぎます。時間をおいてお試しください" }, { status: 429 });
     }
 
     const body = await request.json();
