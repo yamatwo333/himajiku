@@ -10,12 +10,23 @@ function createForwardResponse(headers: Headers) {
   });
 }
 
+function hasSupabaseAuthCookie(request: NextRequest) {
+  return request.cookies
+    .getAll()
+    .some(({ name }) => name.startsWith("sb-") && name.includes("auth-token"));
+}
+
 export async function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
+  const isPublicEntry = pathname === "/" || pathname === "/login";
   const shouldSkipAuthLookup =
     pathname.startsWith("/auth") ||
     pathname.startsWith("/api") ||
     pathname.startsWith("/join");
+
+  if (isPublicEntry && !hasSupabaseAuthCookie(request)) {
+    return NextResponse.next({ request });
+  }
 
   if (shouldSkipAuthLookup) {
     return NextResponse.next({ request });
@@ -68,7 +79,7 @@ export async function proxy(request: NextRequest) {
     supabaseResponse = nextResponse;
   }
 
-  if (user && pathname === "/login") {
+  if (user && (pathname === "/" || pathname === "/login")) {
     const redirect = request.nextUrl.searchParams.get("redirect");
     const url = request.nextUrl.clone();
 

@@ -1,5 +1,5 @@
-import { redirect } from "next/navigation";
+import LoginScreen from "@/components/login/LoginScreen";
 
 export default function Home() {
-  redirect("/calendar");
+  return <LoginScreen />;
 }
