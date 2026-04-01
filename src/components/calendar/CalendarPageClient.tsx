@@ -213,7 +213,35 @@ export default function CalendarPageClient({
         }}
       />
 
-      <div className="px-4 pt-3">
+      <div className="pt-3">
+        {availabilitiesLoading ? (
+          <PageSpinner />
+        ) : (
+          <>
+            {groups.length === 0 && (
+              <CalendarNoGroupState onOpenGroups={() => router.push("/groups")} />
+            )}
+            <CalendarGrid
+              availabilities={availabilities}
+              onMonthChange={handleMonthChange}
+              groupId={selectedGroupId}
+              notifyThreshold={selectedGroup?.notify_threshold ?? 2}
+              currentUserId={currentUserId}
+              initialMonth={currentMonth}
+            />
+          </>
+        )}
+      </div>
+
+      <div className="space-y-3 px-4 pt-4 pb-8">
+        <button
+          onClick={() => router.push("/calendar/bulk")}
+          className="w-full rounded-xl px-4 py-3.5 text-sm font-bold text-white shadow-sm transition-transform active:scale-[0.98]"
+          style={{ backgroundColor: "var(--color-primary)" }}
+        >
+          ヒマな日をまとめてシェア
+        </button>
+
         {selectedGroupId ? (
           <button
             onClick={() => router.push(`/groups/${selectedGroupId}`)}
@@ -240,36 +268,6 @@ export default function CalendarPageClient({
             </svg>
           </button>
         ) : null}
-      </div>
-
-      <div className="pt-3">
-        {availabilitiesLoading ? (
-          <PageSpinner />
-        ) : (
-          <>
-            {groups.length === 0 && (
-              <CalendarNoGroupState onOpenGroups={() => router.push("/groups")} />
-            )}
-            <CalendarGrid
-              availabilities={availabilities}
-              onMonthChange={handleMonthChange}
-              groupId={selectedGroupId}
-              notifyThreshold={selectedGroup?.notify_threshold ?? 2}
-              currentUserId={currentUserId}
-              initialMonth={currentMonth}
-            />
-          </>
-        )}
-      </div>
-
-      <div className="px-4 pt-4 pb-8">
-        <button
-          onClick={() => router.push("/calendar/bulk")}
-          className="w-full rounded-xl px-4 py-3.5 text-sm font-bold text-white shadow-sm transition-transform active:scale-[0.98]"
-          style={{ backgroundColor: "var(--color-primary)" }}
-        >
-          ヒマな日をまとめてシェア
-        </button>
       </div>
     </div>
   );
