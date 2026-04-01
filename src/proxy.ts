@@ -18,7 +18,8 @@ function hasSupabaseAuthCookie(request: NextRequest) {
 
 export async function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
-  const isPublicEntry = pathname === "/" || pathname === "/login";
+  const isRootEntry = pathname === "/";
+  const isLoginPage = pathname === "/login";
   const shouldSkipAuthLookup =
     pathname.startsWith("/auth") ||
     pathname.startsWith("/api") ||
@@ -28,7 +29,11 @@ export async function proxy(request: NextRequest) {
     return NextResponse.next({ request });
   }
 
-  if (isPublicEntry) {
+  if (isLoginPage) {
+    return NextResponse.next({ request });
+  }
+
+  if (isRootEntry) {
     if (!hasSupabaseAuthCookie(request)) {
       return NextResponse.next({ request });
     }
