@@ -240,6 +240,9 @@ export default function BulkShareClient({
         <p className="text-xs" style={{ color: "var(--color-text-secondary)" }}>
           当日以降の日付で、各日の時間帯をタップしてヒマを設定してください
         </p>
+        <p className="text-xs" style={{ color: "var(--color-text-secondary)" }}>
+          ※ 未定はヒマ人数・赤丸・LINE通知には含まれません
+        </p>
 
         {loading ? (
           <PageSpinner className="flex items-center justify-center py-16" />

@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import BrandLogo from "@/components/BrandLogo";
 import LoginActions from "@/components/login/LoginActions";
-import { TIME_SLOTS } from "@/lib/types";
+import { FREE_TIME_SLOTS } from "@/lib/types";
 
 const MOCK_DATA: Record<string, { self: string[]; friends: string[][] }> = {
   "3": { self: ["morning"], friends: [] },
@@ -82,7 +82,7 @@ export default function LoginScreen() {
               const friendSlots = data?.friends ?? [];
               const selfFree = selfSlots.length > 0;
               const friendCount = friendSlots.length;
-              const isHot = TIME_SLOTS.some((slot) => {
+              const isHot = FREE_TIME_SLOTS.some((slot) => {
                 const count =
                   (selfSlots.includes(slot) ? 1 : 0) +
                   friendSlots.filter((friend) => friend.includes(slot)).length;

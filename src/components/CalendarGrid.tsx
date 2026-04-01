@@ -16,15 +16,21 @@ import {
   subMonths,
 } from "date-fns";
 import { ja } from "date-fns/locale";
-import { AvailabilityWithUser, TIME_SLOTS, type TimeSlot } from "@/lib/types";
+import {
+  AvailabilityWithUser,
+  FREE_TIME_SLOTS,
+  hasFreeTimeSlots,
+  isUndecidedOnly,
+  type FreeTimeSlot,
+} from "@/lib/types";
 
 const WEEKDAYS = ["日", "月", "火", "水", "木", "金", "土"];
 
-function createSlotCounts(): Record<TimeSlot, number> {
-  return TIME_SLOTS.reduce((counts, slot) => {
+function createSlotCounts(): Record<FreeTimeSlot, number> {
+  return FREE_TIME_SLOTS.reduce((counts, slot) => {
     counts[slot] = 0;
     return counts;
-  }, {} as Record<TimeSlot, number>);
+  }, {} as Record<FreeTimeSlot, number>);
 }
 
 interface Props {
@@ -96,8 +102,9 @@ export default function CalendarGrid({ availabilities, onMonthChange, groupId, n
       {
         selfFree: boolean;
         friendFree: boolean;
+        hasUndecided: boolean;
         isHot: boolean;
-        slotCounts: Record<TimeSlot, number>;
+        slotCounts: Record<FreeTimeSlot, number>;
       }
     > = {};
 
@@ -107,21 +114,31 @@ export default function CalendarGrid({ availabilities, onMonthChange, groupId, n
         {
           selfFree: false,
           friendFree: false,
+          hasUndecided: false,
           isHot: false,
           slotCounts: createSlotCounts(),
         };
 
-      if (availability.userId === currentUserId) {
+      const free = hasFreeTimeSlots(availability.timeSlots);
+      const undecided = isUndecidedOnly(availability.timeSlots);
+
+      if (availability.userId === currentUserId && free) {
         summary.selfFree = true;
-      } else {
+      } else if (availability.userId !== currentUserId && free) {
         summary.friendFree = true;
       }
 
-      for (const slot of availability.timeSlots) {
+      if (undecided) {
+        summary.hasUndecided = true;
+      }
+
+      for (const slot of availability.timeSlots.filter((timeSlot): timeSlot is FreeTimeSlot =>
+        FREE_TIME_SLOTS.includes(timeSlot as FreeTimeSlot)
+      )) {
         summary.slotCounts[slot] += 1;
       }
 
-      summary.isHot = TIME_SLOTS.some(
+      summary.isHot = FREE_TIME_SLOTS.some(
         (slot) => summary.slotCounts[slot] >= notifyThreshold
       );
 
@@ -194,6 +211,7 @@ export default function CalendarGrid({ availabilities, onMonthChange, groupId, n
           const isPast = dateStr < todayString;
           const selfFree = daySummary?.selfFree ?? false;
           const friendFree = daySummary?.friendFree ?? false;
+          const hasUndecided = daySummary?.hasUndecided ?? false;
           const isHot = daySummary?.isHot ?? false;
 
           return (
@@ -240,6 +258,15 @@ export default function CalendarGrid({ availabilities, onMonthChange, groupId, n
                     style={{ backgroundColor: "var(--color-free-friend)" }}
                   />
                 )}
+                {hasUndecided && (
+                  <div
+                    className="h-2 w-2 rounded-full border"
+                    style={{
+                      borderColor: "var(--color-text-secondary)",
+                      backgroundColor: "transparent",
+                    }}
+                  />
+                )}
               </div>
             </button>
           );
@@ -259,6 +286,13 @@ export default function CalendarGrid({ availabilities, onMonthChange, groupId, n
         <span className="flex items-center gap-1">
           <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ backgroundColor: "var(--color-hot)" }} />
           集まったっていい
+        </span>
+        <span className="flex items-center gap-1">
+          <span
+            className="inline-block h-2.5 w-2.5 rounded-full border"
+            style={{ borderColor: "var(--color-text-secondary)" }}
+          />
+          未定あり
         </span>
       </div>
     </div>

@@ -4,6 +4,7 @@ export type TimeSlot =
   | "evening"
   | "late_night"
   | "undecided";
+export type FreeTimeSlot = Exclude<TimeSlot, "undecided">;
 
 export const TIME_SLOTS: TimeSlot[] = [
   "morning",
@@ -20,6 +21,13 @@ export const TIME_SLOT_LABELS: Record<TimeSlot, string> = {
   late_night: "夜中",
   undecided: "未定",
 };
+
+export const FREE_TIME_SLOTS: FreeTimeSlot[] = [
+  "morning",
+  "afternoon",
+  "evening",
+  "late_night",
+];
 
 export function isTimeSlot(value: unknown): value is TimeSlot {
   return typeof value === "string" && TIME_SLOTS.includes(value as TimeSlot);
@@ -38,7 +46,19 @@ export function normalizeTimeSlots(value: unknown): TimeSlot[] {
     }
   }
 
+  if (seen.has("undecided")) {
+    return ["undecided"];
+  }
+
   return TIME_SLOTS.filter((slot) => seen.has(slot));
+}
+
+export function hasFreeTimeSlots(value: readonly TimeSlot[]) {
+  return value.some((slot) => FREE_TIME_SLOTS.includes(slot as FreeTimeSlot));
+}
+
+export function isUndecidedOnly(value: readonly TimeSlot[]) {
+  return value.includes("undecided") && !hasFreeTimeSlots(value);
 }
 
 export interface User {

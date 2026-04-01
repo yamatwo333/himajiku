@@ -1,6 +1,11 @@
 "use client";
 
-import { TIME_SLOTS, TimeSlot, TIME_SLOT_LABELS } from "@/lib/types";
+import {
+  TIME_SLOTS,
+  TimeSlot,
+  TIME_SLOT_LABELS,
+  isUndecidedOnly,
+} from "@/lib/types";
 
 interface Props {
   selected: TimeSlot[];
@@ -20,6 +25,10 @@ export default function TimeSlotPicker({
 
     if (selected.includes(slot)) {
       onChange(selected.filter((s) => s !== slot));
+    } else if (slot === "undecided") {
+      onChange(["undecided"]);
+    } else if (isUndecidedOnly(selected)) {
+      onChange([slot]);
     } else {
       onChange([...selected, slot]);
     }

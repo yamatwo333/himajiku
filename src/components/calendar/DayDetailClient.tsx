@@ -12,7 +12,12 @@ import {
   buildCalendarUrl as buildCalendarUrlForGroup,
   readStoredCalendarMonth,
 } from "@/lib/calendar";
-import type { AvailabilityWithUser, TimeSlot } from "@/lib/types";
+import {
+  hasFreeTimeSlots,
+  isUndecidedOnly,
+  type AvailabilityWithUser,
+  type TimeSlot,
+} from "@/lib/types";
 
 interface DayDetailClientProps {
   currentUserId: string;
@@ -75,9 +80,18 @@ export default function DayDetailClient({
     router.push(getCalendarUrl());
   };
 
-  const isFree = selectedSlots.length > 0;
-  const friendCount = dayAvails.filter(
-    (availability) => availability.userId !== currentUserId
+  const hasFreeSelection = hasFreeTimeSlots(selectedSlots);
+  const hasUndecidedSelection = isUndecidedOnly(selectedSlots);
+  const hasSelectedState = selectedSlots.length > 0;
+  const friendFreeCount = dayAvails.filter(
+    (availability) =>
+      availability.userId !== currentUserId &&
+      hasFreeTimeSlots(availability.timeSlots)
+  ).length;
+  const undecidedCount = dayAvails.filter(
+    (availability) =>
+      availability.userId !== currentUserId &&
+      isUndecidedOnly(availability.timeSlots)
   ).length;
 
   return (
@@ -86,7 +100,7 @@ export default function DayDetailClient({
         title={dateLabel}
         onBack={handleBack}
         trailing={
-          friendCount > 0 ? (
+          friendFreeCount > 0 || undecidedCount > 0 ? (
             <span
               className="rounded-full px-2 py-0.5 text-xs font-bold"
               style={{
@@ -94,7 +108,7 @@ export default function DayDetailClient({
                 color: "var(--color-text)",
               }}
             >
-              {friendCount}人がヒマ
+              {friendFreeCount > 0 ? `${friendFreeCount}人がヒマ` : `${undecidedCount}人が未定`}
             </span>
           ) : null
         }
@@ -107,10 +121,15 @@ export default function DayDetailClient({
           </h2>
           <TimeSlotPicker selected={selectedSlots} onChange={setSelectedSlots} disabled={isPastDate} />
           <p className="mt-2 text-xs" style={{ color: "var(--color-text-secondary)" }}>
-            {isPastDate ? "当日より前の日付はヒマをシェアできません" : "ヒマな時間帯をタップ（複数選択OK）"}
+            {isPastDate
+              ? "当日より前の日付はヒマをシェアできません"
+              : "ヒマな時間帯をタップ（複数選択OK / 未定はほかと同時選択不可）"}
           </p>
           <p className="mt-1 text-xs" style={{ color: "var(--color-text-secondary)" }}>
             ※ ヒマのシェアは参加中の全グループに反映されます
+          </p>
+          <p className="mt-1 text-xs" style={{ color: "var(--color-text-secondary)" }}>
+            ※ 未定はカレンダーのヒマ人数・赤丸・LINE通知には含まれません
           </p>
         </section>
 
@@ -130,24 +149,42 @@ export default function DayDetailClient({
           />
         </section>
 
-        {!isPastDate && (isFree || hasExisting) && (
+        {!isPastDate && (hasSelectedState || hasExisting) && (
           <button
             onClick={handleSave}
             disabled={saving}
             className="w-full rounded-xl py-3.5 text-base font-bold transition-transform active:scale-[0.97] disabled:opacity-50"
             style={{
-              backgroundColor: isFree ? "var(--color-free-self)" : "transparent",
-              color: isFree ? "white" : "var(--color-hot)",
-              border: isFree ? "none" : "1px solid var(--color-border)",
+              backgroundColor: hasFreeSelection
+                ? "var(--color-free-self)"
+                : hasUndecidedSelection
+                  ? "rgba(148, 163, 184, 0.14)"
+                  : "transparent",
+              color: hasFreeSelection
+                ? "white"
+                : hasUndecidedSelection
+                  ? "var(--color-text)"
+                  : "var(--color-hot)",
+              border: hasFreeSelection
+                ? "none"
+                : hasUndecidedSelection
+                  ? "1px solid var(--color-border)"
+                  : "1px solid var(--color-border)",
             }}
           >
-            {saving ? "保存中..." : isFree ? "ヒマをシェアする" : "ヒマを解除する"}
+            {saving
+              ? "保存中..."
+              : hasFreeSelection
+                ? "ヒマをシェアする"
+                : hasUndecidedSelection
+                  ? "未定でシェアする"
+                  : "ヒマを解除する"}
           </button>
         )}
 
         <section>
           <h2 className="mb-3 text-sm font-bold" style={{ color: "var(--color-text-secondary)" }}>
-            この日ヒマな人
+            この日の予定
           </h2>
           <FriendAvailabilityList availabilities={dayAvails} currentUserId={currentUserId} />
         </section>

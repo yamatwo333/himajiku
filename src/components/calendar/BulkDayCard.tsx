@@ -1,5 +1,5 @@
 import TimeSlotPicker from "@/components/TimeSlotPicker";
-import type { TimeSlot } from "@/lib/types";
+import { hasFreeTimeSlots, isUndecidedOnly, type TimeSlot } from "@/lib/types";
 
 interface BulkDayCardProps {
   dayLabel: string;
@@ -19,6 +19,8 @@ export default function BulkDayCard({
   onCommentChange,
 }: BulkDayCardProps) {
   const hasSlots = selectedSlots.length > 0;
+  const hasFreeSelection = hasFreeTimeSlots(selectedSlots);
+  const hasUndecidedSelection = isUndecidedOnly(selectedSlots);
 
   return (
     <div
@@ -36,9 +38,14 @@ export default function BulkDayCard({
         {hasSlots ? (
           <span
             className="rounded px-1.5 py-0.5 text-[10px] font-medium"
-            style={{ backgroundColor: "var(--color-free-self)", color: "white" }}
+            style={{
+              backgroundColor: hasFreeSelection
+                ? "var(--color-free-self)"
+                : "rgba(148, 163, 184, 0.16)",
+              color: hasFreeSelection ? "white" : "var(--color-text)",
+            }}
           >
-            シェア中
+            {hasUndecidedSelection ? "未定" : "シェア中"}
           </span>
         ) : null}
       </div>

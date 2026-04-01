@@ -2,7 +2,12 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { format, parse } from "date-fns";
 import { ja } from "date-fns/locale";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { TIME_SLOT_LABELS, TIME_SLOTS, type TimeSlot } from "@/lib/types";
+import {
+  FREE_TIME_SLOTS,
+  TIME_SLOT_LABELS,
+  type TimeSlot,
+  type FreeTimeSlot,
+} from "@/lib/types";
 
 interface NotifyParams {
   date: string;
@@ -37,7 +42,7 @@ interface GroupNotificationContext {
 interface DateMatch {
   date: string;
   matchingSlots: {
-    slot: TimeSlot;
+    slot: FreeTimeSlot;
     people: AvailabilityRow[];
   }[];
 }
@@ -114,8 +119,8 @@ function buildDateMatches({
 
     const slotsForDate = slotsByDate?.get(date);
     const targetSlots = slotsForDate?.length
-      ? TIME_SLOTS.filter((slot) => slotsForDate.includes(slot))
-      : TIME_SLOTS;
+      ? FREE_TIME_SLOTS.filter((slot) => slotsForDate.includes(slot))
+      : FREE_TIME_SLOTS;
 
     const matchingSlots = targetSlots.flatMap((slot) => {
       const people = dayAvailabilities.filter((availability) => availability.time_slots?.includes(slot));
@@ -220,8 +225,8 @@ export async function sendGroupAvailabilityNotification({
 
   const { group, memberIds, lineToken, supabase } = context;
   const targetSlots = slots?.length
-    ? TIME_SLOTS.filter((slot) => slots.includes(slot))
-    : TIME_SLOTS;
+    ? FREE_TIME_SLOTS.filter((slot) => slots.includes(slot))
+    : FREE_TIME_SLOTS;
 
   if (targetSlots.length === 0) {
     return { sent: false, reason: "no target slots" };
@@ -242,7 +247,7 @@ export async function sendGroupAvailabilityNotification({
       return { sent: false, reason: "no availabilities" };
     }
 
-    const matches: Partial<Record<TimeSlot, number>> = {};
+    const matches: Partial<Record<FreeTimeSlot, number>> = {};
 
     for (const slot of targetSlots) {
       const count = avails.filter((avail) =>
@@ -271,7 +276,7 @@ export async function sendGroupAvailabilityNotification({
     return { sent: false, reason: "no availabilities" };
   }
 
-  const matchingSlots: { slot: TimeSlot; people: AvailabilityRow[] }[] = [];
+  const matchingSlots: { slot: FreeTimeSlot; people: AvailabilityRow[] }[] = [];
 
   for (const slot of targetSlots) {
     const matching = (avails as AvailabilityRow[]).filter((avail) =>
