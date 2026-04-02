@@ -1,7 +1,7 @@
 import { startOfMonth } from "date-fns";
 import { redirect } from "next/navigation";
 import BulkShareClient from "@/components/calendar/BulkShareClient";
-import { isE2EUser } from "@/lib/e2e";
+import { getE2EBulkAvailabilityEntriesForMonth, isE2EUser } from "@/lib/e2e";
 import { getRequestUserId } from "@/lib/request-user";
 import { getOwnAvailabilityEntriesForMonth } from "@/lib/server/availability";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -17,7 +17,7 @@ export default async function BulkSharePage() {
   if (isE2EUser(userId)) {
     return (
       <BulkShareClient
-        initialEntries={{}}
+        initialEntries={getE2EBulkAvailabilityEntriesForMonth(userId)}
         initialMonthIso={initialMonth.toISOString()}
       />
     );

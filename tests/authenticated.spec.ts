@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Locator, type Page } from "@playwright/test";
 
 const BASE_URL = "http://127.0.0.1:3100";
 const AUTH_COOKIE_NAME = "sharehima-e2e-user-id";
@@ -18,6 +18,12 @@ async function signIn(page: Page) {
       url: BASE_URL,
     },
   ]);
+}
+
+function getBulkCardByComment(page: Page, comment: string): Locator {
+  return page
+    .locator(`input[value="${comment}"]`)
+    .locator("xpath=ancestor::div[contains(@class,'rounded-xl')][1]");
 }
 
 test.describe("authenticated smoke flows", () => {
@@ -160,27 +166,22 @@ test.describe("authenticated smoke flows", () => {
     page,
   }) => {
     await page.goto("/calendar/bulk");
+    const existingCard = getBulkCardByComment(page, "既存のまとめてシェア");
 
-    const afternoonButton = page
-      .locator("button:not([disabled])")
-      .filter({ hasText: "午後" })
-      .first();
-
-    await expect(afternoonButton).toBeVisible();
+    await expect(existingCard).toBeVisible();
 
     const bulkSaveRequest = page.waitForRequest("**/api/availability/bulk");
 
-    await afternoonButton.click();
-    await page.getByPlaceholder("ひとこと").fill("まとめて共有のテストです");
+    await existingCard.getByRole("button", { name: "午前" }).click();
     await page.getByRole("button", { name: "まとめてシェアする" }).click();
 
     const request = await bulkSaveRequest;
 
     expect(request.postDataJSON()).toMatchObject({
-      time_slots: ["afternoon"],
-      comment: "まとめて共有のテストです",
+      entries: [],
     });
-    expect(request.postDataJSON().dates).toHaveLength(1);
+    expect(request.postDataJSON().start).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(request.postDataJSON().end).toMatch(/^\d{4}-\d{2}-\d{2}$/);
 
     await expect(page).toHaveURL(/\/calendar(?:\?.*)?$/);
     await expect(page.getByText("ヒマをシェアしました")).toBeVisible();

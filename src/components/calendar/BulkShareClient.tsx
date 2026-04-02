@@ -8,7 +8,10 @@ import BulkDayCard from "@/components/calendar/BulkDayCard";
 import CalendarMonthSwitcher from "@/components/calendar/CalendarMonthSwitcher";
 import PageHeader from "@/components/PageHeader";
 import PageSpinner from "@/components/PageSpinner";
-import { createBulkAvailabilityPayloads, type BulkAvailabilityEntry } from "@/lib/availability";
+import {
+  createBulkAvailabilitySyncRequest,
+  type BulkAvailabilityEntry,
+} from "@/lib/availability";
 import { markCalendarFlash } from "@/lib/flash";
 import { scheduleIdleTask } from "@/lib/idle";
 import {
@@ -56,6 +59,15 @@ export default function BulkShareClient({
   const canGoNext = currentMonth < maxMonth;
   const todayString = getTodayInTokyo();
   const monthKey = useMemo(() => format(currentMonth, "yyyy-MM"), [currentMonth]);
+  const monthStartString = useMemo(
+    () => format(startOfMonth(currentMonth), "yyyy-MM-dd"),
+    [currentMonth]
+  );
+  const monthEndString = useMemo(
+    () => format(endOfMonth(currentMonth), "yyyy-MM-dd"),
+    [currentMonth]
+  );
+  const syncStart = monthStartString < todayString ? todayString : monthStartString;
 
   const getCalendarUrl = useCallback(() => {
     return buildCalendarUrlForGroup(readSelectedGroupId(), readStoredCalendarMonth());
@@ -175,40 +187,38 @@ export default function BulkShareClient({
     });
   };
 
-  const entriesToSave = useMemo(() => {
+  const entriesInScope = useMemo(() => {
     return Object.values(entries).filter(
-      (entry) =>
-        entry.date >= todayString &&
-        entry.timeSlots.length > 0 &&
-        daysInMonth.some((day) => format(day, "yyyy-MM-dd") === entry.date)
+      (entry) => entry.date >= syncStart && entry.date <= monthEndString
     );
-  }, [daysInMonth, entries, todayString]);
+  }, [entries, monthEndString, syncStart]);
 
-  const savePayloads = useMemo(
-    () => createBulkAvailabilityPayloads(entriesToSave as BulkAvailabilityEntry[]),
-    [entriesToSave]
+  const entriesToSave = useMemo(() => {
+    return entriesInScope.filter((entry) => entry.timeSlots.length > 0);
+  }, [entriesInScope]);
+
+  const saveRequest = useMemo(
+    () =>
+      createBulkAvailabilitySyncRequest({
+        start: syncStart,
+        end: monthEndString,
+        entries: entriesToSave as BulkAvailabilityEntry[],
+      }),
+    [entriesToSave, monthEndString, syncStart]
   );
 
   const handleSave = async () => {
-    if (savePayloads.length === 0) return;
+    if (entriesInScope.length === 0) return;
     setSaving(true);
 
     try {
-      const responses = await Promise.all(
-        savePayloads.map((payload) =>
-          fetch("/api/availability/bulk", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              dates: payload.dates,
-              time_slots: payload.time_slots,
-              comment: payload.comment,
-            }),
-          })
-        )
-      );
+      const response = await fetch("/api/availability/bulk", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(saveRequest),
+      });
 
-      if (!responses.every((response) => response.ok)) {
+      if (!response.ok) {
         setSaving(false);
         return;
       }
@@ -310,7 +320,7 @@ export default function BulkShareClient({
       >
         <button
           onClick={handleSave}
-          disabled={saving || savePayloads.length === 0}
+          disabled={saving || entriesInScope.length === 0}
           className="w-full rounded-xl py-3.5 text-base font-bold text-white shadow-md transition-transform active:scale-[0.97] disabled:opacity-30"
           style={{ backgroundColor: "var(--color-free-self)" }}
         >

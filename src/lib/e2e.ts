@@ -1,5 +1,6 @@
 import { addDays, format } from "date-fns";
 import type { User } from "@supabase/supabase-js";
+import type { TimeSlot } from "@/lib/types";
 import type { AvailabilityWithUser } from "@/lib/types";
 
 export const E2E_AUTH_COOKIE_NAME = "sharehima-e2e-user-id";
@@ -38,6 +39,16 @@ function buildFixtureAvailabilities(userId: string, date: string): AvailabilityW
       },
     },
   ];
+}
+
+function buildBulkFixtureEntry(date: string, timeSlots: TimeSlot[], comment: string) {
+  return {
+    [date]: {
+      date,
+      timeSlots,
+      comment,
+    },
+  };
 }
 
 export function isE2EAuthBypassEnabled() {
@@ -171,4 +182,14 @@ export function getE2EAvailabilityForDateForUser(
 
 export function getE2EGroupId() {
   return E2E_GROUP_ID;
+}
+
+export function getE2EBulkAvailabilityEntriesForMonth(userId: string) {
+  if (!isE2EUser(userId)) {
+    return {};
+  }
+
+  const date = format(new Date(), "yyyy-MM-dd");
+
+  return buildBulkFixtureEntry(date, ["morning"], "既存のまとめてシェア");
 }
