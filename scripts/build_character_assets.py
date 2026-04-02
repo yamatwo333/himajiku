@@ -61,6 +61,12 @@ ASSETS = [
         "width": 280,
         "padding": 18,
     },
+    {
+        "output": "save-success-happy-cloud.png",
+        "box": (1280, 869, 1648, 1115),
+        "width": 220,
+        "padding": 18,
+    },
 ]
 
 

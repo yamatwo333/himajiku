@@ -1,8 +1,6 @@
 import { Suspense } from "react";
 import BrandLogo from "@/components/BrandLogo";
-import CharacterSticker from "@/components/CharacterSticker";
 import LoginActions from "@/components/login/LoginActions";
-import { CHARACTER_ASSETS } from "@/lib/characters";
 import { FREE_TIME_SLOTS } from "@/lib/types";
 
 const MOCK_DATA: Record<string, { self: string[]; friends: string[][] }> = {
@@ -28,11 +26,6 @@ export default function LoginScreen() {
           >
             ヒマな時間をシェアして、なんとなく集まろう
           </p>
-          <CharacterSticker
-            src={CHARACTER_ASSETS.login.src}
-            alt={CHARACTER_ASSETS.login.alt}
-            className="mx-auto mt-3 h-14 w-auto object-contain"
-          />
         </div>
 
         <div
