@@ -33,6 +33,11 @@ npm run dev
 
 `.env.example` を参照してください。
 
+## ブランド素材
+
+- 元画像は `assets/brand-source/` に置いています
+- 生成済みアセットを更新する場合は `npm run brand:build` を実行してください
+
 ## データベース
 
 `supabase/migrations/001_initial_schema.sql` をSupabase SQL Editorで実行してください。

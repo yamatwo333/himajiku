@@ -4,6 +4,7 @@ import sharp from "sharp";
 
 const PUBLIC_DIR = path.join(process.cwd(), "public");
 const BRAND_DIR = path.join(PUBLIC_DIR, "brand");
+const BRAND_SOURCE_DIR = path.join(process.cwd(), "assets", "brand-source");
 
 const SOURCE_FILES = [
   {
@@ -123,9 +124,11 @@ async function extractForeground(sourcePath, padding) {
 }
 
 async function findSourceMap() {
-  const entries = await readdir(PUBLIC_DIR);
+  const entries = await readdir(BRAND_SOURCE_DIR);
 
-  return new Map(entries.map((entry) => [entry.normalize("NFC"), path.join(PUBLIC_DIR, entry)]));
+  return new Map(
+    entries.map((entry) => [entry.normalize("NFC"), path.join(BRAND_SOURCE_DIR, entry)])
+  );
 }
 
 async function buildAsset(sourceMap, asset) {
