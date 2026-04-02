@@ -3,6 +3,14 @@ export const CHARACTER_ASSETS = {
     src: "/characters/calendar-empty-rain.png",
     alt: "雨の雲",
   },
+  cheerCloud: {
+    src: "/characters/join-success-cloud-cheer.png",
+    alt: "両手を上げて喜んでいる雲",
+  },
+  stormCloud: {
+    src: "/characters/line-unlinked-thunder.png",
+    alt: "傘と雷を抱えた困り顔の雲",
+  },
   groupsEmpty: {
     src: "/characters/groups-empty-comfort.png",
     alt: "寄り添う太陽と泣いている雲",

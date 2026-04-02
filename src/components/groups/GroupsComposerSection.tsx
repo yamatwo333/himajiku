@@ -1,3 +1,6 @@
+import CharacterSticker from "@/components/CharacterSticker";
+import { CHARACTER_ASSETS } from "@/lib/characters";
+
 type ComposerMode = "create" | "join" | null;
 
 interface GroupsComposerSectionProps {
@@ -57,7 +60,21 @@ export default function GroupsComposerSection({
             borderColor: "var(--color-border)",
           }}
         >
-          <h3 className="text-sm font-bold">新しいグループ</h3>
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <h3 className="text-sm font-bold" style={{ color: "var(--color-text)" }}>
+                新しいグループ
+              </h3>
+              <p className="mt-1 text-xs leading-relaxed" style={{ color: "var(--color-text-secondary)" }}>
+                グループを作ったあとで、招待リンクや招待コードを友だちに送れます。
+              </p>
+            </div>
+            <CharacterSticker
+              src={CHARACTER_ASSETS.cheerCloud.src}
+              alt={CHARACTER_ASSETS.cheerCloud.alt}
+              className="h-12 w-auto shrink-0 object-contain"
+            />
+          </div>
           <input
             type="text"
             value={groupName}
@@ -96,7 +113,21 @@ export default function GroupsComposerSection({
             borderColor: "var(--color-border)",
           }}
         >
-          <h3 className="text-sm font-bold">招待コードで参加</h3>
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <h3 className="text-sm font-bold" style={{ color: "var(--color-text)" }}>
+                招待コードで参加
+              </h3>
+              <p className="mt-1 text-xs leading-relaxed" style={{ color: "var(--color-text-secondary)" }}>
+                6文字のコードを入力すると、すぐにグループへ参加できます。
+              </p>
+            </div>
+            <CharacterSticker
+              src={CHARACTER_ASSETS.cheerCloud.src}
+              alt={CHARACTER_ASSETS.cheerCloud.alt}
+              className="h-12 w-auto shrink-0 object-contain"
+            />
+          </div>
           <input
             type="text"
             value={inviteCode}

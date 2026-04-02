@@ -104,14 +104,26 @@ function JoinContent() {
       )}
 
       {status === "error" && (
-        <div className="text-center">
-          <p className="text-sm text-red-500">{message}</p>
+        <div
+          className="w-full max-w-sm rounded-2xl border px-5 py-6 text-center"
+          style={{
+            backgroundColor: "var(--color-surface)",
+            borderColor: "rgba(239, 68, 68, 0.16)",
+          }}
+        >
+          <CharacterSticker
+            src={CHARACTER_ASSETS.stormCloud.src}
+            alt={CHARACTER_ASSETS.stormCloud.alt}
+            className="mx-auto mb-4 h-20 w-auto object-contain"
+          />
+          <p className="text-sm font-bold text-red-600">参加できませんでした</p>
+          <p className="mt-1 text-sm leading-relaxed text-red-500">{message}</p>
           <button
             onClick={() => router.push("/groups")}
             className="mt-6 rounded-xl border px-8 py-3 text-sm"
-            style={{ borderColor: "var(--color-border)" }}
+            style={{ borderColor: "var(--color-border)", color: "var(--color-text)" }}
           >
-            戻る
+            グループ一覧へ戻る
           </button>
         </div>
       )}

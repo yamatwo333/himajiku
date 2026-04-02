@@ -1,6 +1,8 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
+import CharacterSticker from "@/components/CharacterSticker";
+import { CHARACTER_ASSETS } from "@/lib/characters";
 
 const ERROR_MESSAGES: Record<string, string> = {
   invalid_state: "認証エラーが発生しました。もう一度お試しください。",
@@ -31,8 +33,20 @@ export default function LoginActions() {
   return (
     <div className="mx-auto w-full max-w-xs space-y-3">
       {errorMessage && (
-        <div className="rounded-xl bg-red-50 px-4 py-3 text-center text-sm text-red-600">
-          {errorMessage}
+        <div
+          className="rounded-2xl border px-4 py-4 text-center"
+          style={{
+            backgroundColor: "var(--color-surface)",
+            borderColor: "rgba(239, 68, 68, 0.16)",
+          }}
+        >
+          <CharacterSticker
+            src={CHARACTER_ASSETS.stormCloud.src}
+            alt={CHARACTER_ASSETS.stormCloud.alt}
+            className="mx-auto mb-3 h-16 w-auto object-contain"
+          />
+          <p className="text-sm font-bold text-red-600">ログインできませんでした</p>
+          <p className="mt-1 text-sm leading-relaxed text-red-600">{errorMessage}</p>
         </div>
       )}
       <a

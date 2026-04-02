@@ -1,3 +1,5 @@
+import CharacterSticker from "@/components/CharacterSticker";
+import { CHARACTER_ASSETS } from "@/lib/characters";
 import { AvailabilityWithUser, TIME_SLOT_LABELS } from "@/lib/types";
 
 interface Props {
@@ -11,12 +13,27 @@ export default function FriendAvailabilityList({
 }: Props) {
   if (availabilities.length === 0) {
     return (
-      <p
-        className="py-8 text-center text-sm"
-        style={{ color: "var(--color-text-secondary)" }}
+      <div
+        className="rounded-xl border px-4 py-6 text-center"
+        style={{
+          backgroundColor: "var(--color-surface)",
+          borderColor: "var(--color-border)",
+        }}
       >
-        この日はまだ誰もヒマをシェアしていません
-      </p>
+        <CharacterSticker
+          src={CHARACTER_ASSETS.cheerCloud.src}
+          alt={CHARACTER_ASSETS.cheerCloud.alt}
+          className="mx-auto mb-3 h-20 w-auto object-contain"
+        />
+        <p className="text-sm font-medium" style={{ color: "var(--color-text)" }}>
+          この日はまだ誰もヒマをシェアしていません
+        </p>
+        <p className="mt-1 text-xs leading-relaxed" style={{ color: "var(--color-text-secondary)" }}>
+          最初のひとりとしてシェアしておくと、
+          <br />
+          あとから友だちも予定を合わせやすくなります。
+        </p>
+      </div>
     );
   }
 
