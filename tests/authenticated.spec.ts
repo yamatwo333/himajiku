@@ -6,6 +6,11 @@ const E2E_USER_ID = "e2e-user-1";
 const E2E_GROUP_ID = "e2e-group-1";
 
 async function signIn(page: Page) {
+  await page.addInitScript(() => {
+    window.localStorage.clear();
+    window.sessionStorage.clear();
+  });
+
   await page.context().addCookies([
     {
       name: AUTH_COOKIE_NAME,
@@ -91,6 +96,35 @@ test.describe("authenticated smoke flows", () => {
     await expect(page.getByText("招待コード:")).toBeVisible();
   });
 
+  test("group detail page autosaves owner settings", async ({ page }) => {
+    await page.goto(`/groups/${E2E_GROUP_ID}`);
+
+    const settingsRequest = page.waitForRequest(`**/api/groups/${E2E_GROUP_ID}/settings`);
+
+    await page
+      .locator('input[type="text"]:not([readonly])')
+      .first()
+      .fill("更新後のテストグループ");
+    await page.getByRole("combobox").selectOption({ label: "4人以上" });
+
+    const request = await settingsRequest;
+
+    expect(request.postDataJSON()).toEqual({
+      name: "更新後のテストグループ",
+      notify_threshold: 4,
+    });
+    await expect(page.getByRole("heading", { name: "更新後のテストグループ" })).toBeVisible();
+  });
+
+  test("group detail page can generate a LINE link code", async ({ page }) => {
+    await page.goto(`/groups/${E2E_GROUP_ID}`);
+
+    await page.getByRole("button", { name: "LINE連携コードを発行" }).click();
+
+    await expect(page.getByText("連携 E2E123")).toBeVisible();
+    await expect(page.getByText("Botが「連携完了」と返信したらOK")).toBeVisible();
+  });
+
   test("day detail page can save availability and return to calendar", async ({
     page,
   }) => {
@@ -119,6 +153,36 @@ test.describe("authenticated smoke flows", () => {
     await page.getByRole("button", { name: "ヒマをシェアする" }).click();
 
     await expect(page).toHaveURL(/\/calendar\?group=e2e-group-1/);
+    await expect(page.getByText("ヒマをシェアしました")).toBeVisible();
+  });
+
+  test("bulk share page can save selected dates and return to calendar", async ({
+    page,
+  }) => {
+    await page.goto("/calendar/bulk");
+
+    const afternoonButton = page
+      .locator("button:not([disabled])")
+      .filter({ hasText: "午後" })
+      .first();
+
+    await expect(afternoonButton).toBeVisible();
+
+    const bulkSaveRequest = page.waitForRequest("**/api/availability/bulk");
+
+    await afternoonButton.click();
+    await page.getByPlaceholder("ひとこと").fill("まとめて共有のテストです");
+    await page.getByRole("button", { name: "まとめてシェアする" }).click();
+
+    const request = await bulkSaveRequest;
+
+    expect(request.postDataJSON()).toMatchObject({
+      time_slots: ["afternoon"],
+      comment: "まとめて共有のテストです",
+    });
+    expect(request.postDataJSON().dates).toHaveLength(1);
+
+    await expect(page).toHaveURL(/\/calendar(?:\?.*)?$/);
     await expect(page.getByText("ヒマをシェアしました")).toBeVisible();
   });
 });

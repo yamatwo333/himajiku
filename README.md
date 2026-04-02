@@ -46,6 +46,9 @@ npx playwright install chromium
 npm run test:e2e
 ```
 
+- `playwright.config.ts` では E2E 実行時だけ `E2E_AUTH_BYPASS=1` を自動で付与しています
+- 手動で `npm run dev` を立てて E2E を流す場合は、同じ値を環境変数に設定してください
+
 ## データベース
 
 `supabase/migrations/001_initial_schema.sql` をSupabase SQL Editorで実行してください。

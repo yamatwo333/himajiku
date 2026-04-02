@@ -1,4 +1,5 @@
 import { after, NextRequest, NextResponse } from "next/server";
+import { isE2EUser } from "@/lib/e2e";
 import { isDateBeforeTodayInTokyo } from "@/lib/date";
 import { ensureProfile } from "@/lib/ensure-profile";
 import { runAvailabilityPostSaveJob } from "@/lib/server/jobs/availability-jobs";
@@ -43,6 +44,10 @@ export async function POST(request: NextRequest) {
 
     if (uniqueDates.some((date) => isDateBeforeTodayInTokyo(date))) {
       return NextResponse.json({ error: "当日より前の日付はシェアできません" }, { status: 400 });
+    }
+
+    if (isE2EUser(user.id)) {
+      return NextResponse.json({ success: true, count: uniqueDates.length });
     }
 
     const supabaseAdmin = createAdminClient();

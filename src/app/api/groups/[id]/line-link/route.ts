@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
+import { getE2EGroupDetail, isE2EUser } from "@/lib/e2e";
 import { getGroupOwnerId } from "@/lib/server/groups";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getRouteUser } from "@/lib/supabase/route";
@@ -14,6 +15,17 @@ export async function POST(
     const user = await getRouteUser(request);
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    if (isE2EUser(user.id)) {
+      const result = getE2EGroupDetail(user.id, groupId);
+
+      if (!result || result.group.created_by !== user.id) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      }
+
+      const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+      return NextResponse.json({ code: "E2E123", expiresAt: expiresAt.toISOString() });
     }
 
     const supabaseAdmin = createAdminClient();
@@ -48,6 +60,16 @@ export async function DELETE(
     const user = await getRouteUser(request);
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    if (isE2EUser(user.id)) {
+      const result = getE2EGroupDetail(user.id, groupId);
+
+      if (!result || result.group.created_by !== user.id) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      }
+
+      return NextResponse.json({ success: true });
     }
 
     const supabaseAdmin = createAdminClient();

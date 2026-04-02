@@ -69,6 +69,7 @@ export default function BulkShareClient({
 
   const fetchExisting = useCallback(async () => {
     if (loadedMonthsRef.current.has(monthKey)) {
+      setLoading(false);
       return;
     }
 
