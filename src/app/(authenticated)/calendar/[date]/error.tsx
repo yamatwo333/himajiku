@@ -13,6 +13,8 @@ export default function DayDetailError({
   return (
     <div className="flex min-h-dvh flex-col items-center justify-center px-6 text-center">
       <div
+        role="alert"
+        aria-live="assertive"
         className="w-full max-w-sm rounded-2xl border px-5 py-6"
         style={{
           backgroundColor: "var(--color-surface)",

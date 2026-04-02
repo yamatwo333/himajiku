@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useMemo } from "react";
 import type { GroupDetail } from "@/components/groups/types";
 
 interface GroupInviteSectionProps {
@@ -20,11 +20,14 @@ export default function GroupInviteSection({
   onCopyUrl,
   onShare,
 }: GroupInviteSectionProps) {
-  const [joinUrl, setJoinUrl] = useState("");
+  const joinPath = `/join?code=${group.invite_code}`;
+  const joinUrl = useMemo(() => {
+    if (typeof window === "undefined") {
+      return joinPath;
+    }
 
-  useEffect(() => {
-    setJoinUrl(`${window.location.origin}/join?code=${group.invite_code}`);
-  }, [group.invite_code]);
+    return `${window.location.origin}${joinPath}`;
+  }, [joinPath]);
 
   return (
     <section
@@ -65,6 +68,7 @@ export default function GroupInviteSection({
           type="text"
           readOnly
           value={joinUrl}
+          suppressHydrationWarning
           className="flex-1 rounded-lg border px-3 py-2 text-xs font-mono outline-none"
           style={{
             borderColor: "var(--color-border)",

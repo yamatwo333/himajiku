@@ -34,6 +34,8 @@ export default function LoginActions() {
     <div className="mx-auto w-full max-w-xs space-y-3">
       {errorMessage && (
         <div
+          role="alert"
+          aria-live="assertive"
           className="rounded-2xl border px-4 py-4 text-center"
           style={{
             backgroundColor: "var(--color-surface)",

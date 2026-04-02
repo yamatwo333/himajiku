@@ -31,6 +31,8 @@ export default function Home() {
       >
         <BrandLogo variant="lockup" className="mx-auto" />
         <div
+          role="status"
+          aria-live="polite"
           className="mt-6 flex items-center gap-2 text-sm"
           style={{ color: "var(--color-text-secondary)" }}
         >

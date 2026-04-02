@@ -13,12 +13,13 @@
 
 ## 技術スタック
 
-- Next.js 15 (App Router)
+- Next.js 16 (App Router)
 - TypeScript
 - Tailwind CSS v4
 - Supabase (PostgreSQL + Auth)
 - LINE Login OAuth 2.0
 - LINE Messaging API
+- Playwright
 
 ## セットアップ
 
@@ -37,6 +38,13 @@ npm run dev
 
 - 元画像は `assets/brand-source/` に置いています
 - 生成済みアセットを更新する場合は `npm run brand:build` を実行してください
+
+## テスト
+
+```bash
+npx playwright install chromium
+npm run test:e2e
+```
 
 ## データベース
 

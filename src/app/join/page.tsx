@@ -8,10 +8,45 @@ import { CHARACTER_ASSETS } from "@/lib/characters";
 function JoinLoadingFallback() {
   return (
     <div className="flex min-h-dvh items-center justify-center px-6" style={{ backgroundColor: "var(--color-bg)" }}>
-      <div className="text-center">
+      <div className="text-center" role="status" aria-live="polite">
         <div className="mx-auto h-8 w-8 animate-spin rounded-full border-2 border-t-transparent" style={{ borderColor: "var(--color-border)", borderTopColor: "transparent" }} />
         <p className="mt-4 text-sm" style={{ color: "var(--color-text-secondary)" }}>招待情報を確認中...</p>
       </div>
+    </div>
+  );
+}
+
+function JoinErrorCard({
+  message,
+  onBack,
+}: {
+  message: string;
+  onBack: () => void;
+}) {
+  return (
+    <div
+      role="alert"
+      aria-live="assertive"
+      className="w-full max-w-sm rounded-2xl border px-5 py-6 text-center"
+      style={{
+        backgroundColor: "var(--color-surface)",
+        borderColor: "rgba(239, 68, 68, 0.16)",
+      }}
+    >
+      <CharacterSticker
+        src={CHARACTER_ASSETS.stormCloud.src}
+        alt={CHARACTER_ASSETS.stormCloud.alt}
+        className="mx-auto mb-4 h-20 w-auto object-contain"
+      />
+      <h1 className="text-sm font-bold text-red-600">参加できませんでした</h1>
+      <p className="mt-1 text-sm leading-relaxed text-red-500">{message}</p>
+      <button
+        onClick={onBack}
+        className="mt-6 rounded-xl border px-8 py-3 text-sm"
+        style={{ borderColor: "var(--color-border)", color: "var(--color-text)" }}
+      >
+        グループ一覧へ戻る
+      </button>
     </div>
   );
 }
@@ -25,11 +60,10 @@ function JoinContent() {
   const [groupName, setGroupName] = useState("");
   const [groupId, setGroupId] = useState("");
   const retryCountRef = useRef(0);
+  const missingCode = !code;
 
   useEffect(() => {
-    if (!code) {
-      setStatus("error");
-      setMessage("招待コードが指定されていません");
+    if (missingCode) {
       return;
     }
 
@@ -72,19 +106,19 @@ function JoinContent() {
     };
 
     join();
-  }, [code, router]);
+  }, [code, missingCode, router]);
 
   return (
     <div className="flex min-h-dvh flex-col items-center justify-center px-6">
       {status === "loading" && (
-        <div className="text-center">
+        <div className="w-full max-w-sm text-center" role="status" aria-live="polite">
           <div className="mx-auto h-8 w-8 animate-spin rounded-full border-2 border-t-transparent" style={{ borderColor: "var(--color-border)", borderTopColor: "transparent" }} />
           <p className="mt-4 text-sm" style={{ color: "var(--color-text-secondary)" }}>グループに参加中...</p>
         </div>
       )}
 
       {status === "success" && (
-        <div className="text-center">
+        <div className="w-full max-w-sm text-center">
           <CharacterSticker
             src={CHARACTER_ASSETS.joinSuccess.src}
             alt={CHARACTER_ASSETS.joinSuccess.alt}
@@ -103,30 +137,19 @@ function JoinContent() {
         </div>
       )}
 
-      {status === "error" && (
-        <div
-          className="w-full max-w-sm rounded-2xl border px-5 py-6 text-center"
-          style={{
-            backgroundColor: "var(--color-surface)",
-            borderColor: "rgba(239, 68, 68, 0.16)",
-          }}
-        >
-          <CharacterSticker
-            src={CHARACTER_ASSETS.stormCloud.src}
-            alt={CHARACTER_ASSETS.stormCloud.alt}
-            className="mx-auto mb-4 h-20 w-auto object-contain"
-          />
-          <p className="text-sm font-bold text-red-600">参加できませんでした</p>
-          <p className="mt-1 text-sm leading-relaxed text-red-500">{message}</p>
-          <button
-            onClick={() => router.push("/groups")}
-            className="mt-6 rounded-xl border px-8 py-3 text-sm"
-            style={{ borderColor: "var(--color-border)", color: "var(--color-text)" }}
-          >
-            グループ一覧へ戻る
-          </button>
-        </div>
-      )}
+      {missingCode ? (
+        <JoinErrorCard
+          message="招待コードが指定されていません"
+          onBack={() => router.push("/groups")}
+        />
+      ) : null}
+
+      {!missingCode && status === "error" ? (
+        <JoinErrorCard
+          message={message}
+          onBack={() => router.push("/groups")}
+        />
+      ) : null}
     </div>
   );
 }

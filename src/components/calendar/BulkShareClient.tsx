@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { startTransition, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { addMonths, eachDayOfInterval, endOfMonth, format, startOfMonth, subMonths } from "date-fns";
 import { ja } from "date-fns/locale";
@@ -69,11 +69,8 @@ export default function BulkShareClient({
 
   const fetchExisting = useCallback(async () => {
     if (loadedMonthsRef.current.has(monthKey)) {
-      setLoading(false);
       return;
     }
-
-    setLoading(true);
 
     try {
       const monthStart = format(startOfMonth(currentMonth), "yyyy-MM-dd");
@@ -119,8 +116,10 @@ export default function BulkShareClient({
     const savedMonth = readStoredCalendarMonth(baseDate);
 
     if (savedMonth.getTime() !== initialMonth.getTime()) {
-      setLoading(true);
-      setCurrentMonth(savedMonth);
+      startTransition(() => {
+        setLoading(true);
+        setCurrentMonth(savedMonth);
+      });
       restoredStateRef.current = true;
       persistCalendarMonth(savedMonth);
       pendingInitialMonthRef.current = savedMonth.getTime();
@@ -149,7 +148,13 @@ export default function BulkShareClient({
       }
     }
 
-    fetchExisting();
+    const timeoutId = window.setTimeout(() => {
+      void fetchExisting();
+    }, 0);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
   }, [currentMonth, fetchExisting]);
 
   useEffect(() => {
@@ -238,11 +243,17 @@ export default function BulkShareClient({
           canGoNext={canGoNext}
           onPrev={() => {
             const nextMonth = subMonths(currentMonth, 1);
+            if (!loadedMonthsRef.current.has(format(nextMonth, "yyyy-MM"))) {
+              setLoading(true);
+            }
             setCurrentMonth(nextMonth);
             persistCalendarMonth(nextMonth);
           }}
           onNext={() => {
             const nextMonth = addMonths(currentMonth, 1);
+            if (!loadedMonthsRef.current.has(format(nextMonth, "yyyy-MM"))) {
+              setLoading(true);
+            }
             setCurrentMonth(nextMonth);
             persistCalendarMonth(nextMonth);
           }}
