@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
+import { E2E_AUTH_COOKIE_NAME, getE2EUserId } from "@/lib/e2e";
 import { REQUEST_USER_ID_HEADER } from "@/lib/request-user";
 
 function createForwardResponse(headers: Headers) {
@@ -18,6 +19,14 @@ function hasSupabaseAuthCookie(request: NextRequest) {
 
 export async function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
+  const e2eUserId = getE2EUserId(request.cookies.get(E2E_AUTH_COOKIE_NAME)?.value ?? null);
+
+  if (e2eUserId) {
+    const requestHeaders = new Headers(request.headers);
+    requestHeaders.set(REQUEST_USER_ID_HEADER, e2eUserId);
+    return createForwardResponse(requestHeaders);
+  }
+
   const shouldSkipAuthLookup =
     pathname.startsWith("/auth") ||
     pathname.startsWith("/api") ||

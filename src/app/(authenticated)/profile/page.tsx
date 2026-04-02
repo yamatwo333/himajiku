@@ -4,6 +4,7 @@ import ProfileAboutCard from "@/components/profile/ProfileAboutCard";
 import ProfileLogoutButton from "@/components/profile/ProfileLogoutButton";
 import ProfileShareCard from "@/components/profile/ProfileShareCard";
 import ProfileSummaryCard from "@/components/profile/ProfileSummaryCard";
+import { getE2EProfile, isE2EUser } from "@/lib/e2e";
 import { getRequestUserId } from "@/lib/request-user";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -16,11 +17,15 @@ export default async function ProfilePage() {
     redirect("/login?redirect=%2Fprofile");
   }
 
-  const { data: profile } = await createAdminClient()
-    .from("profiles")
-    .select("display_name, avatar_url")
-    .eq("id", userId)
-    .maybeSingle();
+  const profile = isE2EUser(userId)
+    ? getE2EProfile(userId)
+    : (
+        await createAdminClient()
+          .from("profiles")
+          .select("display_name, avatar_url")
+          .eq("id", userId)
+          .maybeSingle()
+      ).data;
 
   return (
     <div>

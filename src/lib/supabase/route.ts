@@ -1,6 +1,11 @@
 import { createServerClient } from "@supabase/ssr";
 import type { User } from "@supabase/supabase-js";
 import type { NextRequest } from "next/server";
+import {
+  createE2ERouteUser,
+  E2E_AUTH_COOKIE_NAME,
+  getE2EUserId,
+} from "@/lib/e2e";
 
 export function createRouteClient(request: NextRequest) {
   return createServerClient(
@@ -18,6 +23,14 @@ export function createRouteClient(request: NextRequest) {
 }
 
 export async function getRouteUser(request: NextRequest): Promise<User | null> {
+  const e2eUserId = getE2EUserId(
+    request.cookies.get(E2E_AUTH_COOKIE_NAME)?.value ?? null
+  );
+
+  if (e2eUserId) {
+    return createE2ERouteUser(e2eUserId);
+  }
+
   const supabase = createRouteClient(request);
   const {
     data: { user },
