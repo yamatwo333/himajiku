@@ -77,8 +77,10 @@ export default function BulkShareClient({
   const daysInMonth = useMemo(() => {
     const monthStart = startOfMonth(currentMonth);
     const monthEnd = endOfMonth(currentMonth);
-    return eachDayOfInterval({ start: monthStart, end: monthEnd });
-  }, [currentMonth]);
+    return eachDayOfInterval({ start: monthStart, end: monthEnd }).filter(
+      (day) => format(day, "yyyy-MM-dd") >= todayString
+    );
+  }, [currentMonth, todayString]);
 
   const goToPrevMonth = useCallback(() => {
     const nextMonth = subMonths(currentMonth, 1);
@@ -98,12 +100,24 @@ export default function BulkShareClient({
     persistCalendarMonth(nextMonth);
   }, [currentMonth]);
 
-  const { surfaceProps, contentStyle } = useMonthSwipePreview({
+  const {
+    surfaceProps,
+    contentStyle,
+    dragOffsetX,
+    isDragging,
+    peekRatio,
+    peekDirection,
+  } = useMonthSwipePreview({
     canGoPrev,
     canGoNext,
     onSwipePrev: goToPrevMonth,
     onSwipeNext: goToNextMonth,
   });
+  const showPrevPeek = canGoPrev && peekDirection === "prev";
+  const showNextPeek = canGoNext && peekDirection === "next";
+  const monthCardShadow = isDragging
+    ? `0 18px 38px rgba(15, 23, 42, ${0.08 + peekRatio * 0.1})`
+    : "0 10px 24px rgba(15, 23, 42, 0.06)";
 
   const fetchExisting = useCallback(async () => {
     if (loadedMonthsRef.current.has(monthKey)) {
@@ -273,9 +287,45 @@ export default function BulkShareClient({
     <div className="flex min-h-dvh flex-col">
       <PageHeader title="ヒマな日をまとめてシェア" onBack={handleBack} />
 
-      <div className="flex-1 space-y-2 px-4 pt-4 pb-32">
-        <div data-testid="bulk-swipe-surface" {...surfaceProps}>
-          <div style={contentStyle}>
+      <div className="flex-1 px-4 pt-5 pb-32">
+        <div
+          data-testid="bulk-swipe-surface"
+          className="relative overflow-hidden rounded-[26px]"
+          {...surfaceProps}
+        >
+          <div
+            className="pointer-events-none absolute inset-y-2 left-0 w-[88%] rounded-[24px] border"
+            style={{
+              opacity: showPrevPeek ? 0.18 + peekRatio * 0.32 : 0,
+              transform: `translate3d(${Math.max(-16, dragOffsetX * 0.16 - 16)}px, 0, 0)`,
+              transition: isDragging ? "none" : "opacity 180ms ease, transform 220ms ease",
+              background:
+                "linear-gradient(90deg, rgba(255,255,255,0.92) 0%, rgba(255,255,255,0.58) 100%)",
+              borderColor: "rgba(148, 163, 184, 0.18)",
+              boxShadow: "inset -18px 0 28px rgba(148, 163, 184, 0.12)",
+            }}
+          />
+          <div
+            className="pointer-events-none absolute inset-y-2 right-0 w-[88%] rounded-[24px] border"
+            style={{
+              opacity: showNextPeek ? 0.18 + peekRatio * 0.32 : 0,
+              transform: `translate3d(${Math.min(16, dragOffsetX * 0.16 + 16)}px, 0, 0)`,
+              transition: isDragging ? "none" : "opacity 180ms ease, transform 220ms ease",
+              background:
+                "linear-gradient(270deg, rgba(255,255,255,0.92) 0%, rgba(255,255,255,0.58) 100%)",
+              borderColor: "rgba(148, 163, 184, 0.18)",
+              boxShadow: "inset 18px 0 28px rgba(148, 163, 184, 0.12)",
+            }}
+          />
+          <div
+            className="rounded-[24px] border px-4 py-3"
+            style={{
+              ...contentStyle,
+              backgroundColor: "var(--color-surface)",
+              borderColor: "rgba(148, 163, 184, 0.18)",
+              boxShadow: monthCardShadow,
+            }}
+          >
             <CalendarMonthSwitcher
               currentMonth={currentMonth}
               canGoPrev={canGoPrev}
@@ -285,17 +335,19 @@ export default function BulkShareClient({
               labelTestId="bulk-month-label"
             />
 
-            <p className="text-xs" style={{ color: "var(--color-text-secondary)" }}>
-              当日以降の日付で、各日の時間帯をタップしてヒマを設定してください
-            </p>
-            <p className="text-xs" style={{ color: "var(--color-text-secondary)" }}>
-              ※ 未定はヒマ人数・赤丸・LINE通知には含まれません
-            </p>
+            <div className="space-y-1">
+              <p className="text-xs" style={{ color: "var(--color-text-secondary)" }}>
+                当日以降の日付で、各日の時間帯をタップしてヒマを設定してください
+              </p>
+              <p className="text-xs" style={{ color: "var(--color-text-secondary)" }}>
+                ※ 未定はヒマ人数・赤丸・LINE通知には含まれません
+              </p>
+            </div>
 
             {loading ? (
               <PageSpinner className="flex items-center justify-center py-16" />
             ) : (
-              <div className="space-y-2">
+              <div className="mt-4 space-y-2">
                 {daysInMonth.map((day) => {
                   const dateStr = format(day, "yyyy-MM-dd");
                   const dayLabel = format(day, "M/d (E)", { locale: ja });

@@ -19,11 +19,11 @@ export default function CalendarMonthSwitcher({
   labelTestId,
 }: CalendarMonthSwitcherProps) {
   return (
-    <div className="mb-2 flex items-center justify-between">
+    <div className="mb-3 flex items-center justify-between">
       <button
         onClick={onPrev}
         disabled={!canGoPrev}
-        className="rounded-lg p-2 active:bg-gray-100 disabled:opacity-20"
+        className="rounded-lg p-1.5 active:bg-gray-100 disabled:opacity-20"
       >
         <svg
           width="20"
@@ -43,7 +43,7 @@ export default function CalendarMonthSwitcher({
       <button
         onClick={onNext}
         disabled={!canGoNext}
-        className="rounded-lg p-2 active:bg-gray-100 disabled:opacity-20"
+        className="rounded-lg p-1.5 active:bg-gray-100 disabled:opacity-20"
       >
         <svg
           width="20"

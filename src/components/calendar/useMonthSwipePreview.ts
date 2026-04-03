@@ -12,9 +12,9 @@ import {
 
 const SWIPE_THRESHOLD_PX = 56;
 const SWIPE_MAX_VERTICAL_DRIFT_PX = 80;
-const SWIPE_PREVIEW_MAX_PX = 96;
-const SWIPE_PREVIEW_RATIO = 0.44;
-const SWIPE_PREVIEW_EDGE_RATIO = 0.24;
+const SWIPE_PREVIEW_MAX_PX = 120;
+const SWIPE_PREVIEW_RATIO = 0.62;
+const SWIPE_PREVIEW_EDGE_RATIO = 0.3;
 
 interface UseMonthSwipePreviewOptions {
   canGoPrev: boolean;
@@ -149,11 +149,16 @@ export function useMonthSwipePreview({
   const contentStyle = useMemo<CSSProperties>(
     () => ({
       transform: `translate3d(${dragOffsetX}px, 0, 0)`,
-      transition: isDragging ? "none" : "transform 180ms cubic-bezier(0.22, 1, 0.36, 1)",
+      transition: isDragging ? "none" : "transform 220ms cubic-bezier(0.22, 1, 0.36, 1)",
       willChange: isDragging ? "transform" : undefined,
     }),
     [dragOffsetX, isDragging]
   );
+  const peekRatio = useMemo(
+    () => Math.min(1, Math.abs(dragOffsetX) / SWIPE_PREVIEW_MAX_PX),
+    [dragOffsetX]
+  );
+  const peekDirection = dragOffsetX > 0 ? "prev" : dragOffsetX < 0 ? "next" : null;
 
   return {
     surfaceProps: {
@@ -165,5 +170,9 @@ export function useMonthSwipePreview({
       style: surfaceStyle,
     },
     contentStyle,
+    dragOffsetX,
+    isDragging,
+    peekRatio,
+    peekDirection,
   };
 }

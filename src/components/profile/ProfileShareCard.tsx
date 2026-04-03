@@ -47,25 +47,30 @@ export default function ProfileShareCard({ appUrl }: ProfileShareCardProps) {
         borderColor: "var(--color-border)",
       }}
     >
-      <div className="flow-root">
-        <CharacterSticker
-          src={CHARACTER_ASSETS.profileShare.src}
-          alt={CHARACTER_ASSETS.profileShare.alt}
-          className="float-right ml-3 mb-2 h-12 w-auto object-contain"
-        />
-        <p className="text-sm font-bold" style={{ color: "var(--color-text)" }}>
-          このサービスをシェア
-        </p>
-        <p
-          className="mt-2 text-xs leading-relaxed"
-          style={{ color: "var(--color-text-secondary)" }}
-        >
-          友だちにサービスリンクをそのまま共有できます。
-        </p>
+      <div className="flex items-center gap-3">
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-bold" style={{ color: "var(--color-text)" }}>
+            このサービスをシェア
+          </p>
+          <p
+            className="mt-2 text-xs leading-relaxed"
+            style={{ color: "var(--color-text-secondary)" }}
+          >
+            友だちにサービスリンクをそのまま共有できます。
+          </p>
+        </div>
+
+        <div className="flex h-16 w-20 shrink-0 items-center justify-center">
+          <CharacterSticker
+            src={CHARACTER_ASSETS.profileShare.src}
+            alt={CHARACTER_ASSETS.profileShare.alt}
+            className="max-h-12 w-auto object-contain"
+          />
+        </div>
       </div>
 
       <div
-        className="clear-both mt-3 rounded-xl border px-3 py-2 text-xs break-all"
+        className="mt-3 rounded-xl border px-3 py-2 text-xs break-all"
         style={{
           backgroundColor: "rgba(14, 165, 233, 0.06)",
           borderColor: "rgba(14, 165, 233, 0.14)",

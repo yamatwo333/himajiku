@@ -81,7 +81,14 @@ export default function CalendarGrid({
     onMonthChange(picked);
   };
 
-  const { surfaceProps, contentStyle } = useMonthSwipePreview({
+  const {
+    surfaceProps,
+    contentStyle,
+    dragOffsetX,
+    isDragging,
+    peekRatio,
+    peekDirection,
+  } = useMonthSwipePreview({
     canGoPrev,
     canGoNext,
     onSwipePrev: () => changeMonth(-1),
@@ -147,14 +154,19 @@ export default function CalendarGrid({
 
     return map;
   }, [availabilities, currentUserId, notifyThreshold]);
+  const showPrevPeek = canGoPrev && peekDirection === "prev";
+  const showNextPeek = canGoNext && peekDirection === "next";
+  const cardShadow = isDragging
+    ? `0 18px 38px rgba(15, 23, 42, ${0.08 + peekRatio * 0.1})`
+    : "0 10px 24px rgba(15, 23, 42, 0.06)";
 
   return (
     <div className="px-4">
-      <div className="mb-4 flex items-center justify-between">
+      <div className="mb-3 flex items-center justify-between">
         <button
           onClick={() => changeMonth(-1)}
           disabled={!canGoPrev}
-          className="rounded-lg p-3 active:bg-gray-100 disabled:opacity-20"
+          className="rounded-lg p-2.5 active:bg-gray-100 disabled:opacity-20"
         >
           <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
             <polyline points="12,4 6,10 12,16" />
@@ -165,7 +177,7 @@ export default function CalendarGrid({
             data-testid="calendar-month-select"
             value={format(currentMonth, "yyyy-MM")}
             onChange={(e) => jumpToMonth(e.target.value)}
-            className="appearance-none rounded-xl border px-4 py-1.5 pr-8 text-center text-base font-bold outline-none"
+            className="appearance-none rounded-xl border px-3.5 py-1 pr-7 text-center text-[15px] font-bold outline-none"
             style={{
               color: "var(--color-text)",
               borderColor: "var(--color-border)",
@@ -188,7 +200,7 @@ export default function CalendarGrid({
         <button
           onClick={() => changeMonth(1)}
           disabled={!canGoNext}
-          className="rounded-lg p-3 active:bg-gray-100 disabled:opacity-20"
+          className="rounded-lg p-2.5 active:bg-gray-100 disabled:opacity-20"
         >
           <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
             <polyline points="8,4 14,10 8,16" />
@@ -198,12 +210,48 @@ export default function CalendarGrid({
 
       <div
         data-testid="calendar-swipe-surface"
-        className="select-none"
+        className="relative overflow-hidden rounded-[26px] select-none"
         {...surfaceProps}
       >
-        <div className="grid grid-cols-7 gap-[2px]">
-          <div className="col-span-7" style={contentStyle}>
-            <div className="mb-1 grid grid-cols-7 text-center text-xs font-medium" style={{ color: "var(--color-text-secondary)" }}>
+        <div
+          className="pointer-events-none absolute inset-y-2 left-0 w-[88%] rounded-[24px] border"
+          style={{
+            opacity: showPrevPeek ? 0.18 + peekRatio * 0.32 : 0,
+            transform: `translate3d(${Math.max(-16, dragOffsetX * 0.16 - 16)}px, 0, 0)`,
+            transition: isDragging ? "none" : "opacity 180ms ease, transform 220ms ease",
+            background:
+              "linear-gradient(90deg, rgba(255,255,255,0.92) 0%, rgba(255,255,255,0.58) 100%)",
+            borderColor: "rgba(148, 163, 184, 0.18)",
+            boxShadow: "inset -18px 0 28px rgba(148, 163, 184, 0.12)",
+          }}
+        />
+        <div
+          className="pointer-events-none absolute inset-y-2 right-0 w-[88%] rounded-[24px] border"
+          style={{
+            opacity: showNextPeek ? 0.18 + peekRatio * 0.32 : 0,
+            transform: `translate3d(${Math.min(16, dragOffsetX * 0.16 + 16)}px, 0, 0)`,
+            transition: isDragging ? "none" : "opacity 180ms ease, transform 220ms ease",
+            background:
+              "linear-gradient(270deg, rgba(255,255,255,0.92) 0%, rgba(255,255,255,0.58) 100%)",
+            borderColor: "rgba(148, 163, 184, 0.18)",
+            boxShadow: "inset 18px 0 28px rgba(148, 163, 184, 0.12)",
+          }}
+        />
+
+        <div
+          className="grid grid-cols-7 gap-[2px] rounded-[24px] border px-2.5 py-2"
+          style={{
+            ...contentStyle,
+            backgroundColor: "var(--color-surface)",
+            borderColor: "rgba(148, 163, 184, 0.18)",
+            boxShadow: cardShadow,
+          }}
+        >
+          <div className="col-span-7">
+            <div
+              className="mb-0.5 grid grid-cols-7 text-center text-[11px] font-medium"
+              style={{ color: "var(--color-text-secondary)" }}
+            >
               {WEEKDAYS.map((d, i) => (
                 <div
                   key={d}
@@ -236,7 +284,7 @@ export default function CalendarGrid({
                       router.push(`/calendar/${dateStr}${groupId ? `?group=${groupId}` : ""}`);
                     }}
                     disabled={isPast}
-                    className="relative flex flex-col items-center rounded-lg py-2 transition-colors active:bg-gray-100"
+                    className="relative flex flex-col items-center rounded-lg py-1.5 transition-colors active:bg-gray-100"
                     style={{
                       opacity: inMonth ? (isPast ? 0.35 : 1) : isPast ? 0.15 : 0.3,
                     }}
@@ -245,7 +293,7 @@ export default function CalendarGrid({
                       const today = isToday(day);
                       return (
                         <span
-                          className="flex h-7 w-7 items-center justify-center rounded-full text-sm"
+                          className="flex h-6 w-6 items-center justify-center rounded-full text-[13px]"
                           style={{
                             backgroundColor: today ? "var(--color-today)" : isHot ? "var(--color-hot)" : "transparent",
                             color: today || isHot ? "white" : undefined,
@@ -257,22 +305,22 @@ export default function CalendarGrid({
                       );
                     })()}
 
-                    <div className="mt-1 flex items-center gap-[3px]">
+                    <div className="mt-0.5 flex items-center gap-[2px]">
                       {selfFree && (
                         <div
-                          className="h-2 w-2 rounded-full"
+                          className="h-1.5 w-1.5 rounded-full"
                           style={{ backgroundColor: "var(--color-free-self)" }}
                         />
                       )}
                       {friendFree && (
                         <div
-                          className="h-2 w-2 rounded-full"
+                          className="h-1.5 w-1.5 rounded-full"
                           style={{ backgroundColor: "var(--color-free-friend)" }}
                         />
                       )}
                       {hasUndecided && (
                         <div
-                          className="h-2 w-2 rounded-full border"
+                          className="h-1.5 w-1.5 rounded-full border"
                           style={{
                             borderColor: "var(--color-text-secondary)",
                             backgroundColor: "transparent",
@@ -289,41 +337,49 @@ export default function CalendarGrid({
       </div>
 
       <div
-        className="mx-auto mt-4 grid max-w-[320px] grid-cols-2 gap-x-4 gap-y-2 text-xs"
+        className="mx-auto mt-3 grid max-w-[320px] grid-cols-2 gap-x-5 gap-y-1.5 text-xs"
         style={{ color: "var(--color-text-secondary)" }}
       >
-        <span className="flex items-center gap-1">
-          <span
-            className="h-2 w-2 rounded-full"
-            style={{ backgroundColor: "var(--color-free-self)" }}
-          />
-          自分がヒマ
-        </span>
-        <span className="flex items-center gap-1">
-          <span
-            className="h-2 w-2 rounded-full"
-            style={{ backgroundColor: "var(--color-free-friend)" }}
-          />
-          友だちがヒマ
-        </span>
-        <span className="flex items-center gap-1">
-          <span
-            className="h-2 w-2 rounded-full border"
-            style={{
-              borderColor: "var(--color-text-secondary)",
-              backgroundColor: "transparent",
-            }}
-          />
-          未定あり
-        </span>
-        <span className="flex items-center gap-1">
-          <span
-            className="flex h-4 w-4 items-center justify-center rounded-full text-[10px] font-bold text-white"
-            style={{ backgroundColor: "var(--color-hot)" }}
-          >
-            !
+        <span className="grid grid-cols-[16px_1fr] items-center gap-1.5">
+          <span className="flex h-4 w-4 items-center justify-center">
+            <span
+              className="h-2 w-2 rounded-full"
+              style={{ backgroundColor: "var(--color-free-self)" }}
+            />
           </span>
-          集まれそう
+          <span>自分がヒマ</span>
+        </span>
+        <span className="grid grid-cols-[16px_1fr] items-center gap-1.5">
+          <span className="flex h-4 w-4 items-center justify-center">
+            <span
+              className="h-2 w-2 rounded-full"
+              style={{ backgroundColor: "var(--color-free-friend)" }}
+            />
+          </span>
+          <span>友だちがヒマ</span>
+        </span>
+        <span className="grid grid-cols-[16px_1fr] items-center gap-1.5">
+          <span className="flex h-4 w-4 items-center justify-center">
+            <span
+              className="h-2 w-2 rounded-full border"
+              style={{
+                borderColor: "var(--color-text-secondary)",
+                backgroundColor: "transparent",
+              }}
+            />
+          </span>
+          <span>未定あり</span>
+        </span>
+        <span className="grid grid-cols-[16px_1fr] items-center gap-1.5">
+          <span className="flex h-4 w-4 items-center justify-center">
+            <span
+              className="flex h-4 w-4 items-center justify-center rounded-full text-[10px] font-bold text-white"
+              style={{ backgroundColor: "var(--color-hot)" }}
+            >
+              !
+            </span>
+          </span>
+          <span>集まれそう</span>
         </span>
       </div>
     </div>
