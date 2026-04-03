@@ -8,7 +8,7 @@
     "start": "next start",
     "lint": "eslint . --ext .js,.jsx,.ts,.tsx,.mjs",
     "brand:build": "node scripts/build-brand-assets.mjs",
-    "test:unit": "node --test --experimental-strip-types tests/unit/*.test.ts",
+    "test:unit": "node --test --experimental-strip-types --experimental-default-type=module tests/unit/*.test.ts",
     "test:e2e": "playwright test",
     "test:e2e:update-snapshots": "playwright test tests/visual.spec.ts --update-snapshots"
   },
