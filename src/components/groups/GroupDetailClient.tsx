@@ -296,16 +296,16 @@ export default function GroupDetailClient({
             onCancelTransfer={() => setTransferTarget(null)}
             onConfirmTransfer={handleTransfer}
           />
-
-          <GroupSettingsSection
-            isOwner={isOwner}
-            groupName={group.name}
-            editName={editName}
-            notifyThreshold={notifyThreshold}
-            onEditNameChange={handleEditNameChange}
-            onNotifyThresholdChange={handleNotifyThresholdChange}
-          />
         </div>
+
+        <GroupSettingsSection
+          isOwner={isOwner}
+          groupName={group.name}
+          editName={editName}
+          notifyThreshold={notifyThreshold}
+          onEditNameChange={handleEditNameChange}
+          onNotifyThresholdChange={handleNotifyThresholdChange}
+        />
 
         <GroupLineLinkSection
           isOwner={isOwner}
