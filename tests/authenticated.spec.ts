@@ -1,66 +1,13 @@
-import { expect, test, type Locator, type Page } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 import { addMonths, endOfMonth, format, startOfMonth } from "date-fns";
-
-const BASE_URL = "http://127.0.0.1:3100";
-const AUTH_COOKIE_NAME = "sharehima-e2e-user-id";
-const E2E_USER_ID = "e2e-user-1";
-const E2E_GROUP_ID = "e2e-group-1";
-const TEST_NOW = new Date(process.env.E2E_NOW_ISO || "2026-04-03T12:00:00+09:00");
-
-async function signIn(page: Page) {
-  await page.addInitScript(() => {
-    window.localStorage.clear();
-    window.sessionStorage.clear();
-  });
-
-  await page.context().addCookies([
-    {
-      name: AUTH_COOKIE_NAME,
-      value: E2E_USER_ID,
-      url: BASE_URL,
-    },
-  ]);
-}
-
-function getBulkCardByComment(page: Page, comment: string): Locator {
-  return page
-    .locator(`input[value="${comment}"]`)
-    .locator("xpath=ancestor::div[contains(@class,'rounded-xl')][1]");
-}
-
-async function performSwipe(surface: Locator, direction: "left" | "right") {
-  const bounds = await surface.boundingBox();
-
-  if (!bounds) {
-    throw new Error("swipe surface not found");
-  }
-
-  const centerY = bounds.y + bounds.height / 2;
-  const startX = direction === "left" ? bounds.x + bounds.width * 0.8 : bounds.x + bounds.width * 0.2;
-  const endX = direction === "left" ? bounds.x + bounds.width * 0.2 : bounds.x + bounds.width * 0.8;
-
-  await surface.dispatchEvent("pointerdown", {
-    pointerType: "touch",
-    pointerId: 1,
-    isPrimary: true,
-    clientX: startX,
-    clientY: centerY,
-  });
-  await surface.dispatchEvent("pointermove", {
-    pointerType: "touch",
-    pointerId: 1,
-    isPrimary: true,
-    clientX: (startX + endX) / 2,
-    clientY: centerY,
-  });
-  await surface.dispatchEvent("pointerup", {
-    pointerType: "touch",
-    pointerId: 1,
-    isPrimary: true,
-    clientX: endX,
-    clientY: centerY,
-  });
-}
+import {
+  E2E_GROUP_ID,
+  E2E_USER_ID,
+  TEST_NOW,
+  getBulkCardByComment,
+  performSwipe,
+  signIn,
+} from "./helpers/e2e";
 
 test.describe("authenticated smoke flows", () => {
   test.beforeEach(async ({ page }) => {

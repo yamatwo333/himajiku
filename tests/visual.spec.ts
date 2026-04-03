@@ -1,24 +1,5 @@
-import { expect, test, type Page } from "@playwright/test";
-
-const BASE_URL = "http://127.0.0.1:3100";
-const AUTH_COOKIE_NAME = "sharehima-e2e-user-id";
-const E2E_USER_ID = "e2e-user-1";
-const E2E_GROUP_ID = "e2e-group-1";
-
-async function signIn(page: Page) {
-  await page.addInitScript(() => {
-    window.localStorage.clear();
-    window.sessionStorage.clear();
-  });
-
-  await page.context().addCookies([
-    {
-      name: AUTH_COOKIE_NAME,
-      value: E2E_USER_ID,
-      url: BASE_URL,
-    },
-  ]);
-}
+import { expect, test } from "@playwright/test";
+import { E2E_GROUP_ID, signIn } from "./helpers/e2e";
 
 test.describe("visual regression", () => {
   test.beforeEach(async ({ page }) => {
@@ -44,5 +25,36 @@ test.describe("visual regression", () => {
 
     await expect(page.getByText("シェアヒマとは？")).toBeVisible();
     await expect(page).toHaveScreenshot("profile-page.png");
+  });
+
+  test("groups page layout stays stable", async ({ page }) => {
+    await page.goto("/groups", { waitUntil: "networkidle" });
+
+    await expect(page.getByText("テストグループ")).toBeVisible();
+    await expect(page).toHaveScreenshot("groups-page.png");
+  });
+});
+
+test.describe("public visual regression", () => {
+  test("join success page layout stays stable", async ({ page }) => {
+    await page.route("**/api/groups/join", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          group: {
+            id: "group-1",
+            name: "テストグループ",
+          },
+        }),
+      });
+    });
+
+    await page.goto("/join?code=ABC123", { waitUntil: "networkidle" });
+
+    await expect(
+      page.getByRole("heading", { name: "「テストグループ」に参加しました！" })
+    ).toBeVisible();
+    await expect(page).toHaveScreenshot("join-success-page.png");
   });
 });
