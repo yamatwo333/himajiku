@@ -5,6 +5,7 @@ const BASE_URL = "http://127.0.0.1:3100";
 const AUTH_COOKIE_NAME = "sharehima-e2e-user-id";
 const E2E_USER_ID = "e2e-user-1";
 const E2E_GROUP_ID = "e2e-group-1";
+const TEST_NOW = new Date(process.env.E2E_NOW_ISO || "2026-04-03T12:00:00+09:00");
 
 async function signIn(page: Page) {
   await page.addInitScript(() => {
@@ -202,7 +203,7 @@ test.describe("authenticated smoke flows", () => {
 
     const swipeSurface = page.getByTestId("calendar-swipe-surface");
     const monthSelect = page.getByTestId("calendar-month-select");
-    const expectedNextMonth = format(addMonths(startOfMonth(new Date()), 1), "yyyy-MM");
+    const expectedNextMonth = format(addMonths(startOfMonth(TEST_NOW), 1), "yyyy-MM");
 
     await performSwipe(swipeSurface, "left");
 
@@ -215,7 +216,7 @@ test.describe("authenticated smoke flows", () => {
 
     const swipeSurface = page.getByTestId("calendar-swipe-surface");
     const monthSelect = page.getByTestId("calendar-month-select");
-    const currentMonthValue = format(startOfMonth(new Date()), "yyyy-MM");
+    const currentMonthValue = format(startOfMonth(TEST_NOW), "yyyy-MM");
     const initialUrl = page.url();
 
     await performSwipe(swipeSurface, "right");
@@ -228,7 +229,7 @@ test.describe("authenticated smoke flows", () => {
     await page.goto(`/calendar?group=${E2E_GROUP_ID}`);
 
     const swipeSurface = page.getByTestId("calendar-swipe-surface");
-    const currentMonthDayCount = endOfMonth(startOfMonth(new Date())).getDate();
+    const currentMonthDayCount = endOfMonth(startOfMonth(TEST_NOW)).getDate();
 
     await expect(swipeSurface.locator("button")).toHaveCount(currentMonthDayCount);
   });
@@ -238,8 +239,8 @@ test.describe("authenticated smoke flows", () => {
 
     const swipeSurface = page.getByTestId("bulk-swipe-surface");
     const monthLabel = page.getByTestId("bulk-month-label");
-    const currentMonthLabel = format(startOfMonth(new Date()), "yyyy年 M月");
-    const nextMonthLabel = format(addMonths(startOfMonth(new Date()), 1), "yyyy年 M月");
+    const currentMonthLabel = format(startOfMonth(TEST_NOW), "yyyy年 M月");
+    const nextMonthLabel = format(addMonths(startOfMonth(TEST_NOW), 1), "yyyy年 M月");
     const existingCommentInput = page.locator('input[value="既存のまとめてシェア"]');
 
     await expect(monthLabel).toHaveText(currentMonthLabel);
@@ -272,7 +273,7 @@ test.describe("authenticated smoke flows", () => {
 
     const swipeSurface = page.getByTestId("bulk-swipe-surface");
     const monthLabel = page.getByTestId("bulk-month-label");
-    const currentMonthLabel = format(startOfMonth(new Date()), "yyyy年 M月");
+    const currentMonthLabel = format(startOfMonth(TEST_NOW), "yyyy年 M月");
 
     await performSwipe(swipeSurface, "right");
 

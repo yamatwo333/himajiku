@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint . --ext .js,.jsx,.ts,.tsx,.mjs",
     "brand:build": "node scripts/build-brand-assets.mjs",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "test:e2e:update-snapshots": "playwright test tests/visual.spec.ts --update-snapshots"
   },
   "dependencies": {
     "@supabase/ssr": "^0.9.0",

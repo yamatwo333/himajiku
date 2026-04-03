@@ -1,5 +1,5 @@
 import { addMonths, startOfMonth } from "date-fns";
-import { getCurrentMonthDateInTokyo } from "@/lib/date";
+import { getCurrentMonthDateInTokyo, getReferenceNow } from "@/lib/date";
 
 export const CALENDAR_MONTH_STORAGE_KEY = "calendarMonth";
 export const SELECTED_GROUP_STORAGE_KEY = "selectedGroupId";
@@ -14,14 +14,14 @@ function dispatchCalendarStateChange() {
   window.dispatchEvent(new Event(CALENDAR_STATE_CHANGE_EVENT));
 }
 
-export function getCalendarMonthBounds(now: Date = new Date()) {
+export function getCalendarMonthBounds(now: Date = getReferenceNow()) {
   const minMonth = startOfMonth(getCurrentMonthDateInTokyo(now));
   const maxMonth = addMonths(minMonth, 2);
 
   return { minMonth, maxMonth };
 }
 
-export function clampCalendarMonth(month: Date, now: Date = new Date()) {
+export function clampCalendarMonth(month: Date, now: Date = getReferenceNow()) {
   const { minMonth, maxMonth } = getCalendarMonthBounds(now);
   const normalizedMonth = startOfMonth(month);
 
@@ -36,7 +36,7 @@ export function clampCalendarMonth(month: Date, now: Date = new Date()) {
   return normalizedMonth;
 }
 
-export function readStoredCalendarMonth(now: Date = new Date()) {
+export function readStoredCalendarMonth(now: Date = getReferenceNow()) {
   if (typeof window === "undefined") {
     return clampCalendarMonth(now, now);
   }

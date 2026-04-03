@@ -1,7 +1,7 @@
 import { endOfMonth, endOfWeek, format, startOfMonth, startOfWeek } from "date-fns";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { clampCalendarMonth } from "@/lib/calendar";
-import { getCurrentMonthStartInTokyo } from "@/lib/date";
+import { getCurrentMonthStartInTokyo, getReferenceNow } from "@/lib/date";
 import type { AvailabilityWithUser, TimeSlot } from "@/lib/types";
 import { getGroupMemberIds, isGroupMember } from "@/lib/server/groups";
 
@@ -164,7 +164,7 @@ function mapAvailabilityRows(rows: AvailabilityRpcRow[]) {
 
 export function parseCalendarMonthParam(
   monthParam?: string,
-  now: Date = new Date()
+  now: Date = getReferenceNow()
 ) {
   if (!monthParam || !/^\d{4}-\d{2}$/.test(monthParam)) {
     return clampCalendarMonth(now, now);

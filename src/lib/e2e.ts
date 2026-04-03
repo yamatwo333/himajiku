@@ -1,5 +1,6 @@
 import { addDays, format } from "date-fns";
 import type { User } from "@supabase/supabase-js";
+import { getReferenceNow } from "@/lib/date";
 import type { TimeSlot } from "@/lib/types";
 import type { AvailabilityWithUser } from "@/lib/types";
 
@@ -9,7 +10,7 @@ const E2E_PRIMARY_USER_ID = "e2e-user-1";
 const E2E_GROUP_ID = "e2e-group-1";
 
 function getFixtureDate() {
-  return format(addDays(new Date(), 5), "yyyy-MM-dd");
+  return format(addDays(getReferenceNow(), 5), "yyyy-MM-dd");
 }
 
 function buildFixtureAvailabilities(userId: string, date: string): AvailabilityWithUser[] {
@@ -189,7 +190,7 @@ export function getE2EBulkAvailabilityEntriesForMonth(userId: string) {
     return {};
   }
 
-  const date = format(new Date(), "yyyy-MM-dd");
+  const date = format(getReferenceNow(), "yyyy-MM-dd");
 
   return buildBulkFixtureEntry(date, ["morning"], "既存のまとめてシェア");
 }
