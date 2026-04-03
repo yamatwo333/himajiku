@@ -1,8 +1,8 @@
 import { redirect } from "next/navigation";
 import DayDetailClient from "@/components/calendar/DayDetailClient";
 import { getE2EAvailabilityForDateForUser, isE2EUser } from "@/lib/e2e";
-import { getRequestUserId } from "@/lib/request-user";
-import { getAvailabilityForDateForUser } from "@/lib/server/availability";
+import { getRequestActor } from "@/lib/request-actor";
+import { getAvailabilityForDateForActor } from "@/lib/server/availability";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export default async function DayDetailPage({
@@ -11,17 +11,17 @@ export default async function DayDetailPage({
 }: {
   params: Promise<{ date: string }>;
   searchParams: Promise<{ group?: string }>;
-}) {
+  }) {
   const [{ date }, { group }] = await Promise.all([params, searchParams]);
-  const userId = await getRequestUserId();
+  const actor = await getRequestActor();
 
-  if (!userId) {
+  if (!actor) {
     redirect(`/login?redirect=${encodeURIComponent(`/calendar/${date}${group ? `?group=${group}` : ""}`)}`);
   }
 
-  if (isE2EUser(userId)) {
+  if (actor.kind === "user" && isE2EUser(actor.userId)) {
     const result = getE2EAvailabilityForDateForUser(
-      userId,
+      actor.userId,
       date,
       group || undefined
     );
@@ -36,12 +36,13 @@ export default async function DayDetailPage({
         dateStr={date}
         groupId={group ?? ""}
         initialAvailabilities={result.availabilities}
+        isGuest={false}
       />
     );
   }
 
-  const result = await getAvailabilityForDateForUser(createAdminClient(), {
-    userId,
+  const result = await getAvailabilityForDateForActor(createAdminClient(), {
+    actor,
     groupId: group || undefined,
     date,
   });
@@ -54,8 +55,9 @@ export default async function DayDetailPage({
     <DayDetailClient
       currentUserId={result.currentUserId}
       dateStr={date}
-      groupId={group ?? ""}
+      groupId={group || (actor.kind === "guest" ? actor.groupId : "")}
       initialAvailabilities={result.availabilities}
+      isGuest={actor.kind === "guest"}
     />
   );
 }

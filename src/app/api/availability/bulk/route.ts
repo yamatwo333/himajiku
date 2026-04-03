@@ -1,4 +1,5 @@
 import { after, NextRequest, NextResponse } from "next/server";
+import type { User } from "@supabase/supabase-js";
 import { isE2EUser } from "@/lib/e2e";
 import { isDateBeforeTodayInTokyo } from "@/lib/date";
 import { ensureProfile } from "@/lib/ensure-profile";
@@ -8,7 +9,7 @@ import {
 import { captureNotificationBaselines } from "@/lib/server/availability-notification-baselines";
 import { checkRateLimit, getRateLimitKeyParts } from "@/lib/server/rate-limit";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getRouteUser } from "@/lib/supabase/route";
+import { getRouteActor } from "@/lib/supabase/route";
 import type { TimeSlot } from "@/lib/types";
 import { normalizeTimeSlots } from "@/lib/types";
 
@@ -24,13 +25,13 @@ function hasSameTimeSlots(left: readonly TimeSlot[], right: readonly TimeSlot[])
 
 export async function POST(request: NextRequest) {
   try {
-    const user = await getRouteUser(request);
-    if (!user) {
+    const actor = await getRouteActor(request);
+    if (!actor) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const rateLimit = checkRateLimit({
-      key: `availability-bulk:${getRateLimitKeyParts({ request, userId: user.id }).userId}`,
+      key: `availability-bulk:${getRateLimitKeyParts({ request, userId: actor.actorId }).userId}`,
       limit: 10,
       windowMs: 60 * 1000,
     });
@@ -41,7 +42,7 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
 
-    if (isE2EUser(user.id)) {
+    if (actor.kind === "user" && isE2EUser(actor.userId)) {
       if (Array.isArray(body?.entries)) {
         return NextResponse.json({ success: true, count: body.entries.length });
       }
@@ -100,9 +101,9 @@ export async function POST(request: NextRequest) {
       }
 
       const { data: existingRows, error: existingError } = await supabaseAdmin
-        .from("availability")
+        .from(actor.kind === "guest" ? "guest_availability" : "availability")
         .select("date, time_slots, comment")
-        .eq("user_id", user.id)
+        .eq(actor.kind === "guest" ? "guest_member_id" : "user_id", actor.kind === "guest" ? actor.guestMemberId : actor.userId)
         .gte("date", start)
         .lte("date", end);
 
@@ -140,21 +141,31 @@ export async function POST(request: NextRequest) {
         affectedDates.length > 0
           ? await captureNotificationBaselines({
               supabase: supabaseAdmin,
-              userId: user.id,
+              actor,
               dates: affectedDates,
             })
           : [];
 
-      if (staleDates.length > 0 || entriesByDate.size > 0) {
-        await ensureProfile(supabaseAdmin, user);
+      if (actor.kind === "user" && (staleDates.length > 0 || entriesByDate.size > 0)) {
+        await ensureProfile(supabaseAdmin, {
+          id: actor.userId,
+          user_metadata: {},
+        } as User);
       }
 
       if (staleDates.length > 0) {
-        const { error: deleteError } = await supabaseAdmin
-          .from("availability")
-          .delete()
-          .eq("user_id", user.id)
-          .in("date", staleDates);
+        const { error: deleteError } =
+          actor.kind === "guest"
+            ? await supabaseAdmin
+                .from("guest_availability")
+                .delete()
+                .eq("guest_member_id", actor.guestMemberId)
+                .in("date", staleDates)
+            : await supabaseAdmin
+                .from("availability")
+                .delete()
+                .eq("user_id", actor.userId)
+                .in("date", staleDates);
 
         if (deleteError) {
           console.error("Bulk delete error:", deleteError);
@@ -163,16 +174,30 @@ export async function POST(request: NextRequest) {
       }
 
       if (entriesByDate.size > 0) {
-        const records = [...entriesByDate.values()].map((entry) => ({
-          user_id: user.id,
-          date: entry.date,
-          time_slots: entry.time_slots,
-          comment: entry.comment,
-        }));
+        const records = [...entriesByDate.values()].map((entry) =>
+          actor.kind === "guest"
+            ? {
+                guest_member_id: actor.guestMemberId,
+                date: entry.date,
+                time_slots: entry.time_slots,
+                comment: entry.comment,
+              }
+            : {
+                user_id: actor.userId,
+                date: entry.date,
+                time_slots: entry.time_slots,
+                comment: entry.comment,
+              }
+        );
 
-        const { error } = await supabaseAdmin
-          .from("availability")
-          .upsert(records, { onConflict: "user_id,date" });
+        const { error } =
+          actor.kind === "guest"
+            ? await supabaseAdmin
+                .from("guest_availability")
+                .upsert(records, { onConflict: "guest_member_id,date" })
+            : await supabaseAdmin
+                .from("availability")
+                .upsert(records, { onConflict: "user_id,date" });
 
         if (error) {
           console.error("Bulk upsert error:", error);
@@ -185,7 +210,7 @@ export async function POST(request: NextRequest) {
           try {
             await runAvailabilityPostSaveJob({
               supabase: supabaseAdmin,
-              userId: user.id,
+              actor,
               dates: affectedDates,
               cleanupOldAvailability: true,
               notificationBaselines,
@@ -223,24 +248,43 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "当日より前の日付はシェアできません" }, { status: 400 });
     }
 
-    await ensureProfile(supabaseAdmin, user);
+    if (actor.kind === "user") {
+      await ensureProfile(supabaseAdmin, {
+        id: actor.userId,
+        user_metadata: {},
+      } as User);
+    }
 
     const notificationBaselines = await captureNotificationBaselines({
       supabase: supabaseAdmin,
-      userId: user.id,
+      actor,
       dates: uniqueDates,
     });
 
-    const records = uniqueDates.map((date) => ({
-      user_id: user.id,
-      date,
-      time_slots: normalizedTimeSlots,
-      comment: body?.comment || "",
-    }));
+    const records = uniqueDates.map((date) =>
+      actor.kind === "guest"
+        ? {
+            guest_member_id: actor.guestMemberId,
+            date,
+            time_slots: normalizedTimeSlots,
+            comment: body?.comment || "",
+          }
+        : {
+            user_id: actor.userId,
+            date,
+            time_slots: normalizedTimeSlots,
+            comment: body?.comment || "",
+          }
+    );
 
-    const { error } = await supabaseAdmin
-      .from("availability")
-      .upsert(records, { onConflict: "user_id,date" });
+    const { error } =
+      actor.kind === "guest"
+        ? await supabaseAdmin
+            .from("guest_availability")
+            .upsert(records, { onConflict: "guest_member_id,date" })
+        : await supabaseAdmin
+            .from("availability")
+            .upsert(records, { onConflict: "user_id,date" });
 
     if (error) {
       console.error("Bulk upsert error:", error);
@@ -251,7 +295,7 @@ export async function POST(request: NextRequest) {
       try {
         await runAvailabilityPostSaveJob({
           supabase: supabaseAdmin,
-          userId: user.id,
+          actor,
           dates: uniqueDates,
           notificationBaselines,
         });

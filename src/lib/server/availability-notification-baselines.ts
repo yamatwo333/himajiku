@@ -1,15 +1,16 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { getUserGroupIds } from "@/lib/server/groups";
+import type { RequestActor } from "@/lib/actors";
+import { getGroupIdsForActor } from "@/lib/server/groups";
 import { getGroupAvailabilityMatchingSlots } from "@/lib/server/notify";
 import type { GroupDateNotificationBaseline } from "@/lib/server/jobs/availability-jobs";
 
 export async function captureNotificationBaselines({
   supabase,
-  userId,
+  actor,
   dates,
 }: {
   supabase: SupabaseClient;
-  userId: string;
+  actor: RequestActor;
   dates: string[];
 }) {
   const uniqueDates = [...new Set(dates)];
@@ -18,7 +19,7 @@ export async function captureNotificationBaselines({
     return [] satisfies GroupDateNotificationBaseline[];
   }
 
-  const groupIds = await getUserGroupIds(supabase, userId);
+  const groupIds = await getGroupIdsForActor(supabase, actor);
 
   if (groupIds.length === 0) {
     return [] satisfies GroupDateNotificationBaseline[];

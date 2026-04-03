@@ -27,6 +27,7 @@ interface DayDetailClientProps {
   dateStr: string;
   groupId: string;
   initialAvailabilities: AvailabilityWithUser[];
+  isGuest: boolean;
 }
 
 export default function DayDetailClient({
@@ -34,6 +35,7 @@ export default function DayDetailClient({
   dateStr,
   groupId,
   initialAvailabilities,
+  isGuest,
 }: DayDetailClientProps) {
   const router = useRouter();
   const date = dateStr ? parse(dateStr, "yyyy-MM-dd", new Date()) : new Date();
@@ -195,15 +197,20 @@ export default function DayDetailClient({
             )}
           </div>
 
-          <section>
-            <p className="mt-2 text-xs" style={{ color: "var(--color-text-secondary)" }}>
-              {isPastDate
-                ? "当日より前の日付はヒマをシェアできません"
-                : "ヒマな時間帯をタップ（複数選択OK / 未定はほかと同時選択不可）"}
-            </p>
+        <section>
+          <p className="mt-2 text-xs" style={{ color: "var(--color-text-secondary)" }}>
+            {isPastDate
+              ? "当日より前の日付はヒマをシェアできません"
+              : "ヒマな時間帯をタップ（複数選択OK / 未定はほかと同時選択不可）"}
+          </p>
+          {isGuest ? (
             <p className="mt-1 text-xs" style={{ color: "var(--color-text-secondary)" }}>
-              ※ ヒマのシェアは参加中の全グループに反映されます
+              ※ LINEでログインすると、別グループでも使えて予定も引き継げます
             </p>
+          ) : null}
+          <p className="mt-1 text-xs" style={{ color: "var(--color-text-secondary)" }}>
+            ※ ヒマのシェアは参加中の全グループに反映されます
+          </p>
             <p className="mt-1 text-xs" style={{ color: "var(--color-text-secondary)" }}>
               ※ 未定はカレンダーのヒマ人数・赤丸・LINE通知には含まれません
             </p>

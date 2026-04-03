@@ -1,21 +1,17 @@
 import { endOfMonth, endOfWeek, format, startOfMonth, startOfWeek } from "date-fns";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { buildGuestActorId, type RequestActor } from "@/lib/actors";
 import { clampCalendarMonth } from "@/lib/calendar";
 import { getCurrentMonthStartInTokyo, getReferenceNow } from "@/lib/date";
 import type { AvailabilityWithUser, TimeSlot } from "@/lib/types";
-import { getGroupMemberIds, isGroupMember } from "@/lib/server/groups";
+import {
+  getGroupGuestMemberIds,
+  getGroupMemberIds,
+  isGroupMember,
+  isGuestGroupMember,
+} from "@/lib/server/groups";
 
-interface AvailabilityRpcRow {
-  id: string;
-  user_id: string;
-  date: string;
-  time_slots: string[] | null;
-  comment: string | null;
-  display_name: string | null;
-  avatar_url: string | null;
-}
-
-interface FallbackAvailabilityRow {
+interface UserAvailabilityRow {
   id: string;
   user_id: string;
   date: string;
@@ -27,126 +23,62 @@ interface FallbackAvailabilityRow {
     | null;
 }
 
-interface AvailabilityRpcPayload {
-  allowed: boolean;
-  availabilities: AvailabilityRpcRow[];
+interface GuestAvailabilityRow {
+  id: string;
+  guest_member_id: string;
+  date: string;
+  time_slots: string[] | null;
+  comment: string | null;
+  guest_member:
+    | { display_name: string | null }
+    | { display_name: string | null }[]
+    | null;
 }
 
-interface AvailabilityQueryParams {
-  userId: string;
-  groupId?: string;
-}
-
-async function resolveScopedMemberIds(
+async function canViewGroupAvailability(
   supabase: SupabaseClient,
-  { userId, groupId }: AvailabilityQueryParams
+  actor: RequestActor,
+  groupId: string
 ) {
-  if (!groupId) {
-    return [userId];
+  if (actor.kind === "guest") {
+    return isGuestGroupMember(supabase, groupId, actor.guestMemberId);
   }
 
-  if (!(await isGroupMember(supabase, groupId, userId))) {
-    return null;
-  }
-
-  return getGroupMemberIds(supabase, groupId);
+  return isGroupMember(supabase, groupId, actor.userId);
 }
 
-function isAvailabilityRpcRow(value: unknown): value is AvailabilityRpcRow {
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
-    return false;
-  }
-
-  const row = value as Record<string, unknown>;
-
-  return (
-    typeof row.id === "string" &&
-    typeof row.user_id === "string" &&
-    typeof row.date === "string" &&
-    (row.comment === null || typeof row.comment === "string") &&
-    (row.display_name === null || typeof row.display_name === "string") &&
-    (row.avatar_url === null || typeof row.avatar_url === "string") &&
-    (row.time_slots === null ||
-      (Array.isArray(row.time_slots) &&
-        row.time_slots.every((timeSlot) => typeof timeSlot === "string")))
-  );
-}
-
-async function getScopedAvailabilityPayload(
+async function getUserAvailabilityRows(
   supabase: SupabaseClient,
   {
-    userId,
-    groupId,
     start,
     end,
-  }: AvailabilityQueryParams & { start: string; end: string }
+    userIds,
+  }: {
+    start: string;
+    end: string;
+    userIds: string[];
+  }
 ) {
-  const { data, error } = await supabase.rpc("get_scoped_availability_range", {
-    viewer_user_id: userId,
-    target_group_id: groupId ?? null,
-    start_date: start,
-    end_date: end,
-  });
+  if (userIds.length === 0) {
+    return [] satisfies AvailabilityWithUser[];
+  }
+
+  const { data, error } = await supabase
+    .from("availability")
+    .select("id, user_id, date, time_slots, comment, user:profiles(display_name, avatar_url)")
+    .gte("date", start)
+    .lte("date", end)
+    .in("user_id", userIds);
 
   if (error) {
-    console.warn("Falling back to legacy availability query:", error.message);
-
-    const memberIds = await resolveScopedMemberIds(supabase, { userId, groupId });
-
-    if (memberIds === null) {
-      return { allowed: false, availabilities: [] } satisfies AvailabilityRpcPayload;
-    }
-
-    if (memberIds.length === 0) {
-      return { allowed: true, availabilities: [] } satisfies AvailabilityRpcPayload;
-    }
-
-    const { data: fallbackRows, error: fallbackError } = await supabase
-      .from("availability")
-      .select("id, user_id, date, time_slots, comment, user:profiles(display_name, avatar_url)")
-      .gte("date", start)
-      .lte("date", end)
-      .in("user_id", memberIds);
-
-    if (fallbackError) {
-      throw fallbackError;
-    }
-
-    const availabilities = ((fallbackRows ?? []) as FallbackAvailabilityRow[]).map((row) => {
-      const profile = Array.isArray(row.user) ? row.user[0] : row.user;
-
-      return {
-        id: row.id,
-        user_id: row.user_id,
-        date: row.date,
-        time_slots: row.time_slots,
-        comment: row.comment,
-        display_name: profile?.display_name ?? null,
-        avatar_url: profile?.avatar_url ?? null,
-      } satisfies AvailabilityRpcRow;
-    });
-
-    return {
-      allowed: true,
-      availabilities,
-    } satisfies AvailabilityRpcPayload;
+    throw error;
   }
 
-  const payload = data as Record<string, unknown> | null;
-  if (!payload || Array.isArray(payload) || typeof payload !== "object") {
-    return null;
-  }
+  return ((data ?? []) as UserAvailabilityRow[]).map((availability) => {
+    const profile = Array.isArray(availability.user)
+      ? availability.user[0]
+      : availability.user;
 
-  const allowed = payload.allowed === true;
-  const availabilities = Array.isArray(payload.availabilities)
-    ? payload.availabilities.filter(isAvailabilityRpcRow)
-    : [];
-
-  return { allowed, availabilities } satisfies AvailabilityRpcPayload;
-}
-
-function mapAvailabilityRows(rows: AvailabilityRpcRow[]) {
-  return rows.map((availability) => {
     return {
       id: availability.id,
       userId: availability.user_id,
@@ -155,10 +87,137 @@ function mapAvailabilityRows(rows: AvailabilityRpcRow[]) {
       comment: availability.comment ?? "",
       user: {
         id: availability.user_id,
-        displayName: availability.display_name || "ユーザー",
-        avatarUrl: availability.avatar_url || null,
+        displayName: profile?.display_name || "ユーザー",
+        avatarUrl: profile?.avatar_url || null,
       },
     } satisfies AvailabilityWithUser;
+  });
+}
+
+async function getGuestAvailabilityRows(
+  supabase: SupabaseClient,
+  {
+    start,
+    end,
+    guestMemberIds,
+  }: {
+    start: string;
+    end: string;
+    guestMemberIds: string[];
+  }
+) {
+  if (guestMemberIds.length === 0) {
+    return [] satisfies AvailabilityWithUser[];
+  }
+
+  const { data, error } = await supabase
+    .from("guest_availability")
+    .select("id, guest_member_id, date, time_slots, comment, guest_member:guest_members(display_name)")
+    .gte("date", start)
+    .lte("date", end)
+    .in("guest_member_id", guestMemberIds);
+
+  if (error) {
+    throw error;
+  }
+
+  return ((data ?? []) as GuestAvailabilityRow[]).map((availability) => {
+    const guestMember = Array.isArray(availability.guest_member)
+      ? availability.guest_member[0]
+      : availability.guest_member;
+    const actorId = buildGuestActorId(availability.guest_member_id);
+
+    return {
+      id: availability.id,
+      userId: actorId,
+      date: availability.date,
+      timeSlots: (availability.time_slots ?? []) as TimeSlot[],
+      comment: availability.comment ?? "",
+      user: {
+        id: actorId,
+        displayName: guestMember?.display_name || "ゲスト",
+        avatarUrl: null,
+      },
+    } satisfies AvailabilityWithUser;
+  });
+}
+
+function sortAvailabilities(availabilities: AvailabilityWithUser[]) {
+  return availabilities.sort((left, right) => {
+    if (left.date !== right.date) {
+      return left.date.localeCompare(right.date);
+    }
+
+    return left.user.displayName.localeCompare(right.user.displayName, "ja");
+  });
+}
+
+async function getGroupedAvailabilityRows(
+  supabase: SupabaseClient,
+  {
+    groupId,
+    start,
+    end,
+  }: {
+    groupId: string;
+    start: string;
+    end: string;
+  }
+) {
+  const [userIds, guestMemberIds] = await Promise.all([
+    getGroupMemberIds(supabase, groupId),
+    getGroupGuestMemberIds(supabase, groupId),
+  ]);
+
+  const [userAvailabilities, guestAvailabilities] = await Promise.all([
+    getUserAvailabilityRows(supabase, { start, end, userIds }),
+    getGuestAvailabilityRows(supabase, { start, end, guestMemberIds }),
+  ]);
+
+  return sortAvailabilities([...userAvailabilities, ...guestAvailabilities]);
+}
+
+async function getScopedAvailability(
+  supabase: SupabaseClient,
+  {
+    actor,
+    groupId,
+    start,
+    end,
+  }: {
+    actor: RequestActor;
+    groupId?: string;
+    start: string;
+    end: string;
+  }
+) {
+  const effectiveGroupId =
+    groupId || (actor.kind === "guest" ? actor.groupId : undefined);
+
+  if (effectiveGroupId) {
+    if (!(await canViewGroupAvailability(supabase, actor, effectiveGroupId))) {
+      return null;
+    }
+
+    return getGroupedAvailabilityRows(supabase, {
+      groupId: effectiveGroupId,
+      start,
+      end,
+    });
+  }
+
+  if (actor.kind === "guest") {
+    return getGuestAvailabilityRows(supabase, {
+      start,
+      end,
+      guestMemberIds: [actor.guestMemberId],
+    });
+  }
+
+  return getUserAvailabilityRows(supabase, {
+    start,
+    end,
+    userIds: [actor.userId],
   });
 }
 
@@ -186,84 +245,119 @@ export function getCalendarMonthRange(month: Date) {
 export async function cleanupExpiredAvailability(supabase: SupabaseClient) {
   const cutoffDate = getCurrentMonthStartInTokyo();
 
-  const { error } = await supabase
-    .from("availability")
-    .delete()
-    .lt("date", cutoffDate);
+  const [{ error: userError }, { error: guestError }] = await Promise.all([
+    supabase.from("availability").delete().lt("date", cutoffDate),
+    supabase.from("guest_availability").delete().lt("date", cutoffDate),
+  ]);
 
-  if (error) {
-    console.warn("Expired availability cleanup error:", error.message);
+  if (userError) {
+    console.warn("Expired availability cleanup error:", userError.message);
+  }
+
+  if (guestError) {
+    console.warn("Expired guest availability cleanup error:", guestError.message);
   }
 }
 
-export async function getAvailabilityRangeForUser(
+export async function getAvailabilityRangeForActor(
   supabase: SupabaseClient,
   {
-    userId,
+    actor,
     groupId,
     start,
     end,
-}: AvailabilityQueryParams & { start: string; end: string }
+  }: {
+    actor: RequestActor;
+    groupId?: string;
+    start: string;
+    end: string;
+  }
 ) {
-  const payload = await getScopedAvailabilityPayload(supabase, {
-    userId,
+  const availabilities = await getScopedAvailability(supabase, {
+    actor,
     groupId,
     start,
     end,
   });
 
-  if (!payload?.allowed) {
+  if (availabilities === null) {
     return null;
   }
 
   return {
-    availabilities: mapAvailabilityRows(payload.availabilities),
-    currentUserId: userId,
+    availabilities,
+    currentUserId: actor.actorId,
   };
 }
 
-export async function getAvailabilityForDateForUser(
+export async function getAvailabilityForDateForActor(
   supabase: SupabaseClient,
   {
-    userId,
+    actor,
     groupId,
     date,
-}: AvailabilityQueryParams & { date: string }
+  }: {
+    actor: RequestActor;
+    groupId?: string;
+    date: string;
+  }
 ) {
-  const payload = await getScopedAvailabilityPayload(supabase, {
-    userId,
+  const availabilities = await getScopedAvailability(supabase, {
+    actor,
     groupId,
     start: date,
     end: date,
   });
 
-  if (!payload?.allowed) {
+  if (availabilities === null) {
     return null;
   }
 
   return {
-    availabilities: mapAvailabilityRows(payload.availabilities),
-    currentUserId: userId,
+    availabilities,
+    currentUserId: actor.actorId,
   };
 }
 
-export async function getOwnAvailabilityEntriesForMonth(
+export async function getOwnAvailabilityEntriesForActorMonth(
   supabase: SupabaseClient,
   {
-    userId,
+    actor,
     month,
   }: {
-    userId: string;
+    actor: RequestActor;
     month: Date;
   }
 ) {
   const monthStart = format(startOfMonth(month), "yyyy-MM-dd");
   const monthEnd = format(endOfMonth(month), "yyyy-MM-dd");
 
+  if (actor.kind === "guest") {
+    const { data } = await supabase
+      .from("guest_availability")
+      .select("date, time_slots, comment")
+      .eq("guest_member_id", actor.guestMemberId)
+      .gte("date", monthStart)
+      .lte("date", monthEnd);
+
+    return (data ?? []).reduce<Record<string, { date: string; timeSlots: TimeSlot[]; comment: string }>>(
+      (entries, availability) => {
+        entries[availability.date] = {
+          date: availability.date,
+          timeSlots: (availability.time_slots ?? []) as TimeSlot[],
+          comment: availability.comment ?? "",
+        };
+
+        return entries;
+      },
+      {}
+    );
+  }
+
   const { data } = await supabase
     .from("availability")
     .select("date, time_slots, comment")
-    .eq("user_id", userId)
+    .eq("user_id", actor.userId)
     .gte("date", monthStart)
     .lte("date", monthEnd);
 

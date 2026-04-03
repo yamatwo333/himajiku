@@ -1,11 +1,13 @@
 import { createServerClient } from "@supabase/ssr";
 import type { User } from "@supabase/supabase-js";
 import type { NextRequest } from "next/server";
+import type { RequestActor } from "@/lib/actors";
 import {
   createE2ERouteUser,
   E2E_AUTH_COOKIE_NAME,
   getE2EUserId,
 } from "@/lib/e2e";
+import { getGuestActorFromRequest } from "@/lib/server/guest";
 
 export function createRouteClient(request: NextRequest) {
   return createServerClient(
@@ -37,4 +39,20 @@ export async function getRouteUser(request: NextRequest): Promise<User | null> {
   } = await supabase.auth.getUser();
 
   return user;
+}
+
+export async function getRouteActor(
+  request: NextRequest
+): Promise<RequestActor | null> {
+  const user = await getRouteUser(request);
+
+  if (user) {
+    return {
+      kind: "user",
+      actorId: user.id,
+      userId: user.id,
+    };
+  }
+
+  return getGuestActorFromRequest(request);
 }

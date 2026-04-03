@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getAvailabilityForDateForUser } from "@/lib/server/availability";
+import { getAvailabilityForDateForActor } from "@/lib/server/availability";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getRouteUser } from "@/lib/supabase/route";
+import { getRouteActor } from "@/lib/supabase/route";
 
 export async function GET(
   request: NextRequest,
@@ -11,14 +11,14 @@ export async function GET(
     const { date } = await params;
     const groupId = request.nextUrl.searchParams.get("group") || "";
 
-    const user = await getRouteUser(request);
-    if (!user) {
+    const actor = await getRouteActor(request);
+    if (!actor) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const supabaseAdmin = createAdminClient();
-    const result = await getAvailabilityForDateForUser(supabaseAdmin, {
-      userId: user.id,
+    const result = await getAvailabilityForDateForActor(supabaseAdmin, {
+      actor,
       groupId: groupId || undefined,
       date,
     });

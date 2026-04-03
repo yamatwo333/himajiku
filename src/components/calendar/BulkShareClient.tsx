@@ -35,6 +35,7 @@ interface DayEntry {
 interface BulkShareClientProps {
   initialEntries: Record<string, DayEntry>;
   initialMonthIso: string;
+  isGuest: boolean;
 }
 
 function filterExpiredEntries(
@@ -49,6 +50,7 @@ function filterExpiredEntries(
 export default function BulkShareClient({
   initialEntries,
   initialMonthIso,
+  isGuest,
 }: BulkShareClientProps) {
   const router = useRouter();
   const baseDate = useMemo(() => startOfMonth(new Date(initialMonthIso)), [initialMonthIso]);
@@ -302,6 +304,23 @@ export default function BulkShareClient({
       <PageHeader title="ヒマな日をまとめてシェア" onBack={handleBack} />
 
       <div className="flex-1 px-4 pt-5 pb-32">
+        {isGuest ? (
+          <div
+            className="mb-4 rounded-2xl border px-4 py-3"
+            style={{
+              backgroundColor: "rgba(255,255,255,0.92)",
+              borderColor: "rgba(14, 165, 233, 0.16)",
+            }}
+          >
+            <p className="text-sm font-bold" style={{ color: "var(--color-text)" }}>
+              LINEでログインすると、別グループでも使えて予定も引き継げます
+            </p>
+            <p className="mt-1 text-xs" style={{ color: "var(--color-text-secondary)" }}>
+              自分向けのLINE通知も受け取れるようになります
+            </p>
+          </div>
+        ) : null}
+
         <div
           data-testid="bulk-swipe-surface"
           className="relative overflow-hidden rounded-[26px]"

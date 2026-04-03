@@ -5,14 +5,14 @@ import {
   getE2EGroupSummaries,
   isE2EUser,
 } from "@/lib/e2e";
-import { getRequestUserId } from "@/lib/request-user";
+import { getRequestActor } from "@/lib/request-actor";
 import {
   cleanupExpiredAvailability,
-  getAvailabilityRangeForUser,
+  getAvailabilityRangeForActor,
   getCalendarMonthRange,
   parseCalendarMonthParam,
 } from "@/lib/server/availability";
-import { getGroupSummariesForUser } from "@/lib/server/groups";
+import { getGroupSummariesForUser, getGroupSummaryForGuest } from "@/lib/server/groups";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export default async function CalendarPage({
@@ -20,17 +20,17 @@ export default async function CalendarPage({
 }: {
   searchParams: Promise<{ group?: string; month?: string }>;
 }) {
-  const [{ group: requestedGroupId, month: requestedMonth }, userId] = await Promise.all([
+  const [{ group: requestedGroupId, month: requestedMonth }, actor] = await Promise.all([
     searchParams,
-    getRequestUserId(),
+    getRequestActor(),
   ]);
 
-  if (!userId) {
+  if (!actor) {
     redirect("/login?redirect=%2Fcalendar");
   }
 
-  if (isE2EUser(userId)) {
-    const groups = getE2EGroupSummaries(userId);
+  if (actor.kind === "user" && isE2EUser(actor.userId)) {
+    const groups = getE2EGroupSummaries(actor.userId);
     const selectedGroupId =
       requestedGroupId && groups.some((group) => group.id === requestedGroupId)
         ? requestedGroupId
@@ -38,14 +38,14 @@ export default async function CalendarPage({
     const initialMonth = parseCalendarMonthParam(requestedMonth);
     const monthRange = getCalendarMonthRange(initialMonth);
     const availabilityResult = getE2EAvailabilityRangeForUser(
-      userId,
+      actor.userId,
       selectedGroupId || undefined
     );
 
     return (
       <CalendarPageClient
         initialAvailabilities={availabilityResult?.availabilities ?? []}
-        initialCurrentUserId={availabilityResult?.currentUserId ?? userId}
+        initialCurrentUserId={availabilityResult?.currentUserId ?? actor.userId}
         initialGroups={groups.map((group) => ({
           id: group.id,
           name: group.name,
@@ -53,21 +53,27 @@ export default async function CalendarPage({
         }))}
         initialSelectedGroupId={selectedGroupId}
         initialMonthIso={monthRange.month.toISOString()}
+        isGuest={false}
       />
     );
   }
 
   const supabaseAdmin = createAdminClient();
   await cleanupExpiredAvailability(supabaseAdmin);
-  const groups = await getGroupSummariesForUser(supabaseAdmin, userId);
+  const groups =
+    actor.kind === "guest"
+      ? [await getGroupSummaryForGuest(supabaseAdmin, actor.guestMemberId)].filter(
+          (group): group is NonNullable<typeof group> => group !== null
+        )
+      : await getGroupSummariesForUser(supabaseAdmin, actor.userId);
   const selectedGroupId =
     requestedGroupId && groups.some((group) => group.id === requestedGroupId)
       ? requestedGroupId
       : groups[0]?.id ?? "";
   const initialMonth = parseCalendarMonthParam(requestedMonth);
   const monthRange = getCalendarMonthRange(initialMonth);
-  const availabilityResult = await getAvailabilityRangeForUser(supabaseAdmin, {
-    userId,
+  const availabilityResult = await getAvailabilityRangeForActor(supabaseAdmin, {
+    actor,
     groupId: selectedGroupId || undefined,
     start: monthRange.start,
     end: monthRange.end,
@@ -76,7 +82,7 @@ export default async function CalendarPage({
   return (
     <CalendarPageClient
       initialAvailabilities={availabilityResult?.availabilities ?? []}
-      initialCurrentUserId={availabilityResult?.currentUserId ?? userId}
+      initialCurrentUserId={availabilityResult?.currentUserId ?? actor.actorId}
       initialGroups={groups.map((group) => ({
         id: group.id,
         name: group.name,
@@ -84,6 +90,7 @@ export default async function CalendarPage({
       }))}
       initialSelectedGroupId={selectedGroupId}
       initialMonthIso={monthRange.month.toISOString()}
+      isGuest={actor.kind === "guest"}
     />
   );
 }

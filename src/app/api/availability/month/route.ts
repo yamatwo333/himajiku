@@ -2,10 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { getE2EAvailabilityRangeForUser, isE2EUser } from "@/lib/e2e";
 import {
   cleanupExpiredAvailability,
-  getAvailabilityRangeForUser,
+  getAvailabilityRangeForActor,
 } from "@/lib/server/availability";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getRouteUser } from "@/lib/supabase/route";
+import { getRouteActor } from "@/lib/supabase/route";
 
 export async function GET(request: NextRequest) {
   try {
@@ -17,13 +17,13 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "start and end required" }, { status: 400 });
     }
 
-    const user = await getRouteUser(request);
-    if (!user) {
+    const actor = await getRouteActor(request);
+    if (!actor) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    if (isE2EUser(user.id)) {
-      const result = getE2EAvailabilityRangeForUser(user.id, groupId || undefined);
+    if (actor.kind === "user" && isE2EUser(actor.userId)) {
+      const result = getE2EAvailabilityRangeForUser(actor.userId, groupId || undefined);
 
       if (result === null) {
         return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -36,8 +36,8 @@ export async function GET(request: NextRequest) {
 
     const supabaseAdmin = createAdminClient();
     await cleanupExpiredAvailability(supabaseAdmin);
-    const result = await getAvailabilityRangeForUser(supabaseAdmin, {
-      userId: user.id,
+    const result = await getAvailabilityRangeForActor(supabaseAdmin, {
+      actor,
       groupId: groupId || undefined,
       start,
       end,

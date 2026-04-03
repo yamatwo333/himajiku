@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
+import { GUEST_COOKIE_NAME } from "@/lib/actors";
 import { E2E_AUTH_COOKIE_NAME, getE2EUserId } from "@/lib/e2e";
 import { REQUEST_USER_ID_HEADER } from "@/lib/request-user";
 
@@ -37,6 +38,10 @@ export async function proxy(request: NextRequest) {
   }
 
   if (!hasSupabaseAuthCookie(request)) {
+    if (pathname.startsWith("/calendar") && request.cookies.has(GUEST_COOKIE_NAME)) {
+      return NextResponse.next({ request });
+    }
+
     const url = request.nextUrl.clone();
     const redirectTo = pathname + request.nextUrl.search;
     url.pathname = "/login";

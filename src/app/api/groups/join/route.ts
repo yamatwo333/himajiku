@@ -1,6 +1,7 @@
 import { after, NextRequest, NextResponse } from "next/server";
 import { getTodayInTokyo } from "@/lib/date";
 import { ensureProfile } from "@/lib/ensure-profile";
+import { createGuestMember, getGuestActorFromRequest, setGuestCookie } from "@/lib/server/guest";
 import { runGroupJoinPostSaveJob } from "@/lib/server/jobs/availability-jobs";
 import { checkRateLimit, getRateLimitKeyParts } from "@/lib/server/rate-limit";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -8,13 +9,22 @@ import { getRouteUser } from "@/lib/supabase/route";
 
 export async function POST(request: NextRequest) {
   try {
-    const user = await getRouteUser(request);
-    if (!user) {
-      return NextResponse.json({ error: "ログインが必要です" }, { status: 401 });
+    const body = await request.json();
+    const inviteCode = typeof body?.invite_code === "string" ? body.invite_code.trim().toUpperCase() : "";
+    const displayName = typeof body?.display_name === "string" ? body.display_name.trim() : "";
+
+    if (!inviteCode) {
+      return NextResponse.json({ error: "招待コードを入力してください" }, { status: 400 });
     }
 
+    const supabaseAdmin = createAdminClient();
+    const user = await getRouteUser(request);
+    const guestActor = user ? null : await getGuestActorFromRequest(request, supabaseAdmin);
     const rateLimit = checkRateLimit({
-      key: `group-join:${getRateLimitKeyParts({ request, userId: user.id }).userId}`,
+      key: `group-join:${getRateLimitKeyParts({
+        request,
+        userId: user?.id ?? guestActor?.actorId ?? null,
+      }).userId}`,
       limit: 10,
       windowMs: 10 * 60 * 1000,
     });
@@ -23,35 +33,71 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "参加操作が多すぎます。時間をおいてお試しください" }, { status: 429 });
     }
 
-    const body = await request.json();
-    const invite_code = body?.invite_code;
-    if (!invite_code || !invite_code.trim()) {
-      return NextResponse.json({ error: "招待コードを入力してください" }, { status: 400 });
-    }
-
-    const supabaseAdmin = createAdminClient();
-
-    // Ensure profile exists
-    await ensureProfile(supabaseAdmin, user);
-
-    // Find group by invite code
     const { data: group } = await supabaseAdmin
       .from("groups")
       .select("id, name, notify_threshold, line_group_id")
-      .eq("invite_code", invite_code.trim().toUpperCase())
+      .eq("invite_code", inviteCode)
       .single();
 
     if (!group) {
       return NextResponse.json({ error: "招待コードが見つかりません" }, { status: 404 });
     }
 
-    // Check if already member
+    if (!user) {
+      if (guestActor) {
+        if (guestActor.groupId === group.id) {
+          return NextResponse.json(
+            { error: "すでにこのグループに参加しています", group },
+            { status: 409 }
+          );
+        }
+
+        const { data: currentGroup } = await supabaseAdmin
+          .from("groups")
+          .select("id, name")
+          .eq("id", guestActor.groupId)
+          .maybeSingle();
+
+        return NextResponse.json(
+          {
+            error: "複数グループを使うにはログインが必要です",
+            code: "LOGIN_REQUIRED_FOR_MULTIPLE_GROUPS",
+            group,
+            current_group: currentGroup,
+          },
+          { status: 409 }
+        );
+      }
+
+      if (!displayName) {
+        return NextResponse.json(
+          {
+            error: "表示名を入力してください",
+            code: "DISPLAY_NAME_REQUIRED",
+            group,
+          },
+          { status: 400 }
+        );
+      }
+
+      const { guestToken } = await createGuestMember({
+        supabase: supabaseAdmin,
+        groupId: group.id,
+        displayName,
+      });
+      const response = NextResponse.json({ group });
+      setGuestCookie(response, guestToken);
+      return response;
+    }
+
+    await ensureProfile(supabaseAdmin, user);
+
     const { data: existing } = await supabaseAdmin
       .from("group_members")
-      .select("*")
+      .select("group_id")
       .eq("group_id", group.id)
       .eq("user_id", user.id)
-      .single();
+      .maybeSingle();
 
     if (existing) {
       return NextResponse.json(
@@ -66,10 +112,8 @@ export async function POST(request: NextRequest) {
       .select("date")
       .eq("user_id", user.id)
       .gte("date", today);
-
     const futureDates = [...new Set((myFutureAvailabilities ?? []).map((availability) => availability.date))];
 
-    // Join
     const { error: joinError } = await supabaseAdmin
       .from("group_members")
       .insert({

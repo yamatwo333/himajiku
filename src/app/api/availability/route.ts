@@ -1,22 +1,23 @@
 import { after, NextRequest, NextResponse } from "next/server";
+import type { User } from "@supabase/supabase-js";
 import { isDateBeforeTodayInTokyo } from "@/lib/date";
 import { ensureProfile } from "@/lib/ensure-profile";
 import { runAvailabilityPostSaveJob } from "@/lib/server/jobs/availability-jobs";
 import { captureNotificationBaselines } from "@/lib/server/availability-notification-baselines";
 import { checkRateLimit, getRateLimitKeyParts } from "@/lib/server/rate-limit";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getRouteUser } from "@/lib/supabase/route";
+import { getRouteActor } from "@/lib/supabase/route";
 import { normalizeTimeSlots } from "@/lib/types";
 
 export async function POST(request: NextRequest) {
   try {
-    const user = await getRouteUser(request);
-    if (!user) {
+    const actor = await getRouteActor(request);
+    if (!actor) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const rateLimit = checkRateLimit({
-      key: `availability:${getRateLimitKeyParts({ request, userId: user.id }).userId}`,
+      key: `availability:${getRateLimitKeyParts({ request, userId: actor.actorId }).userId}`,
       limit: 30,
       windowMs: 60 * 1000,
     });
@@ -41,34 +42,58 @@ export async function POST(request: NextRequest) {
       normalizedTimeSlots.length > 0
         ? await captureNotificationBaselines({
             supabase: supabaseAdmin,
-            userId: user.id,
+            actor,
             dates: [date],
           })
         : [];
 
-    await ensureProfile(supabaseAdmin, user);
-
     if (normalizedTimeSlots.length === 0) {
-      // Delete availability
-      await supabaseAdmin
-        .from("availability")
-        .delete()
-        .eq("user_id", user.id)
-        .eq("date", date);
+      const deleteQuery =
+        actor.kind === "guest"
+          ? supabaseAdmin
+              .from("guest_availability")
+              .delete()
+              .eq("guest_member_id", actor.guestMemberId)
+              .eq("date", date)
+          : supabaseAdmin
+              .from("availability")
+              .delete()
+              .eq("user_id", actor.userId)
+              .eq("date", date);
+
+      await deleteQuery;
 
       return NextResponse.json({ success: true, action: "deleted" });
     }
 
-    // Upsert availability
-    const { error } = await supabaseAdmin.from("availability").upsert(
-      {
-        user_id: user.id,
-        date,
-        time_slots: normalizedTimeSlots,
-        comment: comment || "",
-      },
-      { onConflict: "user_id,date" }
-    );
+    if (actor.kind === "user") {
+      await ensureProfile(supabaseAdmin, {
+        id: actor.userId,
+        email: "",
+        user_metadata: {},
+      } as User);
+    }
+
+    const { error } =
+      actor.kind === "guest"
+        ? await supabaseAdmin.from("guest_availability").upsert(
+            {
+              guest_member_id: actor.guestMemberId,
+              date,
+              time_slots: normalizedTimeSlots,
+              comment: comment || "",
+            },
+            { onConflict: "guest_member_id,date" }
+          )
+        : await supabaseAdmin.from("availability").upsert(
+            {
+              user_id: actor.userId,
+              date,
+              time_slots: normalizedTimeSlots,
+              comment: comment || "",
+            },
+            { onConflict: "user_id,date" }
+          );
 
     if (error) {
       console.error("Availability upsert error:", error);
@@ -79,7 +104,7 @@ export async function POST(request: NextRequest) {
       try {
         await runAvailabilityPostSaveJob({
           supabase: supabaseAdmin,
-          userId: user.id,
+          actor,
           dates: [date],
           cleanupOldAvailability: true,
           notificationBaselines,

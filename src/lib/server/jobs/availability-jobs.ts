@@ -1,7 +1,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import type { RequestActor } from "@/lib/actors";
 import { getCurrentMonthStartInTokyo } from "@/lib/date";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getUserGroupIds } from "@/lib/server/groups";
+import { getGroupIdsForActor } from "@/lib/server/groups";
 import {
   sendGroupAvailabilityDigestNotification,
   sendGroupAvailabilityNotification,
@@ -62,14 +63,14 @@ function createInProcessAvailabilityEffectsQueue(): AvailabilityEffectsQueue {
 
 export async function runAvailabilityPostSaveJob({
   supabase = createAdminClient(),
-  userId,
+  actor,
   dates,
   cleanupOldAvailability = false,
   queue = createInProcessAvailabilityEffectsQueue(),
   notificationBaselines = [],
 }: {
   supabase?: SupabaseClient;
-  userId: string;
+  actor: RequestActor;
   dates: string[];
   cleanupOldAvailability?: boolean;
   queue?: AvailabilityEffectsQueue;
@@ -78,7 +79,7 @@ export async function runAvailabilityPostSaveJob({
   const uniqueDates = [...new Set(dates)];
 
   if (uniqueDates.length > 0) {
-    const groupIds = await getUserGroupIds(supabase, userId);
+    const groupIds = await getGroupIdsForActor(supabase, actor);
 
     if (groupIds.length > 0) {
       await queue.enqueueGroupDateNotifications(
@@ -96,7 +97,7 @@ export async function runAvailabilityPostSaveJob({
   }
 
   await supabase
-    .from("availability")
+    .from(actor.kind === "guest" ? "guest_availability" : "availability")
     .delete()
     .lt("date", getCurrentMonthStartInTokyo());
 }

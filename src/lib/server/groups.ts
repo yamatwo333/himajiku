@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { buildGuestActorId, type RequestActor } from "@/lib/actors";
 
 export interface ServerGroupSummary {
   id: string;
@@ -35,6 +36,17 @@ export async function getUserGroupIds(
     .eq("user_id", userId);
 
   return data?.map((membership) => membership.group_id) ?? [];
+}
+
+export async function getGroupIdsForActor(
+  supabase: SupabaseClient,
+  actor: RequestActor
+) {
+  if (actor.kind === "guest") {
+    return [actor.groupId];
+  }
+
+  return getUserGroupIds(supabase, actor.userId);
 }
 
 export async function getGroupMemberIds(
@@ -90,6 +102,59 @@ export async function countMembersByGroupIds(
   return counts;
 }
 
+export async function countGuestMembersByGroupIds(
+  supabase: SupabaseClient,
+  groupIds: string[]
+) {
+  if (groupIds.length === 0) {
+    return new Map<string, number>();
+  }
+
+  const { data } = await supabase
+    .from("guest_members")
+    .select("group_id")
+    .in("group_id", groupIds);
+
+  const counts = new Map<string, number>();
+
+  for (const groupId of groupIds) {
+    counts.set(groupId, 0);
+  }
+
+  for (const row of data ?? []) {
+    counts.set(row.group_id, (counts.get(row.group_id) ?? 0) + 1);
+  }
+
+  return counts;
+}
+
+export async function getGroupGuestMemberIds(
+  supabase: SupabaseClient,
+  groupId: string
+) {
+  const { data } = await supabase
+    .from("guest_members")
+    .select("id")
+    .eq("group_id", groupId);
+
+  return data?.map((member) => member.id) ?? [];
+}
+
+export async function isGuestGroupMember(
+  supabase: SupabaseClient,
+  groupId: string,
+  guestMemberId: string
+) {
+  const { data } = await supabase
+    .from("guest_members")
+    .select("id")
+    .eq("group_id", groupId)
+    .eq("id", guestMemberId)
+    .maybeSingle();
+
+  return Boolean(data);
+}
+
 export async function getGroupOwnerId(
   supabase: SupabaseClient,
   groupId: string
@@ -113,18 +178,56 @@ export async function getGroupSummariesForUser(
     return [];
   }
 
-  const [{ data: groups }, memberCounts] = await Promise.all([
+  const [{ data: groups }, memberCounts, guestMemberCounts] = await Promise.all([
     supabase
       .from("groups")
       .select("id, name, invite_code, created_by, notify_threshold")
       .in("id", groupIds),
     countMembersByGroupIds(supabase, groupIds),
+    countGuestMembersByGroupIds(supabase, groupIds),
   ]);
 
   return (groups ?? []).map((group) => ({
     ...group,
-    member_count: memberCounts.get(group.id) ?? 0,
+    member_count:
+      (memberCounts.get(group.id) ?? 0) + (guestMemberCounts.get(group.id) ?? 0),
   })) satisfies ServerGroupSummary[];
+}
+
+export async function getGroupSummaryForGuest(
+  supabase: SupabaseClient,
+  guestMemberId: string
+) {
+  const { data: guestMember } = await supabase
+    .from("guest_members")
+    .select("group_id")
+    .eq("id", guestMemberId)
+    .maybeSingle();
+
+  if (!guestMember) {
+    return null;
+  }
+
+  const groupId = guestMember.group_id;
+  const [{ data: group }, memberCounts, guestMemberCounts] = await Promise.all([
+    supabase
+      .from("groups")
+      .select("id, name, invite_code, created_by, notify_threshold")
+      .eq("id", groupId)
+      .maybeSingle(),
+    countMembersByGroupIds(supabase, [groupId]),
+    countGuestMembersByGroupIds(supabase, [groupId]),
+  ]);
+
+  if (!group) {
+    return null;
+  }
+
+  return {
+    ...group,
+    member_count:
+      (memberCounts.get(group.id) ?? 0) + (guestMemberCounts.get(group.id) ?? 0),
+  } satisfies ServerGroupSummary;
 }
 
 export async function getGroupDetailForUser(
@@ -136,7 +239,7 @@ export async function getGroupDetailForUser(
     return null;
   }
 
-  const [{ data: group }, { data: members }] = await Promise.all([
+  const [{ data: group }, { data: members }, { data: guestMembers }] = await Promise.all([
     supabase
       .from("groups")
       .select("id, name, invite_code, created_by, notify_threshold, line_group_id")
@@ -147,22 +250,36 @@ export async function getGroupDetailForUser(
       .select("user_id, joined_at, user:profiles(display_name, avatar_url)")
       .eq("group_id", groupId)
       .order("joined_at", { ascending: true }),
+    supabase
+      .from("guest_members")
+      .select("id, display_name, created_at")
+      .eq("group_id", groupId)
+      .order("created_at", { ascending: true }),
   ]);
 
   if (!group) {
     return null;
   }
 
-  const memberProfiles = (members ?? []).map((member) => {
-    const profile = Array.isArray(member.user) ? member.user[0] : member.user;
+  const memberProfiles = [
+    ...(members ?? []).map((member) => {
+      const profile = Array.isArray(member.user) ? member.user[0] : member.user;
 
-    return {
-      user_id: member.user_id,
-      display_name: profile?.display_name || "ユーザー",
-      avatar_url: profile?.avatar_url || null,
-      joined_at: member.joined_at,
-    };
-  }) satisfies ServerGroupMember[];
+      return {
+        user_id: member.user_id,
+        display_name: profile?.display_name || "ユーザー",
+        avatar_url: profile?.avatar_url || null,
+        joined_at: member.joined_at,
+      };
+    }),
+    ...(guestMembers ?? []).map((member) => ({
+      user_id: buildGuestActorId(member.id),
+      display_name: member.display_name || "ゲスト",
+      avatar_url: null,
+      joined_at: member.created_at,
+    })),
+  ]
+    .sort((left, right) => left.joined_at.localeCompare(right.joined_at)) satisfies ServerGroupMember[];
 
   return {
     group: group satisfies ServerGroupDetail,

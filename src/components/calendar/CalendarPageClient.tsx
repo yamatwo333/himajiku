@@ -46,6 +46,7 @@ interface CalendarPageClientProps {
   initialGroups: CalendarGroupInfo[];
   initialSelectedGroupId: string;
   initialMonthIso: string;
+  isGuest: boolean;
 }
 
 export default function CalendarPageClient({
@@ -54,6 +55,7 @@ export default function CalendarPageClient({
   initialGroups,
   initialSelectedGroupId,
   initialMonthIso,
+  isGuest,
 }: CalendarPageClientProps) {
   const router = useRouter();
   const baseDate = useMemo(() => new Date(initialMonthIso), [initialMonthIso]);
@@ -256,7 +258,7 @@ export default function CalendarPageClient({
   useEffect(() => {
     const tasks = [
       scheduleIdleTask(() => router.prefetch("/calendar/bulk"), 500),
-      selectedGroupId
+      !isGuest && selectedGroupId
         ? scheduleIdleTask(() => router.prefetch(`/groups/${selectedGroupId}`), 500)
         : null,
     ].filter(Boolean);
@@ -266,7 +268,7 @@ export default function CalendarPageClient({
         task?.cancel();
       }
     };
-  }, [router, selectedGroupId]);
+  }, [isGuest, router, selectedGroupId]);
 
   useEffect(() => {
     if (availabilitiesLoading) {
@@ -376,6 +378,23 @@ export default function CalendarPageClient({
         </div>
 
         <div className="space-y-3 px-4 pt-4 pb-8">
+          {isGuest ? (
+            <div
+              className="rounded-2xl border px-4 py-3"
+              style={{
+                backgroundColor: "rgba(255,255,255,0.92)",
+                borderColor: "rgba(14, 165, 233, 0.16)",
+              }}
+            >
+              <p className="text-sm font-bold" style={{ color: "var(--color-text)" }}>
+                LINEでログインすると、別グループでも使えて予定も引き継げます
+              </p>
+              <p className="mt-1 text-xs" style={{ color: "var(--color-text-secondary)" }}>
+                自分向けのLINE通知も受け取れるようになります
+              </p>
+            </div>
+          ) : null}
+
           <button
             onClick={() => router.push("/calendar/bulk")}
             className="w-full rounded-xl px-4 py-3.5 text-sm font-bold text-white shadow-sm transition-transform active:scale-[0.98]"
@@ -384,7 +403,7 @@ export default function CalendarPageClient({
             ヒマな日をまとめてシェア
           </button>
 
-          {selectedGroupId ? (
+          {!isGuest && selectedGroupId ? (
             <div className="flex justify-center">
               <button
                 onClick={() => router.push(`/groups/${selectedGroupId}`)}

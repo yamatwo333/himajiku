@@ -2,6 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { format, parse } from "date-fns";
 import { ja } from "date-fns/locale";
 import { getNewlyMatchingTimeSlots } from "@/lib/server/availability-notification";
+import { getGroupGuestMemberIds } from "@/lib/server/groups";
 import { createAdminClient } from "@/lib/supabase/admin";
 import {
   FREE_TIME_SLOTS,
@@ -27,6 +28,7 @@ interface AvailabilityRow {
   comment?: string | null;
   time_slots: string[] | null;
   user?: { display_name: string | null }[] | { display_name: string | null } | null;
+  guest_member?: { display_name: string | null }[] | { display_name: string | null } | null;
 }
 
 interface GroupNotificationContext {
@@ -37,6 +39,7 @@ interface GroupNotificationContext {
     line_group_id: string | null;
   };
   memberIds: string[];
+  guestMemberIds: string[];
   lineToken: string | undefined;
   supabase: SupabaseClient;
 }
@@ -72,10 +75,13 @@ async function getGroupNotificationContext(
     .select("user_id")
     .eq("group_id", groupId);
 
+  const guestMemberIds = await getGroupGuestMemberIds(supabase, groupId);
+
   if (!members || members.length === 0) {
     return {
       group,
       memberIds: [],
+      guestMemberIds,
       lineToken: process.env.LINE_MESSAGING_CHANNEL_ACCESS_TOKEN,
       supabase,
     };
@@ -84,14 +90,57 @@ async function getGroupNotificationContext(
   return {
     group,
     memberIds: members.map((member) => member.user_id),
+    guestMemberIds,
     lineToken: process.env.LINE_MESSAGING_CHANNEL_ACCESS_TOKEN,
     supabase,
   };
 }
 
 function getUserDisplayName(person: AvailabilityRow) {
+  const guestMember = Array.isArray(person.guest_member)
+    ? person.guest_member[0]
+    : person.guest_member;
+
+  if (guestMember?.display_name) {
+    return guestMember.display_name;
+  }
+
   const user = Array.isArray(person.user) ? person.user[0] : person.user;
   return user?.display_name || "ユーザー";
+}
+
+async function getGroupAvailabilityRows(
+  supabase: SupabaseClient,
+  {
+    dates,
+    memberIds,
+    guestMemberIds,
+  }: {
+    dates: string[];
+    memberIds: string[];
+    guestMemberIds: string[];
+  }
+) {
+  const [userAvailabilities, guestAvailabilities] = await Promise.all([
+    memberIds.length === 0
+      ? Promise.resolve([] satisfies AvailabilityRow[])
+      : supabase
+          .from("availability")
+          .select("date, comment, time_slots, user:profiles(display_name)")
+          .in("date", dates)
+          .in("user_id", memberIds)
+          .then(({ data }) => (data ?? []) as AvailabilityRow[]),
+    guestMemberIds.length === 0
+      ? Promise.resolve([] satisfies AvailabilityRow[])
+      : supabase
+          .from("guest_availability")
+          .select("date, comment, time_slots, guest_member:guest_members(display_name)")
+          .in("date", dates)
+          .in("guest_member_id", guestMemberIds)
+          .then(({ data }) => (data ?? []) as AvailabilityRow[]),
+  ]);
+
+  return [...userAvailabilities, ...guestAvailabilities];
 }
 
 function buildDateMatches({
@@ -228,7 +277,7 @@ export async function sendGroupAvailabilityNotification({
     return { sent: false, reason: "group not found" };
   }
 
-  const { group, memberIds, lineToken, supabase } = context;
+  const { group, memberIds, guestMemberIds, lineToken, supabase } = context;
   const targetSlots = slots?.length
     ? FREE_TIME_SLOTS.filter((slot) => slots.includes(slot))
     : FREE_TIME_SLOTS;
@@ -237,24 +286,24 @@ export async function sendGroupAvailabilityNotification({
     return { sent: false, reason: "no target slots" };
   }
 
-  if (memberIds.length === 0) {
+  if (memberIds.length === 0 && guestMemberIds.length === 0) {
     return { sent: false, reason: "no members" };
   }
 
-  const { data: avails } = await supabase
-    .from("availability")
-    .select("date, comment, time_slots, user:profiles(display_name)")
-    .eq("date", date)
-    .in("user_id", memberIds);
+  const avails = await getGroupAvailabilityRows(supabase, {
+    dates: [date],
+    memberIds,
+    guestMemberIds,
+  });
 
-  if (!avails || avails.length === 0) {
+  if (avails.length === 0) {
     return { sent: false, reason: "no availabilities" };
   }
 
   const matchingSlots: { slot: FreeTimeSlot; people: AvailabilityRow[] }[] = [];
 
   for (const slot of targetSlots) {
-    const matching = (avails as AvailabilityRow[]).filter((avail) =>
+    const matching = avails.filter((avail) =>
       avail.time_slots?.includes(slot)
     );
 
@@ -356,20 +405,20 @@ export async function getGroupAvailabilityMatchingSlots({
     return new Map<string, FreeTimeSlot[]>();
   }
 
-  const { group, memberIds } = context;
-  const { data: avails } = await supabase
-    .from("availability")
-    .select("date, time_slots")
-    .in("date", uniqueDates)
-    .in("user_id", memberIds);
+  const { group, memberIds, guestMemberIds } = context;
+  const avails = await getGroupAvailabilityRows(supabase, {
+    dates: uniqueDates,
+    memberIds,
+    guestMemberIds,
+  });
 
-  if (!avails || avails.length === 0) {
+  if (avails.length === 0) {
     return new Map<string, FreeTimeSlot[]>();
   }
 
   const matches = buildDateMatches({
     dates: uniqueDates,
-    availabilities: avails as AvailabilityRow[],
+    availabilities: avails,
     notifyThreshold: group.notify_threshold,
   });
 
@@ -395,25 +444,25 @@ export async function sendGroupAvailabilityDigestNotification({
     return { sent: false, reason: "group not found" };
   }
 
-  const { group, memberIds, lineToken, supabase } = context;
+  const { group, memberIds, guestMemberIds, lineToken, supabase } = context;
 
-  if (memberIds.length === 0) {
+  if (memberIds.length === 0 && guestMemberIds.length === 0) {
     return { sent: false, reason: "no members" };
   }
 
-  const { data: avails } = await supabase
-    .from("availability")
-    .select("date, comment, time_slots, user:profiles(display_name)")
-    .in("date", uniqueDates)
-    .in("user_id", memberIds);
+  const avails = await getGroupAvailabilityRows(supabase, {
+    dates: uniqueDates,
+    memberIds,
+    guestMemberIds,
+  });
 
-  if (!avails || avails.length === 0) {
+  if (avails.length === 0) {
     return { sent: false, reason: "no availabilities" };
   }
 
   const matches = buildDateMatches({
     dates: uniqueDates,
-    availabilities: avails as AvailabilityRow[],
+    availabilities: avails,
     notifyThreshold: group.notify_threshold,
   });
 
