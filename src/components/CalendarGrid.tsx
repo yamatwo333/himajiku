@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useRef, type PointerEvent as ReactPointerEvent } from "react";
 import { useRouter } from "next/navigation";
 import { getTodayInTokyo } from "@/lib/date";
 import {
@@ -25,6 +25,8 @@ import {
 } from "@/lib/types";
 
 const WEEKDAYS = ["日", "月", "火", "水", "木", "金", "土"];
+const SWIPE_THRESHOLD_PX = 56;
+const SWIPE_MAX_VERTICAL_DRIFT_PX = 80;
 
 function createSlotCounts(): Record<FreeTimeSlot, number> {
   return FREE_TIME_SLOTS.reduce((counts, slot) => {
@@ -46,6 +48,8 @@ export default function CalendarGrid({ availabilities, onMonthChange, groupId, n
   const baseMonth = useMemo(() => startOfMonth(new Date()), []);
   const minMonth = baseMonth;
   const maxMonth = useMemo(() => addMonths(baseMonth, 2), [baseMonth]);
+  const swipeStartRef = useRef<{ x: number; y: number } | null>(null);
+  const swipeHandledRef = useRef(false);
   const currentMonth = useMemo(() => {
     const month = startOfMonth(initialMonth ?? baseMonth);
     if (month < minMonth) return minMonth;
@@ -71,6 +75,46 @@ export default function CalendarGrid({ availabilities, onMonthChange, groupId, n
   const jumpToMonth = (value: string) => {
     const picked = new Date(value + "-01");
     onMonthChange(picked);
+  };
+
+  const handleSwipeStart = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (!event.isPrimary) {
+      return;
+    }
+
+    swipeStartRef.current = {
+      x: event.clientX,
+      y: event.clientY,
+    };
+    swipeHandledRef.current = false;
+  };
+
+  const handleSwipeEnd = (event: ReactPointerEvent<HTMLDivElement>) => {
+    const swipeStart = swipeStartRef.current;
+    swipeStartRef.current = null;
+
+    if (!event.isPrimary || !swipeStart || swipeHandledRef.current) {
+      return;
+    }
+
+    const deltaX = event.clientX - swipeStart.x;
+    const deltaY = event.clientY - swipeStart.y;
+
+    if (
+      Math.abs(deltaX) < SWIPE_THRESHOLD_PX ||
+      Math.abs(deltaY) > SWIPE_MAX_VERTICAL_DRIFT_PX ||
+      Math.abs(deltaY) > Math.abs(deltaX)
+    ) {
+      return;
+    }
+
+    swipeHandledRef.current = true;
+    changeMonth(deltaX < 0 ? 1 : -1);
+  };
+
+  const resetSwipe = () => {
+    swipeStartRef.current = null;
+    swipeHandledRef.current = false;
   };
 
   const days = useMemo(() => {
@@ -148,6 +192,7 @@ export default function CalendarGrid({ availabilities, onMonthChange, groupId, n
         </button>
         <div className="relative">
           <select
+            data-testid="calendar-month-select"
             value={format(currentMonth, "yyyy-MM")}
             onChange={(e) => jumpToMonth(e.target.value)}
             className="appearance-none rounded-xl border px-4 py-1.5 pr-8 text-center text-base font-bold outline-none"
@@ -172,90 +217,99 @@ export default function CalendarGrid({ availabilities, onMonthChange, groupId, n
         </button>
       </div>
 
-      {/* Weekday header */}
-      <div className="mb-1 grid grid-cols-7 text-center text-xs font-medium" style={{ color: "var(--color-text-secondary)" }}>
-        {WEEKDAYS.map((d, i) => (
-          <div
-            key={d}
-            className="py-1"
-            style={{
-              color: i === 0 ? "var(--color-hot)" : i === 6 ? "var(--color-primary)" : undefined,
-            }}
-          >
-            {d}
-          </div>
-        ))}
-      </div>
-
-      {/* Day grid */}
-      <div className="grid grid-cols-7 gap-[2px]">
-        {days.map((day) => {
-          const dateStr = format(day, "yyyy-MM-dd");
-          const daySummary = daySummaryByDate[dateStr];
-          const inMonth = isSameMonth(day, currentMonth);
-          const isPast = dateStr < todayString;
-          const selfFree = daySummary?.selfFree ?? false;
-          const friendFree = daySummary?.friendFree ?? false;
-          const hasUndecided = daySummary?.hasUndecided ?? false;
-          const isHot = daySummary?.isHot ?? false;
-
-          return (
-            <button
-              key={dateStr}
-              onClick={() => {
-                if (isPast) return;
-                router.push(`/calendar/${dateStr}${groupId ? `?group=${groupId}` : ""}`);
-              }}
-              disabled={isPast}
-              className="relative flex flex-col items-center rounded-lg py-2 transition-colors active:bg-gray-100"
+      <div
+        data-testid="calendar-swipe-surface"
+        onPointerDown={handleSwipeStart}
+        onPointerUp={handleSwipeEnd}
+        onPointerCancel={resetSwipe}
+        className="select-none"
+        style={{ touchAction: "pan-y" }}
+      >
+        {/* Weekday header */}
+        <div className="mb-1 grid grid-cols-7 text-center text-xs font-medium" style={{ color: "var(--color-text-secondary)" }}>
+          {WEEKDAYS.map((d, i) => (
+            <div
+              key={d}
+              className="py-1"
               style={{
-                opacity: inMonth ? (isPast ? 0.35 : 1) : isPast ? 0.15 : 0.3,
+                color: i === 0 ? "var(--color-hot)" : i === 6 ? "var(--color-primary)" : undefined,
               }}
             >
-              {/* Date number */}
-              {(() => {
-                const today = isToday(day);
-                return (
-                  <span
-                    className="flex h-7 w-7 items-center justify-center rounded-full text-sm"
-                    style={{
-                      backgroundColor: today ? "var(--color-today)" : isHot ? "var(--color-hot)" : "transparent",
-                      color: today || isHot ? "white" : undefined,
-                      fontWeight: today || isHot ? 700 : 400,
-                    }}
-                  >
-                    {format(day, "d")}
-                  </span>
-                );
-              })()}
+              {d}
+            </div>
+          ))}
+        </div>
 
-              {/* Availability indicators */}
-              <div className="mt-1 flex items-center gap-[3px]">
-                {selfFree && (
-                  <div
-                    className="h-2 w-2 rounded-full"
-                    style={{ backgroundColor: "var(--color-free-self)" }}
-                  />
-                )}
-                {friendFree && (
-                  <div
-                    className="h-2 w-2 rounded-full"
-                    style={{ backgroundColor: "var(--color-free-friend)" }}
-                  />
-                )}
-                {hasUndecided && (
-                  <div
-                    className="h-2 w-2 rounded-full border"
-                    style={{
-                      borderColor: "var(--color-text-secondary)",
-                      backgroundColor: "transparent",
-                    }}
-                  />
-                )}
-              </div>
-            </button>
-          );
-        })}
+        {/* Day grid */}
+        <div className="grid grid-cols-7 gap-[2px]">
+          {days.map((day) => {
+            const dateStr = format(day, "yyyy-MM-dd");
+            const daySummary = daySummaryByDate[dateStr];
+            const inMonth = isSameMonth(day, currentMonth);
+            const isPast = dateStr < todayString;
+            const selfFree = daySummary?.selfFree ?? false;
+            const friendFree = daySummary?.friendFree ?? false;
+            const hasUndecided = daySummary?.hasUndecided ?? false;
+            const isHot = daySummary?.isHot ?? false;
+
+            return (
+              <button
+                key={dateStr}
+                onClick={() => {
+                  if (isPast) return;
+                  router.push(`/calendar/${dateStr}${groupId ? `?group=${groupId}` : ""}`);
+                }}
+                disabled={isPast}
+                className="relative flex flex-col items-center rounded-lg py-2 transition-colors active:bg-gray-100"
+                style={{
+                  opacity: inMonth ? (isPast ? 0.35 : 1) : isPast ? 0.15 : 0.3,
+                }}
+              >
+                {/* Date number */}
+                {(() => {
+                  const today = isToday(day);
+                  return (
+                    <span
+                      className="flex h-7 w-7 items-center justify-center rounded-full text-sm"
+                      style={{
+                        backgroundColor: today ? "var(--color-today)" : isHot ? "var(--color-hot)" : "transparent",
+                        color: today || isHot ? "white" : undefined,
+                        fontWeight: today || isHot ? 700 : 400,
+                      }}
+                    >
+                      {format(day, "d")}
+                    </span>
+                  );
+                })()}
+
+                {/* Availability indicators */}
+                <div className="mt-1 flex items-center gap-[3px]">
+                  {selfFree && (
+                    <div
+                      className="h-2 w-2 rounded-full"
+                      style={{ backgroundColor: "var(--color-free-self)" }}
+                    />
+                  )}
+                  {friendFree && (
+                    <div
+                      className="h-2 w-2 rounded-full"
+                      style={{ backgroundColor: "var(--color-free-friend)" }}
+                    />
+                  )}
+                  {hasUndecided && (
+                    <div
+                      className="h-2 w-2 rounded-full border"
+                      style={{
+                        borderColor: "var(--color-text-secondary)",
+                        backgroundColor: "transparent",
+                      }}
+                    />
+                  )}
+                </div>
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {/* Legend */}

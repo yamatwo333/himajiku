@@ -1,4 +1,5 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
+import { addMonths, format, startOfMonth } from "date-fns";
 
 const BASE_URL = "http://127.0.0.1:3100";
 const AUTH_COOKIE_NAME = "sharehima-e2e-user-id";
@@ -160,6 +161,39 @@ test.describe("authenticated smoke flows", () => {
 
     await expect(page).toHaveURL(/\/calendar\?group=e2e-group-1/);
     await expect(page.getByText("ヒマをシェアしました")).toBeVisible();
+  });
+
+  test("calendar page changes month when swiped left", async ({ page }) => {
+    await page.goto(`/calendar?group=${E2E_GROUP_ID}`);
+
+    const swipeSurface = page.getByTestId("calendar-swipe-surface");
+    const monthSelect = page.getByTestId("calendar-month-select");
+    const bounds = await swipeSurface.boundingBox();
+
+    if (!bounds) {
+      throw new Error("calendar swipe surface not found");
+    }
+
+    const expectedNextMonth = format(addMonths(startOfMonth(new Date()), 1), "yyyy-MM");
+    const centerY = bounds.y + bounds.height / 2;
+
+    await swipeSurface.dispatchEvent("pointerdown", {
+      pointerType: "touch",
+      pointerId: 1,
+      isPrimary: true,
+      clientX: bounds.x + bounds.width * 0.8,
+      clientY: centerY,
+    });
+    await swipeSurface.dispatchEvent("pointerup", {
+      pointerType: "touch",
+      pointerId: 1,
+      isPrimary: true,
+      clientX: bounds.x + bounds.width * 0.2,
+      clientY: centerY,
+    });
+
+    await expect(monthSelect).toHaveValue(expectedNextMonth);
+    await expect(page).toHaveURL(new RegExp(`month=${expectedNextMonth}`));
   });
 
   test("bulk share page can save selected dates and return to calendar", async ({
