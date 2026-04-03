@@ -2,9 +2,10 @@ import { expect, test, type Locator, type Page } from "@playwright/test";
 import { E2E_GROUP_ID, signIn } from "./helpers/e2e";
 
 async function expectVisualSnapshot(target: Locator, snapshotName: string) {
+  // Linux CI and local macOS Chromium rasterize Japanese text slightly differently.
   await expect(target).toHaveScreenshot(snapshotName, {
     scale: "css",
-    maxDiffPixelRatio: 0.015,
+    maxDiffPixelRatio: 0.03,
   });
 }
 
