@@ -14,6 +14,8 @@ export function getNewlyMatchingTimeSlots({
   previousMatchingSlots: readonly string[];
   currentMatchingSlots: readonly NotificationSlot[];
 }) {
+  // Notifications are diff-based against the state immediately before save.
+  // If a slot drops below the threshold and later qualifies again, it becomes notifiable again.
   const previousMatches = new Set(
     previousMatchingSlots.filter((slot): slot is NotificationSlot =>
       ORDERED_NOTIFICATION_SLOTS.includes(slot as NotificationSlot)

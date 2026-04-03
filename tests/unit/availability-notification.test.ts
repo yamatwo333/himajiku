@@ -41,3 +41,17 @@ test("getNewlyMatchingTimeSlots keeps canonical slot order for newly matched slo
     ["morning", "evening", "late_night"]
   );
 });
+
+test("getNewlyMatchingTimeSlots becomes notifiable again after a slot drops out once", () => {
+  const droppedSlots = getNewlyMatchingTimeSlots({
+    previousMatchingSlots: ["morning"],
+    currentMatchingSlots: [],
+  });
+  const requalifiedSlots = getNewlyMatchingTimeSlots({
+    previousMatchingSlots: droppedSlots,
+    currentMatchingSlots: ["morning"],
+  });
+
+  assert.deepEqual(droppedSlots, []);
+  assert.deepEqual(requalifiedSlots, ["morning"]);
+});
