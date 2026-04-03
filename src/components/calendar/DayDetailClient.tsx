@@ -137,11 +137,65 @@ export default function DayDetailClient({
 
       <div className="space-y-6 px-4 pt-5 pb-8" data-testid="day-detail-content">
         <div data-testid="day-detail-editor" className="space-y-6">
+          <div data-testid="day-detail-visual" className="space-y-6">
+            <section>
+              <h2 className="mb-3 text-sm font-bold" style={{ color: "var(--color-text-secondary)" }}>
+                この日ヒマ？
+              </h2>
+              <TimeSlotPicker selected={selectedSlots} onChange={setSelectedSlots} disabled={isPastDate} />
+            </section>
+
+            <section>
+              <h2 className="mb-2 text-sm font-bold" style={{ color: "var(--color-text-secondary)" }}>
+                ひとこと
+              </h2>
+              <input
+                type="text"
+                value={comment}
+                onChange={(e) => setComment(e.target.value)}
+                placeholder="何したい？（例: 飲みたい、どこか行きたい）"
+                maxLength={100}
+                disabled={isPastDate}
+                className="w-full rounded-xl border px-4 py-3 text-sm outline-none transition-colors focus:border-[var(--color-primary)]"
+                style={{ backgroundColor: "var(--color-surface)", borderColor: "var(--color-border)" }}
+              />
+            </section>
+
+            {!isPastDate && (hasSelectedState || hasExisting) && (
+              <button
+                onClick={handleSave}
+                disabled={saving}
+                className="w-full rounded-xl py-3.5 text-base font-bold transition-transform active:scale-[0.97] disabled:opacity-50"
+                style={{
+                  backgroundColor: hasFreeSelection
+                    ? "var(--color-free-self)"
+                    : hasUndecidedSelection
+                      ? "rgba(148, 163, 184, 0.14)"
+                      : "transparent",
+                  color: hasFreeSelection
+                    ? "white"
+                    : hasUndecidedSelection
+                      ? "var(--color-text)"
+                      : "var(--color-hot)",
+                  border: hasFreeSelection
+                    ? "none"
+                    : hasUndecidedSelection
+                      ? "1px solid var(--color-border)"
+                      : "1px solid var(--color-border)",
+                }}
+              >
+                {saving
+                  ? "保存中..."
+                  : hasFreeSelection
+                    ? "ヒマをシェアする"
+                    : hasUndecidedSelection
+                      ? "未定でシェアする"
+                      : "ヒマを解除する"}
+              </button>
+            )}
+          </div>
+
           <section>
-            <h2 className="mb-3 text-sm font-bold" style={{ color: "var(--color-text-secondary)" }}>
-              この日ヒマ？
-            </h2>
-            <TimeSlotPicker selected={selectedSlots} onChange={setSelectedSlots} disabled={isPastDate} />
             <p className="mt-2 text-xs" style={{ color: "var(--color-text-secondary)" }}>
               {isPastDate
                 ? "当日より前の日付はヒマをシェアできません"
@@ -155,54 +209,6 @@ export default function DayDetailClient({
             </p>
           </section>
 
-          <section>
-            <h2 className="mb-2 text-sm font-bold" style={{ color: "var(--color-text-secondary)" }}>
-              ひとこと
-            </h2>
-            <input
-              type="text"
-              value={comment}
-              onChange={(e) => setComment(e.target.value)}
-              placeholder="何したい？（例: 飲みたい、どこか行きたい）"
-              maxLength={100}
-              disabled={isPastDate}
-              className="w-full rounded-xl border px-4 py-3 text-sm outline-none transition-colors focus:border-[var(--color-primary)]"
-              style={{ backgroundColor: "var(--color-surface)", borderColor: "var(--color-border)" }}
-            />
-          </section>
-
-          {!isPastDate && (hasSelectedState || hasExisting) && (
-            <button
-              onClick={handleSave}
-              disabled={saving}
-              className="w-full rounded-xl py-3.5 text-base font-bold transition-transform active:scale-[0.97] disabled:opacity-50"
-              style={{
-                backgroundColor: hasFreeSelection
-                  ? "var(--color-free-self)"
-                  : hasUndecidedSelection
-                    ? "rgba(148, 163, 184, 0.14)"
-                    : "transparent",
-                color: hasFreeSelection
-                  ? "white"
-                  : hasUndecidedSelection
-                    ? "var(--color-text)"
-                    : "var(--color-hot)",
-                border: hasFreeSelection
-                  ? "none"
-                  : hasUndecidedSelection
-                    ? "1px solid var(--color-border)"
-                    : "1px solid var(--color-border)",
-              }}
-            >
-              {saving
-                ? "保存中..."
-                : hasFreeSelection
-                  ? "ヒマをシェアする"
-                  : hasUndecidedSelection
-                    ? "未定でシェアする"
-                    : "ヒマを解除する"}
-            </button>
-          )}
         </div>
 
         <section>
