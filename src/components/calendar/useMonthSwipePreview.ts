@@ -117,13 +117,21 @@ export function useMonthSwipePreview({
       releaseTapSuppression();
 
       if (deltaX < 0) {
+        if (!canGoNext) {
+          return;
+        }
+
         onSwipeNext();
+        return;
+      }
+
+      if (!canGoPrev) {
         return;
       }
 
       onSwipePrev();
     },
-    [onSwipeNext, onSwipePrev, releaseTapSuppression]
+    [canGoNext, canGoPrev, onSwipeNext, onSwipePrev, releaseTapSuppression]
   );
 
   const handlePointerCancel = useCallback(() => {

@@ -210,6 +210,20 @@ test.describe("authenticated smoke flows", () => {
     await expect(page).toHaveURL(new RegExp(`month=${expectedNextMonth}`));
   });
 
+  test("calendar page does not swipe into a past month", async ({ page }) => {
+    await page.goto(`/calendar?group=${E2E_GROUP_ID}`);
+
+    const swipeSurface = page.getByTestId("calendar-swipe-surface");
+    const monthSelect = page.getByTestId("calendar-month-select");
+    const currentMonthValue = format(startOfMonth(new Date()), "yyyy-MM");
+    const initialUrl = page.url();
+
+    await performSwipe(swipeSurface, "right");
+
+    await expect(monthSelect).toHaveValue(currentMonthValue);
+    await expect(page).toHaveURL(initialUrl);
+  });
+
   test("calendar page only renders buttons for the current month", async ({ page }) => {
     await page.goto(`/calendar?group=${E2E_GROUP_ID}`);
 
@@ -251,6 +265,18 @@ test.describe("authenticated smoke flows", () => {
 
     await expect(monthLabel).toHaveText(nextMonthLabel);
     await expect(page.locator('input[value="来月の入力"]')).toBeVisible();
+  });
+
+  test("bulk share page does not swipe into a finished month", async ({ page }) => {
+    await page.goto("/calendar/bulk");
+
+    const swipeSurface = page.getByTestId("bulk-swipe-surface");
+    const monthLabel = page.getByTestId("bulk-month-label");
+    const currentMonthLabel = format(startOfMonth(new Date()), "yyyy年 M月");
+
+    await performSwipe(swipeSurface, "right");
+
+    await expect(monthLabel).toHaveText(currentMonthLabel);
   });
 
   test("bulk share page can save selected dates and return to calendar", async ({
