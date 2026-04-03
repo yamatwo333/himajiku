@@ -58,6 +58,7 @@ npm run test:e2e
 - GitHub Actions の `CI` workflow が `push` / `pull_request` ごとに `lint` `build` `test:e2e` を実行します
 - CI が落ちたときは run の `Summary` から `Artifacts` にある `playwright-artifacts` を開くと、`playwright-report/` と `test-results/` の中身を確認できます
 - artifact は `Run E2E smoke tests` が落ちたときだけ upload されるので、スクリーンショットや trace を見たいときは失敗 run を開いてください
+- visual 差分が原因なら、まず artifact の diff を見てから `npm run test:e2e:update-snapshots` でローカル更新し、最後に GitHub Actions が green になるところまで確認すると運用しやすいです
 
 ## データベース
 

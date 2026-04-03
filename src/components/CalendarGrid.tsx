@@ -239,6 +239,7 @@ export default function CalendarGrid({
         />
 
         <div
+          data-testid="calendar-grid-visual"
           className="grid grid-cols-7 gap-[2px] rounded-[24px] border px-2.5 py-2.5"
           style={{
             ...contentStyle,

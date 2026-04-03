@@ -332,6 +332,7 @@ export default function BulkShareClient({
             }}
           />
           <div
+            data-testid="bulk-visual"
             className="rounded-[24px] border px-4 py-3"
             style={{
               ...contentStyle,

@@ -34,7 +34,7 @@ test.describe("visual regression", () => {
     await gotoStablePage(page, `/calendar?group=${E2E_GROUP_ID}`);
 
     await expect(page.getByTestId("calendar-swipe-surface")).toBeVisible();
-    await expectVisualSnapshot(page.getByTestId("calendar-swipe-surface"), "calendar-page.png");
+    await expectVisualSnapshot(page.getByTestId("calendar-grid-visual"), "calendar-page.png");
   });
 
   test("bulk share page layout stays stable", async ({ page }) => {
@@ -44,12 +44,12 @@ test.describe("visual regression", () => {
     await hideWithVisualStyle(
       page,
       [
-        '[data-testid="bulk-swipe-surface"] [data-testid^="bulk-day-card-"]:nth-child(n+7) {',
+        '[data-testid="bulk-visual"] [data-testid^="bulk-day-card-"]:nth-child(n+7) {',
         "  display: none !important;",
         "}",
       ].join("\n")
     );
-    await expectVisualSnapshot(page.getByTestId("bulk-page-content"), "bulk-page.png");
+    await expectVisualSnapshot(page.getByTestId("bulk-visual"), "bulk-page.png");
   });
 
   test("profile page cards stay stable", async ({ page }) => {

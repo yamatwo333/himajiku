@@ -2,11 +2,14 @@ import { expect, test, type Page } from "@playwright/test";
 import { addMonths, endOfMonth, format, startOfMonth } from "date-fns";
 import {
   E2E_GROUP_ID,
+  E2E_LINKED_GROUP_ID,
   E2E_USER_ID,
   TEST_NOW,
   getBulkCardByComment,
   performSwipe,
+  readStubClipboard,
   signIn,
+  stubClipboard,
 } from "./helpers/e2e";
 
 async function pinStoredCalendarMonth(page: Page) {
@@ -134,6 +137,45 @@ test.describe("authenticated smoke flows", () => {
 
     await expect(page.getByText("連携 E2E123")).toBeVisible();
     await expect(page.getByText("Botが「連携完了」と返信したらOK")).toBeVisible();
+  });
+
+  test("group detail page can unlink LINE integration", async ({ page }) => {
+    await page.route(`**/api/groups/${E2E_LINKED_GROUP_ID}/line-link`, async (route) => {
+      if (route.request().method() !== "DELETE") {
+        await route.fallback();
+        return;
+      }
+
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ success: true }),
+      });
+    });
+
+    await page.goto(`/groups/${E2E_LINKED_GROUP_ID}`);
+
+    await expect(page.getByText("連携済み")).toBeVisible();
+    const unlinkRequestPromise = page.waitForRequest(`**/api/groups/${E2E_LINKED_GROUP_ID}/line-link`);
+    await page.getByRole("button", { name: "連携を解除する" }).click();
+
+    const unlinkRequest = await unlinkRequestPromise;
+    expect(unlinkRequest.method()).toBe("DELETE");
+    await expect(page.getByText("LINEグループと連携すると、ヒマな人が集まった時に自動で通知が届きます。")).toBeVisible();
+    await expect(page.getByRole("button", { name: "LINE連携コードを発行" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "連携を解除する" })).toHaveCount(0);
+  });
+
+  test("group detail page shares invite links by copying when Web Share is unavailable", async ({
+    page,
+  }) => {
+    await stubClipboard(page, { disableShare: true });
+    await page.goto(`/groups/${E2E_GROUP_ID}`);
+
+    await page.getByRole("button", { name: "招待リンクを共有" }).click();
+
+    await expect(page.getByRole("button", { name: "コピー済" }).first()).toBeVisible();
+    await expect(await readStubClipboard(page)).toBe("http://127.0.0.1:3100/join?code=ABC123");
   });
 
   test("group detail page can transfer ownership", async ({ page }) => {
