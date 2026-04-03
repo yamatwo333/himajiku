@@ -49,19 +49,21 @@ npm run dev
 
 ```bash
 npx playwright install chromium
+npm run test:unit
 npm run test:e2e
 ```
 
+- `npm run test:unit` は通知差分のような軽いサーバーロジックを Node の unit test で確認します
 - `playwright.config.ts` では E2E 実行時だけ `E2E_AUTH_BYPASS=1` を自動で付与しています
 - E2E では日付を固定しており、`calendar` / `bulk` / `profile` の visual regression も `npm run test:e2e` に含まれます
 - visual snapshot を更新する場合は `npm run test:e2e:update-snapshots` を実行し、意図した UI 変更だけが `tests/__screenshots__/` に出ていることを確認してください
-- 変更前の安全確認は `npm run lint && npm run build && npm run test:e2e` の順がおすすめです
+- 変更前の安全確認は `npm run lint && npm run test:unit && npm run build && npm run test:e2e` の順がおすすめです
 - CI では Linux 上で同じ visual regression を走らせるので、snapshot 更新後は GitHub Actions の結果まで確認すると安心です
 - 手動で `npm run dev` を立てて E2E を流す場合は、同じ値を環境変数に設定してください
 
 ## CI
 
-- GitHub Actions の `CI` workflow が `push` / `pull_request` ごとに `lint` `build` `test:e2e` を実行します
+- GitHub Actions の `CI` workflow が `push` / `pull_request` ごとに `lint` `test:unit` `build` `test:e2e` を実行します
 - CI が落ちたときは run の `Summary` から `Artifacts` にある `playwright-artifacts` を開くと、`playwright-report/` と `test-results/` の中身を確認できます
 - artifact は `Run E2E smoke tests` が落ちたときだけ upload されるので、スクリーンショットや trace を見たいときは失敗 run を開いてください
 - visual 差分が原因なら、まず artifact の diff を見てから `npm run test:e2e:update-snapshots` でローカル更新し、最後に GitHub Actions が green になるところまで確認すると運用しやすいです
