@@ -23,6 +23,7 @@ export default function CalendarMonthSwitcher({
       <button
         onClick={onPrev}
         disabled={!canGoPrev}
+        aria-label="前の月"
         className="rounded-lg p-1.5 active:bg-gray-100 disabled:opacity-20"
       >
         <svg
@@ -43,6 +44,7 @@ export default function CalendarMonthSwitcher({
       <button
         onClick={onNext}
         disabled={!canGoNext}
+        aria-label="次の月"
         className="rounded-lg p-1.5 active:bg-gray-100 disabled:opacity-20"
       >
         <svg

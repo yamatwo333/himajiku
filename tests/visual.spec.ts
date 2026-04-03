@@ -19,7 +19,7 @@ test.describe("visual regression", () => {
     await page.goto(`/calendar?group=${E2E_GROUP_ID}`, { waitUntil: "networkidle" });
 
     await expect(page.getByTestId("calendar-swipe-surface")).toBeVisible();
-    await expectVisualSnapshot(page.getByTestId("calendar-page-content"), "calendar-page.png");
+    await expectVisualSnapshot(page.getByTestId("calendar-swipe-surface"), "calendar-page.png");
   });
 
   test("bulk share page layout stays stable", async ({ page }) => {

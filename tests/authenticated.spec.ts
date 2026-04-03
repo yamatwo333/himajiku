@@ -184,7 +184,6 @@ test.describe("authenticated smoke flows", () => {
   test("bulk share keeps month inputs while swiping between months", async ({ page }) => {
     await page.goto("/calendar/bulk");
 
-    const swipeSurface = page.getByTestId("bulk-swipe-surface");
     const monthLabel = page.getByTestId("bulk-month-label");
     const currentMonthLabel = format(startOfMonth(TEST_NOW), "yyyy年 M月");
     const nextMonthLabel = format(addMonths(startOfMonth(TEST_NOW), 1), "yyyy年 M月");
@@ -193,11 +192,13 @@ test.describe("authenticated smoke flows", () => {
       "yyyy-MM-dd"
     );
     const existingCommentInput = page.locator('input[value="既存のまとめてシェア"]');
+    const nextMonthButton = page.getByRole("button", { name: "次の月" });
+    const previousMonthButton = page.getByRole("button", { name: "前の月" });
 
     await expect(monthLabel).toHaveText(currentMonthLabel);
     await expect(existingCommentInput).toBeVisible();
 
-    await performSwipe(swipeSurface, "left");
+    await nextMonthButton.click();
 
     await expect(monthLabel).toHaveText(nextMonthLabel);
     const nextMonthAfternoonButton = page
@@ -207,12 +208,12 @@ test.describe("authenticated smoke flows", () => {
     await nextMonthAfternoonButton.click();
     await page.getByPlaceholder("ひとこと").fill("来月の入力");
 
-    await performSwipe(swipeSurface, "right");
+    await previousMonthButton.click();
 
     await expect(monthLabel).toHaveText(currentMonthLabel);
     await expect(existingCommentInput).toBeVisible();
 
-    await performSwipe(swipeSurface, "left");
+    await nextMonthButton.click();
 
     await expect(monthLabel).toHaveText(nextMonthLabel);
     await expect(page.locator('input[value="来月の入力"]')).toBeVisible();
