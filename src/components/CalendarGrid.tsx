@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useRef, type PointerEvent as ReactPointerEvent } from "react";
+import { useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { getTodayInTokyo } from "@/lib/date";
 import {
@@ -23,14 +23,9 @@ import {
   isUndecidedOnly,
   type FreeTimeSlot,
 } from "@/lib/types";
+import { useMonthSwipePreview } from "@/components/calendar/useMonthSwipePreview";
 
 const WEEKDAYS = ["日", "月", "火", "水", "木", "金", "土"];
-const SWIPE_THRESHOLD_PX = 56;
-const SWIPE_MAX_VERTICAL_DRIFT_PX = 80;
-const SWIPE_PREVIEW_MAX_PX = 72;
-const SWIPE_PREVIEW_RATIO = 0.32;
-const SWIPE_PREVIEW_EDGE_RATIO = 0.18;
-const SWIPE_TAP_CANCEL_PX = 10;
 
 function createSlotCounts(): Record<FreeTimeSlot, number> {
   return FREE_TIME_SLOTS.reduce((counts, slot) => {
@@ -48,16 +43,17 @@ interface Props {
   initialMonth?: Date;
 }
 
-export default function CalendarGrid({ availabilities, onMonthChange, groupId, notifyThreshold = 2, currentUserId = null, initialMonth }: Props) {
+export default function CalendarGrid({
+  availabilities,
+  onMonthChange,
+  groupId,
+  notifyThreshold = 2,
+  currentUserId = null,
+  initialMonth,
+}: Props) {
   const baseMonth = useMemo(() => startOfMonth(new Date()), []);
   const minMonth = baseMonth;
   const maxMonth = useMemo(() => addMonths(baseMonth, 2), [baseMonth]);
-  const [dragOffsetX, setDragOffsetX] = useState(0);
-  const [isDragging, setIsDragging] = useState(false);
-  const swipeStartRef = useRef<{ x: number; y: number } | null>(null);
-  const swipeHandledRef = useRef(false);
-  const activePointerIdRef = useRef<number | null>(null);
-  const suppressTapRef = useRef(false);
   const currentMonth = useMemo(() => {
     const month = startOfMonth(initialMonth ?? baseMonth);
     if (month < minMonth) return minMonth;
@@ -85,96 +81,12 @@ export default function CalendarGrid({ availabilities, onMonthChange, groupId, n
     onMonthChange(picked);
   };
 
-  const handleSwipeStart = (event: ReactPointerEvent<HTMLDivElement>) => {
-    if (!event.isPrimary) {
-      return;
-    }
-
-    activePointerIdRef.current = event.pointerId;
-    swipeStartRef.current = {
-      x: event.clientX,
-      y: event.clientY,
-    };
-    swipeHandledRef.current = false;
-    suppressTapRef.current = false;
-    setIsDragging(true);
-    event.currentTarget.setPointerCapture(event.pointerId);
-  };
-
-  const handleSwipeMove = (event: ReactPointerEvent<HTMLDivElement>) => {
-    const swipeStart = swipeStartRef.current;
-
-    if (!event.isPrimary || !swipeStart || activePointerIdRef.current !== event.pointerId) {
-      return;
-    }
-
-    const deltaX = event.clientX - swipeStart.x;
-    const deltaY = event.clientY - swipeStart.y;
-
-    if (Math.abs(deltaX) > SWIPE_TAP_CANCEL_PX || Math.abs(deltaY) > SWIPE_TAP_CANCEL_PX) {
-      suppressTapRef.current = true;
-    }
-
-    if (
-      Math.abs(deltaY) > SWIPE_MAX_VERTICAL_DRIFT_PX ||
-      Math.abs(deltaY) > Math.abs(deltaX)
-    ) {
-      setDragOffsetX(0);
-      return;
-    }
-
-    const isBlockedDirection = (deltaX > 0 && !canGoPrev) || (deltaX < 0 && !canGoNext);
-    const previewRatio = isBlockedDirection ? SWIPE_PREVIEW_EDGE_RATIO : SWIPE_PREVIEW_RATIO;
-    const nextOffset = Math.max(
-      -SWIPE_PREVIEW_MAX_PX,
-      Math.min(SWIPE_PREVIEW_MAX_PX, deltaX * previewRatio)
-    );
-
-    setDragOffsetX(nextOffset);
-  };
-
-  const handleSwipeEnd = (event: ReactPointerEvent<HTMLDivElement>) => {
-    const swipeStart = swipeStartRef.current;
-    activePointerIdRef.current = null;
-    swipeStartRef.current = null;
-    setIsDragging(false);
-    setDragOffsetX(0);
-
-    if (!event.isPrimary || !swipeStart || swipeHandledRef.current) {
-      return;
-    }
-
-    const deltaX = event.clientX - swipeStart.x;
-    const deltaY = event.clientY - swipeStart.y;
-
-    if (
-      Math.abs(deltaX) < SWIPE_THRESHOLD_PX ||
-      Math.abs(deltaY) > SWIPE_MAX_VERTICAL_DRIFT_PX ||
-      Math.abs(deltaY) > Math.abs(deltaX)
-    ) {
-      window.setTimeout(() => {
-        suppressTapRef.current = false;
-      }, 0);
-      return;
-    }
-
-    swipeHandledRef.current = true;
-    window.setTimeout(() => {
-      suppressTapRef.current = false;
-    }, 0);
-    changeMonth(deltaX < 0 ? 1 : -1);
-  };
-
-  const resetSwipe = () => {
-    activePointerIdRef.current = null;
-    swipeStartRef.current = null;
-    swipeHandledRef.current = false;
-    setIsDragging(false);
-    setDragOffsetX(0);
-    window.setTimeout(() => {
-      suppressTapRef.current = false;
-    }, 0);
-  };
+  const { surfaceProps, contentStyle } = useMonthSwipePreview({
+    canGoPrev,
+    canGoNext,
+    onSwipePrev: () => changeMonth(-1),
+    onSwipeNext: () => changeMonth(1),
+  });
 
   const days = useMemo(() => {
     const monthStart = startOfMonth(currentMonth);
@@ -238,7 +150,6 @@ export default function CalendarGrid({ availabilities, onMonthChange, groupId, n
 
   return (
     <div className="px-4">
-      {/* Month header */}
       <div className="mb-4 flex items-center justify-between">
         <button
           onClick={() => changeMonth(-1)}
@@ -255,7 +166,11 @@ export default function CalendarGrid({ availabilities, onMonthChange, groupId, n
             value={format(currentMonth, "yyyy-MM")}
             onChange={(e) => jumpToMonth(e.target.value)}
             className="appearance-none rounded-xl border px-4 py-1.5 pr-8 text-center text-base font-bold outline-none"
-            style={{ color: "var(--color-text)", borderColor: "var(--color-border)", backgroundColor: "var(--color-surface)" }}
+            style={{
+              color: "var(--color-text)",
+              borderColor: "var(--color-border)",
+              backgroundColor: "var(--color-surface)",
+            }}
           >
             {monthOptions.map((m) => (
               <option key={format(m, "yyyy-MM")} value={format(m, "yyyy-MM")}>
@@ -263,7 +178,12 @@ export default function CalendarGrid({ availabilities, onMonthChange, groupId, n
               </option>
             ))}
           </select>
-          <span className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-xs" style={{ color: "var(--color-text-secondary)" }}>&#x25BC;</span>
+          <span
+            className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-xs"
+            style={{ color: "var(--color-text-secondary)" }}
+          >
+            &#x25BC;
+          </span>
         </div>
         <button
           onClick={() => changeMonth(1)}
@@ -278,23 +198,11 @@ export default function CalendarGrid({ availabilities, onMonthChange, groupId, n
 
       <div
         data-testid="calendar-swipe-surface"
-        onPointerDown={handleSwipeStart}
-        onPointerMove={handleSwipeMove}
-        onPointerUp={handleSwipeEnd}
-        onPointerCancel={resetSwipe}
         className="select-none"
-        style={{ touchAction: "pan-y" }}
+        {...surfaceProps}
       >
         <div className="grid grid-cols-7 gap-[2px]">
-          <div
-            className="col-span-7"
-            style={{
-              transform: `translate3d(${dragOffsetX}px, 0, 0)`,
-              transition: isDragging ? "none" : "transform 180ms cubic-bezier(0.22, 1, 0.36, 1)",
-              willChange: isDragging ? "transform" : undefined,
-            }}
-          >
-            {/* Weekday header */}
+          <div className="col-span-7" style={contentStyle}>
             <div className="mb-1 grid grid-cols-7 text-center text-xs font-medium" style={{ color: "var(--color-text-secondary)" }}>
               {WEEKDAYS.map((d, i) => (
                 <div
@@ -309,7 +217,6 @@ export default function CalendarGrid({ availabilities, onMonthChange, groupId, n
               ))}
             </div>
 
-            {/* Day grid */}
             <div className="grid grid-cols-7 gap-[2px]">
               {days.map((day) => {
                 const dateStr = format(day, "yyyy-MM-dd");
@@ -325,11 +232,7 @@ export default function CalendarGrid({ availabilities, onMonthChange, groupId, n
                   <button
                     key={dateStr}
                     onClick={() => {
-                      if (suppressTapRef.current || isPast) {
-                        suppressTapRef.current = false;
-                        return;
-                      }
-
+                      if (isPast) return;
                       router.push(`/calendar/${dateStr}${groupId ? `?group=${groupId}` : ""}`);
                     }}
                     disabled={isPast}
@@ -338,7 +241,6 @@ export default function CalendarGrid({ availabilities, onMonthChange, groupId, n
                       opacity: inMonth ? (isPast ? 0.35 : 1) : isPast ? 0.15 : 0.3,
                     }}
                   >
-                    {/* Date number */}
                     {(() => {
                       const today = isToday(day);
                       return (
@@ -355,7 +257,6 @@ export default function CalendarGrid({ availabilities, onMonthChange, groupId, n
                       );
                     })()}
 
-                    {/* Availability indicators */}
                     <div className="mt-1 flex items-center gap-[3px]">
                       {selfFree && (
                         <div
@@ -387,29 +288,42 @@ export default function CalendarGrid({ availabilities, onMonthChange, groupId, n
         </div>
       </div>
 
-      {/* Legend */}
       <div
         className="mx-auto mt-4 grid max-w-[320px] grid-cols-2 gap-x-4 gap-y-2 text-xs"
         style={{ color: "var(--color-text-secondary)" }}
       >
         <span className="flex items-center gap-1">
-          <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ backgroundColor: "var(--color-free-self)" }} />
+          <span
+            className="h-2 w-2 rounded-full"
+            style={{ backgroundColor: "var(--color-free-self)" }}
+          />
           自分がヒマ
         </span>
         <span className="flex items-center gap-1">
-          <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ backgroundColor: "var(--color-free-friend)" }} />
-          友達がヒマ
-        </span>
-        <span className="flex items-center gap-1">
-          <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ backgroundColor: "var(--color-hot)" }} />
-          集まったっていい
+          <span
+            className="h-2 w-2 rounded-full"
+            style={{ backgroundColor: "var(--color-free-friend)" }}
+          />
+          友だちがヒマ
         </span>
         <span className="flex items-center gap-1">
           <span
-            className="inline-block h-2.5 w-2.5 rounded-full border"
-            style={{ borderColor: "var(--color-text-secondary)" }}
+            className="h-2 w-2 rounded-full border"
+            style={{
+              borderColor: "var(--color-text-secondary)",
+              backgroundColor: "transparent",
+            }}
           />
-          未定
+          未定あり
+        </span>
+        <span className="flex items-center gap-1">
+          <span
+            className="flex h-4 w-4 items-center justify-center rounded-full text-[10px] font-bold text-white"
+            style={{ backgroundColor: "var(--color-hot)" }}
+          >
+            !
+          </span>
+          集まれそう
         </span>
       </div>
     </div>

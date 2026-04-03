@@ -27,6 +27,40 @@ function getBulkCardByComment(page: Page, comment: string): Locator {
     .locator("xpath=ancestor::div[contains(@class,'rounded-xl')][1]");
 }
 
+async function performSwipe(surface: Locator, direction: "left" | "right") {
+  const bounds = await surface.boundingBox();
+
+  if (!bounds) {
+    throw new Error("swipe surface not found");
+  }
+
+  const centerY = bounds.y + bounds.height / 2;
+  const startX = direction === "left" ? bounds.x + bounds.width * 0.8 : bounds.x + bounds.width * 0.2;
+  const endX = direction === "left" ? bounds.x + bounds.width * 0.2 : bounds.x + bounds.width * 0.8;
+
+  await surface.dispatchEvent("pointerdown", {
+    pointerType: "touch",
+    pointerId: 1,
+    isPrimary: true,
+    clientX: startX,
+    clientY: centerY,
+  });
+  await surface.dispatchEvent("pointermove", {
+    pointerType: "touch",
+    pointerId: 1,
+    isPrimary: true,
+    clientX: (startX + endX) / 2,
+    clientY: centerY,
+  });
+  await surface.dispatchEvent("pointerup", {
+    pointerType: "touch",
+    pointerId: 1,
+    isPrimary: true,
+    clientX: endX,
+    clientY: centerY,
+  });
+}
+
 test.describe("authenticated smoke flows", () => {
   test.beforeEach(async ({ page }) => {
     await signIn(page);
@@ -168,32 +202,46 @@ test.describe("authenticated smoke flows", () => {
 
     const swipeSurface = page.getByTestId("calendar-swipe-surface");
     const monthSelect = page.getByTestId("calendar-month-select");
-    const bounds = await swipeSurface.boundingBox();
-
-    if (!bounds) {
-      throw new Error("calendar swipe surface not found");
-    }
-
     const expectedNextMonth = format(addMonths(startOfMonth(new Date()), 1), "yyyy-MM");
-    const centerY = bounds.y + bounds.height / 2;
 
-    await swipeSurface.dispatchEvent("pointerdown", {
-      pointerType: "touch",
-      pointerId: 1,
-      isPrimary: true,
-      clientX: bounds.x + bounds.width * 0.8,
-      clientY: centerY,
-    });
-    await swipeSurface.dispatchEvent("pointerup", {
-      pointerType: "touch",
-      pointerId: 1,
-      isPrimary: true,
-      clientX: bounds.x + bounds.width * 0.2,
-      clientY: centerY,
-    });
+    await performSwipe(swipeSurface, "left");
 
     await expect(monthSelect).toHaveValue(expectedNextMonth);
     await expect(page).toHaveURL(new RegExp(`month=${expectedNextMonth}`));
+  });
+
+  test("bulk share keeps month inputs while swiping between months", async ({ page }) => {
+    await page.goto("/calendar/bulk");
+
+    const swipeSurface = page.getByTestId("bulk-swipe-surface");
+    const monthLabel = page.getByTestId("bulk-month-label");
+    const currentMonthLabel = format(startOfMonth(new Date()), "yyyy年 M月");
+    const nextMonthLabel = format(addMonths(startOfMonth(new Date()), 1), "yyyy年 M月");
+    const existingCommentInput = page.locator('input[value="既存のまとめてシェア"]');
+
+    await expect(monthLabel).toHaveText(currentMonthLabel);
+    await expect(existingCommentInput).toBeVisible();
+
+    await performSwipe(swipeSurface, "left");
+
+    await expect(monthLabel).toHaveText(nextMonthLabel);
+    const nextMonthAfternoonButton = page
+      .locator("button:not([disabled])")
+      .filter({ hasText: "午後" })
+      .first();
+    await expect(nextMonthAfternoonButton).toBeVisible();
+    await nextMonthAfternoonButton.click();
+    await page.getByPlaceholder("ひとこと").fill("来月の入力");
+
+    await performSwipe(swipeSurface, "right");
+
+    await expect(monthLabel).toHaveText(currentMonthLabel);
+    await expect(existingCommentInput).toBeVisible();
+
+    await performSwipe(swipeSurface, "left");
+
+    await expect(monthLabel).toHaveText(nextMonthLabel);
+    await expect(page.locator('input[value="来月の入力"]')).toBeVisible();
   });
 
   test("bulk share page can save selected dates and return to calendar", async ({
@@ -207,6 +255,7 @@ test.describe("authenticated smoke flows", () => {
     const bulkSaveRequest = page.waitForRequest("**/api/availability/bulk");
 
     await existingCard.getByRole("button", { name: "午前" }).click();
+    await expect(page.locator('input[value="既存のまとめてシェア"]')).toHaveCount(0);
     await page.getByRole("button", { name: "まとめてシェアする" }).click();
 
     const request = await bulkSaveRequest;

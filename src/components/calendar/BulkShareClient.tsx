@@ -6,6 +6,7 @@ import { addMonths, eachDayOfInterval, endOfMonth, format, startOfMonth, subMont
 import { ja } from "date-fns/locale";
 import BulkDayCard from "@/components/calendar/BulkDayCard";
 import CalendarMonthSwitcher from "@/components/calendar/CalendarMonthSwitcher";
+import { useMonthSwipePreview } from "@/components/calendar/useMonthSwipePreview";
 import PageHeader from "@/components/PageHeader";
 import PageSpinner from "@/components/PageSpinner";
 import {
@@ -79,6 +80,31 @@ export default function BulkShareClient({
     return eachDayOfInterval({ start: monthStart, end: monthEnd });
   }, [currentMonth]);
 
+  const goToPrevMonth = useCallback(() => {
+    const nextMonth = subMonths(currentMonth, 1);
+    if (!loadedMonthsRef.current.has(format(nextMonth, "yyyy-MM"))) {
+      setLoading(true);
+    }
+    setCurrentMonth(nextMonth);
+    persistCalendarMonth(nextMonth);
+  }, [currentMonth]);
+
+  const goToNextMonth = useCallback(() => {
+    const nextMonth = addMonths(currentMonth, 1);
+    if (!loadedMonthsRef.current.has(format(nextMonth, "yyyy-MM"))) {
+      setLoading(true);
+    }
+    setCurrentMonth(nextMonth);
+    persistCalendarMonth(nextMonth);
+  }, [currentMonth]);
+
+  const { surfaceProps, contentStyle } = useMonthSwipePreview({
+    canGoPrev,
+    canGoNext,
+    onSwipePrev: goToPrevMonth,
+    onSwipeNext: goToNextMonth,
+  });
+
   const fetchExisting = useCallback(async () => {
     if (loadedMonthsRef.current.has(monthKey)) {
       setLoading(false);
@@ -106,10 +132,10 @@ export default function BulkShareClient({
         }
 
         setEntries((prev) => {
-          const merged = { ...existing };
+          const merged = { ...prev };
 
-          for (const [key, value] of Object.entries(prev)) {
-            if (key.startsWith(format(currentMonth, "yyyy-MM"))) {
+          for (const [key, value] of Object.entries(existing)) {
+            if (!(key in merged)) {
               merged[key] = value;
             }
           }
@@ -248,70 +274,61 @@ export default function BulkShareClient({
       <PageHeader title="ヒマな日をまとめてシェア" onBack={handleBack} />
 
       <div className="flex-1 space-y-2 px-4 pt-4 pb-32">
-        <CalendarMonthSwitcher
-          currentMonth={currentMonth}
-          canGoPrev={canGoPrev}
-          canGoNext={canGoNext}
-          onPrev={() => {
-            const nextMonth = subMonths(currentMonth, 1);
-            if (!loadedMonthsRef.current.has(format(nextMonth, "yyyy-MM"))) {
-              setLoading(true);
-            }
-            setCurrentMonth(nextMonth);
-            persistCalendarMonth(nextMonth);
-          }}
-          onNext={() => {
-            const nextMonth = addMonths(currentMonth, 1);
-            if (!loadedMonthsRef.current.has(format(nextMonth, "yyyy-MM"))) {
-              setLoading(true);
-            }
-            setCurrentMonth(nextMonth);
-            persistCalendarMonth(nextMonth);
-          }}
-        />
+        <div data-testid="bulk-swipe-surface" {...surfaceProps}>
+          <div style={contentStyle}>
+            <CalendarMonthSwitcher
+              currentMonth={currentMonth}
+              canGoPrev={canGoPrev}
+              canGoNext={canGoNext}
+              onPrev={goToPrevMonth}
+              onNext={goToNextMonth}
+              labelTestId="bulk-month-label"
+            />
 
-        <p className="text-xs" style={{ color: "var(--color-text-secondary)" }}>
-          当日以降の日付で、各日の時間帯をタップしてヒマを設定してください
-        </p>
-        <p className="text-xs" style={{ color: "var(--color-text-secondary)" }}>
-          ※ 未定はヒマ人数・赤丸・LINE通知には含まれません
-        </p>
+            <p className="text-xs" style={{ color: "var(--color-text-secondary)" }}>
+              当日以降の日付で、各日の時間帯をタップしてヒマを設定してください
+            </p>
+            <p className="text-xs" style={{ color: "var(--color-text-secondary)" }}>
+              ※ 未定はヒマ人数・赤丸・LINE通知には含まれません
+            </p>
 
-        {loading ? (
-          <PageSpinner className="flex items-center justify-center py-16" />
-        ) : (
-          <div className="space-y-2">
-            {daysInMonth.map((day) => {
-              const dateStr = format(day, "yyyy-MM-dd");
-              const dayLabel = format(day, "M/d (E)", { locale: ja });
-              const entry = entries[dateStr];
-              const isPastDate = dateStr < todayString;
+            {loading ? (
+              <PageSpinner className="flex items-center justify-center py-16" />
+            ) : (
+              <div className="space-y-2">
+                {daysInMonth.map((day) => {
+                  const dateStr = format(day, "yyyy-MM-dd");
+                  const dayLabel = format(day, "M/d (E)", { locale: ja });
+                  const entry = entries[dateStr];
+                  const isPastDate = dateStr < todayString;
 
-              return (
-                <BulkDayCard
-                  key={dateStr}
-                  dayLabel={dayLabel}
-                  selectedSlots={entry?.timeSlots ?? []}
-                  comment={entry?.comment ?? ""}
-                  isPastDate={isPastDate}
-                  onSlotsChange={(slots) => {
-                    if (isPastDate) return;
+                  return (
+                    <BulkDayCard
+                      key={dateStr}
+                      dayLabel={dayLabel}
+                      selectedSlots={entry?.timeSlots ?? []}
+                      comment={entry?.comment ?? ""}
+                      isPastDate={isPastDate}
+                      onSlotsChange={(slots) => {
+                        if (isPastDate) return;
 
-                    setEntries((prev) => ({
-                      ...prev,
-                      [dateStr]: {
-                        date: dateStr,
-                        timeSlots: slots,
-                        comment: prev[dateStr]?.comment ?? "",
-                      },
-                    }));
-                  }}
-                  onCommentChange={(nextComment) => updateComment(dateStr, nextComment)}
-                />
-              );
-            })}
+                        setEntries((prev) => ({
+                          ...prev,
+                          [dateStr]: {
+                            date: dateStr,
+                            timeSlots: slots,
+                            comment: prev[dateStr]?.comment ?? "",
+                          },
+                        }));
+                      }}
+                      onCommentChange={(nextComment) => updateComment(dateStr, nextComment)}
+                    />
+                  );
+                })}
+              </div>
+            )}
           </div>
-        )}
+        </div>
       </div>
 
       <div

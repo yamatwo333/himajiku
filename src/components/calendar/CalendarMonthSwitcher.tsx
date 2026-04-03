@@ -7,6 +7,7 @@ interface CalendarMonthSwitcherProps {
   canGoNext: boolean;
   onPrev: () => void;
   onNext: () => void;
+  labelTestId?: string;
 }
 
 export default function CalendarMonthSwitcher({
@@ -15,6 +16,7 @@ export default function CalendarMonthSwitcher({
   canGoNext,
   onPrev,
   onNext,
+  labelTestId,
 }: CalendarMonthSwitcherProps) {
   return (
     <div className="mb-2 flex items-center justify-between">
@@ -35,7 +37,7 @@ export default function CalendarMonthSwitcher({
           <polyline points="12,4 6,10 12,16" />
         </svg>
       </button>
-      <span className="text-sm font-bold">
+      <span data-testid={labelTestId} className="text-sm font-bold">
         {format(currentMonth, "yyyy年 M月", { locale: ja })}
       </span>
       <button
