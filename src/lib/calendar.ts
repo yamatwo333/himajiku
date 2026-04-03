@@ -1,4 +1,5 @@
 import { addMonths, startOfMonth } from "date-fns";
+import { getCurrentMonthDateInTokyo } from "@/lib/date";
 
 export const CALENDAR_MONTH_STORAGE_KEY = "calendarMonth";
 export const SELECTED_GROUP_STORAGE_KEY = "selectedGroupId";
@@ -14,7 +15,7 @@ function dispatchCalendarStateChange() {
 }
 
 export function getCalendarMonthBounds(now: Date = new Date()) {
-  const minMonth = startOfMonth(now);
+  const minMonth = startOfMonth(getCurrentMonthDateInTokyo(now));
   const maxMonth = addMonths(minMonth, 2);
 
   return { minMonth, maxMonth };

@@ -37,6 +37,15 @@ interface BulkShareClientProps {
   initialMonthIso: string;
 }
 
+function filterExpiredEntries(
+  entries: Record<string, DayEntry>,
+  minimumDate: string
+) {
+  return Object.fromEntries(
+    Object.entries(entries).filter(([date]) => date >= minimumDate)
+  );
+}
+
 export default function BulkShareClient({
   initialEntries,
   initialMonthIso,
@@ -49,7 +58,6 @@ export default function BulkShareClient({
     [baseDate]
   );
   const [currentMonth, setCurrentMonth] = useState(initialMonth);
-  const [entries, setEntries] = useState<Record<string, DayEntry>>(initialEntries);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const initializedRef = useRef(false);
@@ -59,6 +67,10 @@ export default function BulkShareClient({
   const canGoPrev = currentMonth > minMonth;
   const canGoNext = currentMonth < maxMonth;
   const todayString = getTodayInTokyo();
+  const minimumVisibleDate = `${todayString.slice(0, 7)}-01`;
+  const [entries, setEntries] = useState<Record<string, DayEntry>>(() =>
+    filterExpiredEntries(initialEntries, minimumVisibleDate)
+  );
   const monthKey = useMemo(() => format(currentMonth, "yyyy-MM"), [currentMonth]);
   const monthStartString = useMemo(
     () => format(startOfMonth(currentMonth), "yyyy-MM-dd"),
@@ -136,7 +148,7 @@ export default function BulkShareClient({
         const existing: Record<string, DayEntry> = {};
 
         for (const availability of data.availabilities || []) {
-          if (availability.userId === currentUserId) {
+          if (availability.userId === currentUserId && availability.date >= minimumVisibleDate) {
             existing[availability.date] = {
               date: availability.date,
               timeSlots: availability.timeSlots || [],
@@ -163,8 +175,7 @@ export default function BulkShareClient({
     }
 
     setLoading(false);
-  }, [currentMonth, monthKey]);
-
+  }, [currentMonth, minimumVisibleDate, monthKey]);
   useEffect(() => {
     const savedMonth = readStoredCalendarMonth(baseDate);
 

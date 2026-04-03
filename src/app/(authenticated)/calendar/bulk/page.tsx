@@ -1,6 +1,6 @@
-import { startOfMonth } from "date-fns";
 import { redirect } from "next/navigation";
 import BulkShareClient from "@/components/calendar/BulkShareClient";
+import { getCurrentMonthDateInTokyo } from "@/lib/date";
 import { getE2EBulkAvailabilityEntriesForMonth, isE2EUser } from "@/lib/e2e";
 import { getRequestUserId } from "@/lib/request-user";
 import {
@@ -11,7 +11,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 
 export default async function BulkSharePage() {
   const userId = await getRequestUserId();
-  const initialMonth = startOfMonth(new Date());
+  const initialMonth = getCurrentMonthDateInTokyo();
 
   if (!userId) {
     redirect("/login?redirect=%2Fcalendar%2Fbulk");

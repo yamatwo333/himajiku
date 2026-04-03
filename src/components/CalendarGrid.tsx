@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { getTodayInTokyo } from "@/lib/date";
+import { getCurrentMonthDateInTokyo, getTodayInTokyo } from "@/lib/date";
 import {
   format,
   startOfMonth,
@@ -51,7 +51,7 @@ export default function CalendarGrid({
   currentUserId = null,
   initialMonth,
 }: Props) {
-  const baseMonth = useMemo(() => startOfMonth(new Date()), []);
+  const baseMonth = useMemo(() => startOfMonth(getCurrentMonthDateInTokyo()), []);
   const minMonth = baseMonth;
   const maxMonth = useMemo(() => addMonths(baseMonth, 2), [baseMonth]);
   const currentMonth = useMemo(() => {

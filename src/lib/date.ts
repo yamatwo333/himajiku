@@ -20,6 +20,11 @@ export function getTodayInTokyo(now: Date = new Date()) {
   return `${year}-${month}-${day}`;
 }
 
+export function getCurrentMonthDateInTokyo(now: Date = new Date()) {
+  const { year, month } = getTokyoDateParts(now);
+  return new Date(Date.UTC(Number(year), Number(month) - 1, 1, 12));
+}
+
 export function getCurrentMonthStartInTokyo(now: Date = new Date()) {
   const { year, month } = getTokyoDateParts(now);
   return `${year}-${month}-01`;
