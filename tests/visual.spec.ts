@@ -85,7 +85,7 @@ test.describe("visual regression", () => {
     await gotoStablePage(page, `/calendar/2099-12-31?group=${E2E_GROUP_ID}`);
 
     await expect(page.getByText("この日の予定")).toBeVisible();
-    await expectVisualSnapshot(page.getByTestId("day-detail-content"), "day-detail-page.png");
+    await expectVisualSnapshot(page.getByTestId("day-detail-editor"), "day-detail-page.png");
   });
 });
 
