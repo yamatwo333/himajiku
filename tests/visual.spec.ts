@@ -3,10 +3,7 @@ import { E2E_GROUP_ID, signIn } from "./helpers/e2e";
 
 async function expectVisualSnapshot(target: Locator, snapshotName: string) {
   // Linux CI and local macOS Chromium rasterize Japanese text slightly differently.
-  await expect(target).toHaveScreenshot(snapshotName, {
-    scale: "css",
-    maxDiffPixelRatio: 0.03,
-  });
+  await expect(target).toHaveScreenshot(snapshotName, { scale: "css" });
 }
 
 async function hideWithVisualStyle(page: Page, cssText: string) {

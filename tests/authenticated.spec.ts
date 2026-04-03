@@ -225,6 +225,7 @@ test.describe("authenticated smoke flows", () => {
     const monthLabel = page.getByTestId("bulk-month-label");
     const currentMonthLabel = format(startOfMonth(TEST_NOW), "yyyy年 M月");
 
+    await expect(monthLabel).toHaveText(currentMonthLabel);
     await performSwipe(swipeSurface, "right");
 
     await expect(monthLabel).toHaveText(currentMonthLabel);
