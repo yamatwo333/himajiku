@@ -56,6 +56,7 @@ npm run test:e2e
 ## CI
 
 - GitHub Actions の `CI` workflow が `push` / `pull_request` ごとに `lint` `build` `test:e2e` を実行します
+- CI が落ちたときは run の `playwright-artifacts` から `playwright-report/` と `test-results/` を開くと、失敗スクリーンショットや trace を確認できます
 
 ## データベース
 

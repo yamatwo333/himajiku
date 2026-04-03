@@ -8,6 +8,7 @@ export const E2E_AUTH_COOKIE_NAME = "sharehima-e2e-user-id";
 
 const E2E_PRIMARY_USER_ID = "e2e-user-1";
 const E2E_GROUP_ID = "e2e-group-1";
+const E2E_SOLO_GROUP_ID = "group-solo";
 
 function getFixtureDate() {
   return format(addDays(getReferenceNow(), 5), "yyyy-MM-dd");
@@ -111,7 +112,32 @@ export function getE2EGroupSummaries(userId: string) {
 }
 
 export function getE2EGroupDetail(userId: string, groupId: string) {
-  if (!isE2EUser(userId) || groupId !== E2E_GROUP_ID) {
+  if (!isE2EUser(userId)) {
+    return null;
+  }
+
+  if (groupId === E2E_SOLO_GROUP_ID) {
+    return {
+      group: {
+        id: E2E_SOLO_GROUP_ID,
+        name: "ひとりグループ",
+        invite_code: "SOLO12",
+        created_by: E2E_PRIMARY_USER_ID,
+        notify_threshold: 2,
+        line_group_id: null,
+      },
+      members: [
+        {
+          user_id: E2E_PRIMARY_USER_ID,
+          display_name: "E2E テストユーザー",
+          avatar_url: null,
+          joined_at: "2026-01-01T00:00:00.000Z",
+        },
+      ],
+    };
+  }
+
+  if (groupId !== E2E_GROUP_ID) {
     return null;
   }
 

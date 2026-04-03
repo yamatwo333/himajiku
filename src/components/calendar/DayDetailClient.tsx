@@ -135,7 +135,7 @@ export default function DayDetailClient({
         }
       />
 
-      <div className="space-y-6 px-4 pt-5 pb-8">
+      <div className="space-y-6 px-4 pt-5 pb-8" data-testid="day-detail-content">
         <section>
           <h2 className="mb-3 text-sm font-bold" style={{ color: "var(--color-text-secondary)" }}>
             この日ヒマ？

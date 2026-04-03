@@ -136,6 +136,103 @@ test.describe("authenticated smoke flows", () => {
     await expect(page.getByText("Botが「連携完了」と返信したらOK")).toBeVisible();
   });
 
+  test("group detail page can transfer ownership", async ({ page }) => {
+    await page.route(`**/api/groups/${E2E_GROUP_ID}/transfer`, async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ success: true }),
+      });
+    });
+    await page.route(`**/api/groups/${E2E_GROUP_ID}`, async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          group: {
+            id: E2E_GROUP_ID,
+            name: "テストグループ",
+            invite_code: "ABC123",
+            created_by: "e2e-friend-1",
+            notify_threshold: 2,
+            line_group_id: null,
+          },
+          members: [
+            {
+              user_id: E2E_USER_ID,
+              display_name: "E2E テストユーザー",
+              avatar_url: null,
+              joined_at: "2026-01-01T00:00:00.000Z",
+            },
+            {
+              user_id: "e2e-friend-1",
+              display_name: "テストフレンド",
+              avatar_url: null,
+              joined_at: "2026-01-02T00:00:00.000Z",
+            },
+            {
+              user_id: "e2e-friend-2",
+              display_name: "もうひとりの友だち",
+              avatar_url: null,
+              joined_at: "2026-01-03T00:00:00.000Z",
+            },
+          ],
+        }),
+      });
+    });
+
+    await page.goto(`/groups/${E2E_GROUP_ID}`);
+
+    await page.getByRole("button", { name: "管理者にする" }).first().click();
+    await expect(page.getByText("テストフレンド").first()).toBeVisible();
+    const transferRequestPromise = page.waitForRequest(`**/api/groups/${E2E_GROUP_ID}/transfer`);
+    await page.getByRole("button", { name: "変更する" }).click();
+
+    const transferRequest = await transferRequestPromise;
+    expect(transferRequest.postDataJSON()).toEqual({ new_owner_id: "e2e-friend-1" });
+  });
+
+  test("group detail page can leave a group", async ({ page }) => {
+    await page.route(`**/api/groups/${E2E_GROUP_ID}/leave`, async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ success: true, action: "left" }),
+      });
+    });
+
+    await page.goto(`/groups/${E2E_GROUP_ID}`);
+
+    await page.getByRole("button", { name: "グループを退出" }).click();
+    await page.getByRole("button", { name: "退出する" }).click();
+
+    await expect(page).toHaveURL(/\/groups$/);
+  });
+
+  test("single-member group can be deleted", async ({ page }) => {
+    const soloGroupId = "group-solo";
+
+    await page.route(`**/api/groups/${soloGroupId}`, async (route) => {
+      if (route.request().method() === "DELETE") {
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({ success: true }),
+        });
+        return;
+      }
+
+      await route.fallback();
+    });
+
+    await page.goto(`/groups/${soloGroupId}`);
+
+    await page.getByRole("button", { name: "グループを削除" }).click();
+    await page.getByRole("button", { name: "削除する" }).click();
+
+    await expect(page).toHaveURL(/\/groups$/);
+  });
+
   test("day detail page can save availability and return to calendar", async ({
     page,
   }) => {
