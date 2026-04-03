@@ -139,6 +139,42 @@ test.describe("authenticated smoke flows", () => {
     await expect(page.getByText("Botが「連携完了」と返信したらOK")).toBeVisible();
   });
 
+  test("group detail page can reissue a LINE link code", async ({ page }) => {
+    let issuedCode = 0;
+
+    await page.route(`**/api/groups/${E2E_GROUP_ID}/line-link`, async (route) => {
+      if (route.request().method() !== "POST") {
+        await route.fallback();
+        return;
+      }
+
+      issuedCode += 1;
+      const code = issuedCode === 1 ? "E2E123" : "E2E456";
+
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          code,
+          expiresAt: new Date(Date.now() + 10 * 60 * 1000).toISOString(),
+        }),
+      });
+    });
+
+    await page.goto(`/groups/${E2E_GROUP_ID}`);
+
+    await page.getByRole("button", { name: "LINE連携コードを発行" }).click();
+    await expect(page.getByText("連携 E2E123")).toBeVisible();
+
+    const reissueRequestPromise = page.waitForRequest(`**/api/groups/${E2E_GROUP_ID}/line-link`);
+    await page.getByRole("button", { name: "コードを再発行" }).click();
+
+    const reissueRequest = await reissueRequestPromise;
+    expect(reissueRequest.method()).toBe("POST");
+    await expect(page.getByText("連携 E2E456")).toBeVisible();
+    await expect(page.getByText("連携 E2E123")).toHaveCount(0);
+  });
+
   test("group detail page can unlink LINE integration", async ({ page }) => {
     await page.route(`**/api/groups/${E2E_LINKED_GROUP_ID}/line-link`, async (route) => {
       if (route.request().method() !== "DELETE") {
@@ -164,6 +200,20 @@ test.describe("authenticated smoke flows", () => {
     await expect(page.getByText("LINEグループと連携すると、ヒマな人が集まった時に自動で通知が届きます。")).toBeVisible();
     await expect(page.getByRole("button", { name: "LINE連携コードを発行" })).toBeVisible();
     await expect(page.getByRole("button", { name: "連携を解除する" })).toHaveCount(0);
+  });
+
+  test("group detail page can copy invite codes", async ({ page }) => {
+    await stubClipboard(page);
+    await page.goto(`/groups/${E2E_GROUP_ID}`);
+
+    const inviteCodeRow = page
+      .getByText("招待コード:")
+      .locator("xpath=ancestor::div[contains(@class,'flex')][1]");
+
+    await inviteCodeRow.getByRole("button", { name: "コピー" }).click();
+
+    await expect(inviteCodeRow.getByRole("button", { name: "コピー済" })).toBeVisible();
+    await expect(await readStubClipboard(page)).toBe("ABC123");
   });
 
   test("group detail page shares invite links by copying when Web Share is unavailable", async ({
