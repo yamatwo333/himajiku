@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { format, parse } from "date-fns";
 import { ja } from "date-fns/locale";
+import { getNewlyMatchingTimeSlots } from "@/lib/server/availability-notification";
 import { createAdminClient } from "@/lib/supabase/admin";
 import {
   FREE_TIME_SLOTS,
@@ -13,6 +14,7 @@ interface NotifyParams {
   date: string;
   groupId: string;
   slots?: TimeSlot[];
+  previousMatchingSlots?: TimeSlot[];
 }
 
 interface NotifyDigestParams {
@@ -22,9 +24,9 @@ interface NotifyDigestParams {
 
 interface AvailabilityRow {
   date?: string;
-  comment: string | null;
+  comment?: string | null;
   time_slots: string[] | null;
-  user: { display_name: string | null }[] | { display_name: string | null } | null;
+  user?: { display_name: string | null }[] | { display_name: string | null } | null;
 }
 
 interface GroupNotificationContext {
@@ -50,8 +52,10 @@ interface DateMatch {
 const LINE_MESSAGE_CHAR_LIMIT = 4500;
 const LINE_MAX_MESSAGES_PER_PUSH = 5;
 
-async function getGroupNotificationContext(groupId: string): Promise<GroupNotificationContext | null> {
-  const supabase = createAdminClient();
+async function getGroupNotificationContext(
+  groupId: string,
+  supabase = createAdminClient()
+): Promise<GroupNotificationContext | null> {
 
   const { data: group } = await supabase
     .from("groups")
@@ -217,6 +221,7 @@ export async function sendGroupAvailabilityNotification({
   date,
   groupId,
   slots,
+  previousMatchingSlots = [],
 }: NotifyParams) {
   const context = await getGroupNotificationContext(groupId);
   if (!context) {
@@ -234,36 +239,6 @@ export async function sendGroupAvailabilityNotification({
 
   if (memberIds.length === 0) {
     return { sent: false, reason: "no members" };
-  }
-
-  if (!group.line_group_id || !lineToken) {
-    const { data: avails } = await supabase
-      .from("availability")
-      .select("user_id, time_slots")
-      .eq("date", date)
-      .in("user_id", memberIds);
-
-    if (!avails || avails.length === 0) {
-      return { sent: false, reason: "no availabilities" };
-    }
-
-    const matches: Partial<Record<FreeTimeSlot, number>> = {};
-
-    for (const slot of targetSlots) {
-      const count = avails.filter((avail) =>
-        (avail.time_slots as string[] | null)?.includes(slot)
-      ).length;
-
-      if (count >= group.notify_threshold) {
-        matches[slot] = count;
-      }
-    }
-
-    return {
-      sent: false,
-      reason: "LINE not configured",
-      matches,
-    };
   }
 
   const { data: avails } = await supabase
@@ -295,10 +270,34 @@ export async function sendGroupAvailabilityNotification({
     };
   }
 
+  const newlyMatchingSlots = getNewlyMatchingTimeSlots({
+    previousMatchingSlots,
+    currentMatchingSlots: matchingSlots.map(({ slot }) => slot),
+  });
+
+  if (newlyMatchingSlots.length === 0) {
+    return { sent: false, reason: "no new matching slots" };
+  }
+
+  const newlyMatchingSlotSet = new Set(newlyMatchingSlots);
+  const filteredMatchingSlots = matchingSlots.filter(({ slot }) =>
+    newlyMatchingSlotSet.has(slot)
+  );
+
+  if (!group.line_group_id || !lineToken) {
+    return {
+      sent: false,
+      reason: "LINE not configured",
+      matches: Object.fromEntries(
+        filteredMatchingSlots.map(({ slot, people }) => [slot, people.length])
+      ) as Partial<Record<FreeTimeSlot, number>>,
+    };
+  }
+
   const parsedDate = parse(date, "yyyy-MM-dd", new Date());
   const dateLabel = format(parsedDate, "M/d (E)", { locale: ja });
 
-  const slotMessages = matchingSlots.map(({ slot, people }) => {
+  const slotMessages = filteredMatchingSlots.map(({ slot, people }) => {
     const slotLabel = TIME_SLOT_LABELS[slot];
     const names = people.map((person) => {
       const name = getUserDisplayName(person);
@@ -330,11 +329,56 @@ export async function sendGroupAvailabilityNotification({
       return { sent: false, error: "LINE API error" };
     }
 
-    return { sent: true, matchingSlots: matchingSlots.length };
+    return { sent: true, matchingSlots: filteredMatchingSlots.length };
   } catch (error) {
     console.error("LINE notify error:", error);
     return { sent: false, error: "network error" };
   }
+}
+
+export async function getGroupAvailabilityMatchingSlots({
+  dates,
+  groupId,
+  supabase = createAdminClient(),
+}: {
+  dates: string[];
+  groupId: string;
+  supabase?: SupabaseClient;
+}) {
+  const uniqueDates = [...new Set(dates)];
+
+  if (uniqueDates.length === 0) {
+    return new Map<string, FreeTimeSlot[]>();
+  }
+
+  const context = await getGroupNotificationContext(groupId, supabase);
+  if (!context || context.memberIds.length === 0) {
+    return new Map<string, FreeTimeSlot[]>();
+  }
+
+  const { group, memberIds } = context;
+  const { data: avails } = await supabase
+    .from("availability")
+    .select("date, time_slots")
+    .in("date", uniqueDates)
+    .in("user_id", memberIds);
+
+  if (!avails || avails.length === 0) {
+    return new Map<string, FreeTimeSlot[]>();
+  }
+
+  const matches = buildDateMatches({
+    dates: uniqueDates,
+    availabilities: avails as AvailabilityRow[],
+    notifyThreshold: group.notify_threshold,
+  });
+
+  return new Map(
+    matches.map((match) => [
+      match.date,
+      match.matchingSlots.map(({ slot }) => slot),
+    ])
+  );
 }
 
 export async function sendGroupAvailabilityDigestNotification({

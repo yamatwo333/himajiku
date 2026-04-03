@@ -6,6 +6,7 @@ import {
   sendGroupAvailabilityDigestNotification,
   sendGroupAvailabilityNotification,
 } from "@/lib/server/notify";
+import type { TimeSlot } from "@/lib/types";
 
 interface GroupJoinNotificationTarget {
   id: string;
@@ -13,8 +14,20 @@ interface GroupJoinNotificationTarget {
 }
 
 export interface AvailabilityEffectsQueue {
-  enqueueGroupDateNotifications: (jobs: { groupId: string; date: string }[]) => Promise<void>;
+  enqueueGroupDateNotifications: (jobs: GroupDateNotificationJob[]) => Promise<void>;
   enqueueGroupDigestNotification: (job: { groupId: string; dates: string[] }) => Promise<void>;
+}
+
+export interface GroupDateNotificationBaseline {
+  groupId: string;
+  date: string;
+  matchingSlots: TimeSlot[];
+}
+
+export interface GroupDateNotificationJob {
+  groupId: string;
+  date: string;
+  previousMatchingSlots: TimeSlot[];
 }
 
 function createInProcessAvailabilityEffectsQueue(): AvailabilityEffectsQueue {
@@ -25,10 +38,11 @@ function createInProcessAvailabilityEffectsQueue(): AvailabilityEffectsQueue {
       }
 
       await Promise.allSettled(
-        jobs.map(({ groupId, date }) =>
+        jobs.map(({ groupId, date, previousMatchingSlots }) =>
           sendGroupAvailabilityNotification({
             groupId,
             date,
+            previousMatchingSlots,
           })
         )
       );
@@ -52,12 +66,14 @@ export async function runAvailabilityPostSaveJob({
   dates,
   cleanupOldAvailability = false,
   queue = createInProcessAvailabilityEffectsQueue(),
+  notificationBaselines = [],
 }: {
   supabase?: SupabaseClient;
   userId: string;
   dates: string[];
   cleanupOldAvailability?: boolean;
   queue?: AvailabilityEffectsQueue;
+  notificationBaselines?: GroupDateNotificationBaseline[];
 }) {
   const uniqueDates = [...new Set(dates)];
 
@@ -66,12 +82,11 @@ export async function runAvailabilityPostSaveJob({
 
     if (groupIds.length > 0) {
       await queue.enqueueGroupDateNotifications(
-        uniqueDates.flatMap((date) =>
-          groupIds.map((groupId) => ({
-            groupId,
-            date,
-          }))
-        )
+        buildGroupDateNotificationJobs({
+          groupIds,
+          dates: uniqueDates,
+          notificationBaselines,
+        })
       );
     }
   }
@@ -84,6 +99,31 @@ export async function runAvailabilityPostSaveJob({
     .from("availability")
     .delete()
     .lt("date", getCurrentMonthStartInTokyo());
+}
+
+export function buildGroupDateNotificationJobs({
+  groupIds,
+  dates,
+  notificationBaselines,
+}: {
+  groupIds: string[];
+  dates: string[];
+  notificationBaselines: GroupDateNotificationBaseline[];
+}) {
+  const baselineLookup = new Map(
+    notificationBaselines.map((baseline) => [
+      `${baseline.groupId}:${baseline.date}`,
+      baseline.matchingSlots,
+    ])
+  );
+
+  return dates.flatMap((date) =>
+    groupIds.map((groupId) => ({
+      groupId,
+      date,
+      previousMatchingSlots: baselineLookup.get(`${groupId}:${date}`) ?? [],
+    }))
+  );
 }
 
 export async function runGroupJoinPostSaveJob({
