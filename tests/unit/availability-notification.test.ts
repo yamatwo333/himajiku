@@ -21,3 +21,23 @@ test("getNewlyMatchingTimeSlots ignores previously matched undecided values", ()
     ["evening"]
   );
 });
+
+test("getNewlyMatchingTimeSlots returns an empty list when there are no new matches", () => {
+  assert.deepEqual(
+    getNewlyMatchingTimeSlots({
+      previousMatchingSlots: ["morning", "late_night"],
+      currentMatchingSlots: ["morning", "late_night"],
+    }),
+    []
+  );
+});
+
+test("getNewlyMatchingTimeSlots keeps canonical slot order for newly matched slots", () => {
+  assert.deepEqual(
+    getNewlyMatchingTimeSlots({
+      previousMatchingSlots: ["afternoon"],
+      currentMatchingSlots: ["late_night", "morning", "afternoon", "evening"],
+    }),
+    ["morning", "evening", "late_night"]
+  );
+});

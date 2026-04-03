@@ -1,14 +1,11 @@
 import { after, NextRequest, NextResponse } from "next/server";
-import type { SupabaseClient } from "@supabase/supabase-js";
 import { isE2EUser } from "@/lib/e2e";
 import { isDateBeforeTodayInTokyo } from "@/lib/date";
 import { ensureProfile } from "@/lib/ensure-profile";
 import {
   runAvailabilityPostSaveJob,
-  type GroupDateNotificationBaseline,
 } from "@/lib/server/jobs/availability-jobs";
-import { getUserGroupIds } from "@/lib/server/groups";
-import { getGroupAvailabilityMatchingSlots } from "@/lib/server/notify";
+import { captureNotificationBaselines } from "@/lib/server/availability-notification-baselines";
 import { checkRateLimit, getRateLimitKeyParts } from "@/lib/server/rate-limit";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getRouteUser } from "@/lib/supabase/route";
@@ -23,46 +20,6 @@ interface BulkSyncEntryInput {
 
 function hasSameTimeSlots(left: readonly TimeSlot[], right: readonly TimeSlot[]) {
   return left.length === right.length && left.every((slot, index) => slot === right[index]);
-}
-
-async function captureNotificationBaselines({
-  supabase,
-  userId,
-  dates,
-}: {
-  supabase: SupabaseClient;
-  userId: string;
-  dates: string[];
-}) {
-  const uniqueDates = [...new Set(dates)];
-
-  if (uniqueDates.length === 0) {
-    return [] satisfies GroupDateNotificationBaseline[];
-  }
-
-  const groupIds = await getUserGroupIds(supabase, userId);
-
-  if (groupIds.length === 0) {
-    return [] satisfies GroupDateNotificationBaseline[];
-  }
-
-  const baselines = await Promise.all(
-    groupIds.map(async (groupId) => {
-      const matchingSlotsByDate = await getGroupAvailabilityMatchingSlots({
-        supabase,
-        groupId,
-        dates: uniqueDates,
-      });
-
-      return uniqueDates.map((date) => ({
-        groupId,
-        date,
-        matchingSlots: matchingSlotsByDate.get(date) ?? [],
-      }));
-    })
-  );
-
-  return baselines.flat() satisfies GroupDateNotificationBaseline[];
 }
 
 export async function POST(request: NextRequest) {

@@ -2,6 +2,7 @@ import { after, NextRequest, NextResponse } from "next/server";
 import { isDateBeforeTodayInTokyo } from "@/lib/date";
 import { ensureProfile } from "@/lib/ensure-profile";
 import { runAvailabilityPostSaveJob } from "@/lib/server/jobs/availability-jobs";
+import { captureNotificationBaselines } from "@/lib/server/availability-notification-baselines";
 import { checkRateLimit, getRateLimitKeyParts } from "@/lib/server/rate-limit";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getRouteUser } from "@/lib/supabase/route";
@@ -36,6 +37,14 @@ export async function POST(request: NextRequest) {
     }
 
     const supabaseAdmin = createAdminClient();
+    const notificationBaselines =
+      normalizedTimeSlots.length > 0
+        ? await captureNotificationBaselines({
+            supabase: supabaseAdmin,
+            userId: user.id,
+            dates: [date],
+          })
+        : [];
 
     await ensureProfile(supabaseAdmin, user);
 
@@ -73,6 +82,7 @@ export async function POST(request: NextRequest) {
           userId: user.id,
           dates: [date],
           cleanupOldAvailability: true,
+          notificationBaselines,
         });
       } catch (error) {
         console.error("Availability post-save tasks error:", error);
