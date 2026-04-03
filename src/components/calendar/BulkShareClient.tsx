@@ -51,8 +51,11 @@ export default function BulkShareClient({
   initialMonthIso,
 }: BulkShareClientProps) {
   const router = useRouter();
-  const baseDate = useMemo(() => new Date(initialMonthIso), [initialMonthIso]);
-  const initialMonth = useMemo(() => new Date(initialMonthIso), [initialMonthIso]);
+  const baseDate = useMemo(() => startOfMonth(new Date(initialMonthIso)), [initialMonthIso]);
+  const initialMonth = useMemo(
+    () => startOfMonth(new Date(initialMonthIso)),
+    [initialMonthIso]
+  );
   const { minMonth, maxMonth } = useMemo(
     () => getCalendarMonthBounds(baseDate),
     [baseDate]

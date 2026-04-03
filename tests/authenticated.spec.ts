@@ -112,6 +112,22 @@ test.describe("authenticated smoke flows", () => {
   });
 
   test("group detail page can generate a LINE link code", async ({ page }) => {
+    await page.route(`**/api/groups/${E2E_GROUP_ID}/line-link`, async (route) => {
+      if (route.request().method() !== "POST") {
+        await route.fallback();
+        return;
+      }
+
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          code: "E2E123",
+          expiresAt: new Date(Date.now() + 10 * 60 * 1000).toISOString(),
+        }),
+      });
+    });
+
     await page.goto(`/groups/${E2E_GROUP_ID}`);
 
     await page.getByRole("button", { name: "LINE連携コードを発行" }).click();

@@ -6,7 +6,9 @@ export default defineConfig({
   testDir: "./tests",
   fullyParallel: true,
   retries: process.env.CI ? 2 : 0,
-  reporter: process.env.CI ? "github" : "list",
+  reporter: process.env.CI
+    ? [["github"], ["html", { open: "never", outputFolder: "playwright-report" }]]
+    : "list",
   snapshotPathTemplate:
     "{testDir}/__screenshots__{/projectName}/{testFilePath}/{arg}{ext}",
   expect: {
