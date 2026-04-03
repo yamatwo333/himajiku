@@ -50,6 +50,12 @@ export async function readStubClipboard(page: Page) {
   return page.evaluate(() => (window as Window & { __copiedText?: string }).__copiedText ?? "");
 }
 
+export async function seedCalendarFlash(page: Page, flashType: "saved") {
+  await page.addInitScript((value) => {
+    window.sessionStorage.setItem("calendarFlash", value);
+  }, flashType);
+}
+
 export function getBulkCardByComment(page: Page, comment: string): Locator {
   return page
     .locator(`input[value="${comment}"]`)

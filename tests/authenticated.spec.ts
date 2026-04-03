@@ -86,6 +86,55 @@ test.describe("authenticated smoke flows", () => {
     await expect(page.getByText("新しいテストグループ")).toBeVisible();
   });
 
+  test("groups page shows a create error when the API rejects the new group", async ({
+    page,
+  }) => {
+    await page.route("**/api/groups", async (route) => {
+      await route.fulfill({
+        status: 409,
+        contentType: "application/json",
+        body: JSON.stringify({
+          error: "同じ名前のグループがすでにあります",
+        }),
+      });
+    });
+
+    await page.goto("/groups");
+
+    await page.getByRole("button", { name: "グループを作成" }).first().click();
+    await page
+      .getByPlaceholder("グループ名（例: 大学メンバー）")
+      .fill("テストグループ");
+    await page.getByRole("button", { name: "作成", exact: true }).click();
+
+    await expect(page.getByText("同じ名前のグループがすでにあります")).toBeVisible();
+    await expect(page.getByRole("button", { name: "作成", exact: true })).toBeEnabled();
+  });
+
+  test("groups page shows a join error when the invite code is invalid", async ({ page }) => {
+    await page.route("**/api/groups/join", async (route) => {
+      await route.fulfill({
+        status: 404,
+        contentType: "application/json",
+        body: JSON.stringify({
+          error: "招待コードが見つかりません",
+        }),
+      });
+    });
+
+    await page.goto("/groups");
+
+    await page.getByRole("button", { name: "招待コードで参加" }).click();
+    await page.getByPlaceholder("招待コード（6文字）").fill("ab12cd");
+    const joinRequestPromise = page.waitForRequest("**/api/groups/join");
+    await page.getByRole("button", { name: "参加", exact: true }).click();
+
+    const joinRequest = await joinRequestPromise;
+    expect(joinRequest.postDataJSON()).toEqual({ invite_code: "AB12CD" });
+    await expect(page.getByText("招待コードが見つかりません")).toBeVisible();
+    await expect(page.getByRole("button", { name: "参加", exact: true })).toBeEnabled();
+  });
+
   test("group detail page renders invite and LINE settings", async ({ page }) => {
     await page.goto(`/groups/${E2E_GROUP_ID}`);
 
@@ -137,6 +186,34 @@ test.describe("authenticated smoke flows", () => {
 
     await expect(page.getByText("連携 E2E123")).toBeVisible();
     await expect(page.getByText("Botが「連携完了」と返信したらOK")).toBeVisible();
+  });
+
+  test("group detail page can copy a LINE link code", async ({ page }) => {
+    await stubClipboard(page);
+    await page.route(`**/api/groups/${E2E_GROUP_ID}/line-link`, async (route) => {
+      if (route.request().method() !== "POST") {
+        await route.fallback();
+        return;
+      }
+
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          code: "E2E123",
+          expiresAt: new Date(Date.now() + 10 * 60 * 1000).toISOString(),
+        }),
+      });
+    });
+
+    await page.goto(`/groups/${E2E_GROUP_ID}`);
+    await page.getByRole("button", { name: "LINE連携コードを発行" }).click();
+
+    const lineLinkSection = page.getByTestId("group-line-link-section");
+    await lineLinkSection.getByRole("button", { name: "コピー" }).click();
+
+    await expect(lineLinkSection.getByRole("button", { name: "OK!" })).toBeVisible();
+    await expect(await readStubClipboard(page)).toBe("連携 E2E123");
   });
 
   test("group detail page can reissue a LINE link code", async ({ page }) => {
@@ -214,6 +291,20 @@ test.describe("authenticated smoke flows", () => {
 
     await expect(inviteCodeRow.getByRole("button", { name: "コピー済" })).toBeVisible();
     await expect(await readStubClipboard(page)).toBe("ABC123");
+  });
+
+  test("group detail page can copy invite links directly", async ({ page }) => {
+    await stubClipboard(page);
+    await page.goto(`/groups/${E2E_GROUP_ID}`);
+
+    const inviteLinkRow = page
+      .locator('input[value="http://127.0.0.1:3100/join?code=ABC123"]')
+      .locator("xpath=ancestor::div[contains(@class,'flex')][1]");
+
+    await inviteLinkRow.getByRole("button", { name: "コピー" }).click();
+
+    await expect(inviteLinkRow.getByRole("button", { name: "コピー済" })).toBeVisible();
+    await expect(await readStubClipboard(page)).toBe("http://127.0.0.1:3100/join?code=ABC123");
   });
 
   test("group detail page shares invite links by copying when Web Share is unavailable", async ({

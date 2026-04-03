@@ -1,5 +1,5 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
-import { E2E_GROUP_ID, signIn } from "./helpers/e2e";
+import { E2E_GROUP_ID, seedCalendarFlash, signIn } from "./helpers/e2e";
 
 async function expectVisualSnapshot(target: Locator, snapshotName: string) {
   // Linux CI and local macOS Chromium rasterize Japanese text slightly differently.
@@ -37,6 +37,14 @@ test.describe("visual regression", () => {
     await expectVisualSnapshot(page.getByTestId("calendar-grid-visual"), "calendar-page.png");
   });
 
+  test("calendar saved flash stays stable", async ({ page }) => {
+    await seedCalendarFlash(page, "saved");
+    await gotoStablePage(page, `/calendar?group=${E2E_GROUP_ID}`);
+
+    await expect(page.getByTestId("calendar-saved-flash")).toBeVisible();
+    await expectVisualSnapshot(page.getByTestId("calendar-saved-flash"), "calendar-saved-flash.png");
+  });
+
   test("bulk share page layout stays stable", async ({ page }) => {
     await gotoStablePage(page, "/calendar/bulk");
 
@@ -57,6 +65,20 @@ test.describe("visual regression", () => {
 
     await expect(page.getByText("シェアヒマとは？")).toBeVisible();
     await expectVisualSnapshot(page.getByTestId("profile-page-content"), "profile-page.png");
+  });
+
+  test("profile about card stays stable", async ({ page }) => {
+    await gotoStablePage(page, "/profile");
+
+    await expect(page.getByTestId("profile-about-card")).toBeVisible();
+    await expectVisualSnapshot(page.getByTestId("profile-about-card"), "profile-about-card.png");
+  });
+
+  test("profile share card stays stable", async ({ page }) => {
+    await gotoStablePage(page, "/profile");
+
+    await expect(page.getByTestId("profile-share-card")).toBeVisible();
+    await expectVisualSnapshot(page.getByTestId("profile-share-card"), "profile-share-card.png");
   });
 
   test("groups page layout stays stable", async ({ page }) => {

@@ -320,6 +320,7 @@ export default function CalendarPageClient({
       {flashMessage === "saved" ? (
         <div className="px-4 pt-3">
           <div
+            data-testid="calendar-saved-flash"
             className="flex items-center justify-between gap-3 rounded-2xl border px-4 py-3 shadow-sm"
             style={{
               backgroundColor: "rgba(255,255,255,0.92)",
