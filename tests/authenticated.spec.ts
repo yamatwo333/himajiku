@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 import { addMonths, endOfMonth, format, startOfMonth } from "date-fns";
 import {
   E2E_GROUP_ID,
@@ -8,6 +8,12 @@ import {
   performSwipe,
   signIn,
 } from "./helpers/e2e";
+
+async function pinStoredCalendarMonth(page: Page) {
+  await page.addInitScript((monthIso) => {
+    window.sessionStorage.setItem("calendarMonth", monthIso);
+  }, startOfMonth(TEST_NOW).toISOString());
+}
 
 test.describe("authenticated smoke flows", () => {
   test.beforeEach(async ({ page }) => {
@@ -182,6 +188,7 @@ test.describe("authenticated smoke flows", () => {
   });
 
   test("bulk share keeps month inputs while swiping between months", async ({ page }) => {
+    await pinStoredCalendarMonth(page);
     await page.goto("/calendar/bulk");
 
     const monthLabel = page.getByTestId("bulk-month-label");
@@ -220,6 +227,7 @@ test.describe("authenticated smoke flows", () => {
   });
 
   test("bulk share page does not swipe into a finished month", async ({ page }) => {
+    await pinStoredCalendarMonth(page);
     await page.goto("/calendar/bulk");
 
     const swipeSurface = page.getByTestId("bulk-swipe-surface");
@@ -235,6 +243,7 @@ test.describe("authenticated smoke flows", () => {
   test("bulk share page can save selected dates and return to calendar", async ({
     page,
   }) => {
+    await pinStoredCalendarMonth(page);
     await page.goto("/calendar/bulk");
     const existingCard = getBulkCardByComment(page, "既存のまとめてシェア");
 
