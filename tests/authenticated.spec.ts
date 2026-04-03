@@ -1,5 +1,5 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
-import { addMonths, format, startOfMonth } from "date-fns";
+import { addMonths, endOfMonth, format, startOfMonth } from "date-fns";
 
 const BASE_URL = "http://127.0.0.1:3100";
 const AUTH_COOKIE_NAME = "sharehima-e2e-user-id";
@@ -208,6 +208,15 @@ test.describe("authenticated smoke flows", () => {
 
     await expect(monthSelect).toHaveValue(expectedNextMonth);
     await expect(page).toHaveURL(new RegExp(`month=${expectedNextMonth}`));
+  });
+
+  test("calendar page only renders buttons for the current month", async ({ page }) => {
+    await page.goto(`/calendar?group=${E2E_GROUP_ID}`);
+
+    const swipeSurface = page.getByTestId("calendar-swipe-surface");
+    const currentMonthDayCount = endOfMonth(startOfMonth(new Date())).getDate();
+
+    await expect(swipeSurface.locator("button")).toHaveCount(currentMonthDayCount);
   });
 
   test("bulk share keeps month inputs while swiping between months", async ({ page }) => {

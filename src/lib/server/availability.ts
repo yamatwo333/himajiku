@@ -1,6 +1,7 @@
 import { endOfMonth, endOfWeek, format, startOfMonth, startOfWeek } from "date-fns";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { clampCalendarMonth } from "@/lib/calendar";
+import { getCurrentMonthStartInTokyo } from "@/lib/date";
 import type { AvailabilityWithUser, TimeSlot } from "@/lib/types";
 import { getGroupMemberIds, isGroupMember } from "@/lib/server/groups";
 
@@ -180,6 +181,19 @@ export function getCalendarMonthRange(month: Date) {
     start: format(startOfWeek(normalizedMonth, { weekStartsOn: 0 }), "yyyy-MM-dd"),
     end: format(endOfWeek(endOfMonth(normalizedMonth), { weekStartsOn: 0 }), "yyyy-MM-dd"),
   };
+}
+
+export async function cleanupExpiredAvailability(supabase: SupabaseClient) {
+  const cutoffDate = getCurrentMonthStartInTokyo();
+
+  const { error } = await supabase
+    .from("availability")
+    .delete()
+    .lt("date", cutoffDate);
+
+  if (error) {
+    console.warn("Expired availability cleanup error:", error.message);
+  }
 }
 
 export async function getAvailabilityRangeForUser(

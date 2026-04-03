@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { getCurrentMonthStartInTokyo } from "@/lib/date";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getUserGroupIds } from "@/lib/server/groups";
 import {
@@ -79,13 +80,10 @@ export async function runAvailabilityPostSaveJob({
     return;
   }
 
-  const cutoffDate = new Date();
-  cutoffDate.setMonth(cutoffDate.getMonth() - 3);
-
   await supabase
     .from("availability")
     .delete()
-    .lt("date", cutoffDate.toISOString().split("T")[0]);
+    .lt("date", getCurrentMonthStartInTokyo());
 }
 
 export async function runGroupJoinPostSaveJob({

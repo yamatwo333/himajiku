@@ -12,9 +12,9 @@ import {
 
 const SWIPE_THRESHOLD_PX = 56;
 const SWIPE_MAX_VERTICAL_DRIFT_PX = 80;
-const SWIPE_PREVIEW_MAX_PX = 120;
-const SWIPE_PREVIEW_RATIO = 0.62;
-const SWIPE_PREVIEW_EDGE_RATIO = 0.3;
+const SWIPE_PREVIEW_MAX_PX = 138;
+const SWIPE_PREVIEW_RATIO = 0.72;
+const SWIPE_PREVIEW_EDGE_RATIO = 0.34;
 
 interface UseMonthSwipePreviewOptions {
   canGoPrev: boolean;

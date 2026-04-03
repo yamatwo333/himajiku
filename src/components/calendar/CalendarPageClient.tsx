@@ -353,7 +353,7 @@ export default function CalendarPageClient({
         }}
       />
 
-      <div className="pt-2">
+      <div className="pt-3">
         {availabilitiesLoading ? (
           <PageSpinner />
         ) : (
@@ -373,10 +373,10 @@ export default function CalendarPageClient({
         )}
       </div>
 
-      <div className="space-y-3 px-4 pt-3 pb-7">
+      <div className="space-y-3 px-4 pt-4 pb-8">
         <button
           onClick={() => router.push("/calendar/bulk")}
-          className="w-full rounded-xl px-4 py-3 text-sm font-bold text-white shadow-sm transition-transform active:scale-[0.98]"
+          className="w-full rounded-xl px-4 py-3.5 text-sm font-bold text-white shadow-sm transition-transform active:scale-[0.98]"
           style={{ backgroundColor: "var(--color-primary)" }}
         >
           ヒマな日をまとめてシェア

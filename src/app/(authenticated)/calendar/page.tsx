@@ -7,6 +7,7 @@ import {
 } from "@/lib/e2e";
 import { getRequestUserId } from "@/lib/request-user";
 import {
+  cleanupExpiredAvailability,
   getAvailabilityRangeForUser,
   getCalendarMonthRange,
   parseCalendarMonthParam,
@@ -57,6 +58,7 @@ export default async function CalendarPage({
   }
 
   const supabaseAdmin = createAdminClient();
+  await cleanupExpiredAvailability(supabaseAdmin);
   const groups = await getGroupSummariesForUser(supabaseAdmin, userId);
   const selectedGroupId =
     requestedGroupId && groups.some((group) => group.id === requestedGroupId)

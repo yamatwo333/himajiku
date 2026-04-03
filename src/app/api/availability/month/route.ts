@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getE2EAvailabilityRangeForUser, isE2EUser } from "@/lib/e2e";
-import { getAvailabilityRangeForUser } from "@/lib/server/availability";
+import {
+  cleanupExpiredAvailability,
+  getAvailabilityRangeForUser,
+} from "@/lib/server/availability";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getRouteUser } from "@/lib/supabase/route";
 
@@ -32,6 +35,7 @@ export async function GET(request: NextRequest) {
     }
 
     const supabaseAdmin = createAdminClient();
+    await cleanupExpiredAvailability(supabaseAdmin);
     const result = await getAvailabilityRangeForUser(supabaseAdmin, {
       userId: user.id,
       groupId: groupId || undefined,

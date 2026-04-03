@@ -3,7 +3,10 @@ import { redirect } from "next/navigation";
 import BulkShareClient from "@/components/calendar/BulkShareClient";
 import { getE2EBulkAvailabilityEntriesForMonth, isE2EUser } from "@/lib/e2e";
 import { getRequestUserId } from "@/lib/request-user";
-import { getOwnAvailabilityEntriesForMonth } from "@/lib/server/availability";
+import {
+  cleanupExpiredAvailability,
+  getOwnAvailabilityEntriesForMonth,
+} from "@/lib/server/availability";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export default async function BulkSharePage() {
@@ -23,7 +26,9 @@ export default async function BulkSharePage() {
     );
   }
 
-  const initialEntries = await getOwnAvailabilityEntriesForMonth(createAdminClient(), {
+  const supabaseAdmin = createAdminClient();
+  await cleanupExpiredAvailability(supabaseAdmin);
+  const initialEntries = await getOwnAvailabilityEntriesForMonth(supabaseAdmin, {
     userId,
     month: initialMonth,
   });

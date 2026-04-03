@@ -20,6 +20,11 @@ export function getTodayInTokyo(now: Date = new Date()) {
   return `${year}-${month}-${day}`;
 }
 
+export function getCurrentMonthStartInTokyo(now: Date = new Date()) {
+  const { year, month } = getTokyoDateParts(now);
+  return `${year}-${month}-01`;
+}
+
 export function isDateBeforeTodayInTokyo(date: string, now: Date = new Date()) {
   return date < getTodayInTokyo(now);
 }

@@ -162,11 +162,11 @@ export default function CalendarGrid({
 
   return (
     <div className="px-4">
-      <div className="mb-3 flex items-center justify-between">
+      <div className="mb-3.5 flex items-center justify-between">
         <button
           onClick={() => changeMonth(-1)}
           disabled={!canGoPrev}
-          className="rounded-lg p-2.5 active:bg-gray-100 disabled:opacity-20"
+          className="rounded-lg p-3 active:bg-gray-100 disabled:opacity-20"
         >
           <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
             <polyline points="12,4 6,10 12,16" />
@@ -177,7 +177,7 @@ export default function CalendarGrid({
             data-testid="calendar-month-select"
             value={format(currentMonth, "yyyy-MM")}
             onChange={(e) => jumpToMonth(e.target.value)}
-            className="appearance-none rounded-xl border px-3.5 py-1 pr-7 text-center text-[15px] font-bold outline-none"
+            className="appearance-none rounded-xl border px-4 py-1.5 pr-8 text-center text-base font-bold outline-none"
             style={{
               color: "var(--color-text)",
               borderColor: "var(--color-border)",
@@ -200,7 +200,7 @@ export default function CalendarGrid({
         <button
           onClick={() => changeMonth(1)}
           disabled={!canGoNext}
-          className="rounded-lg p-2.5 active:bg-gray-100 disabled:opacity-20"
+          className="rounded-lg p-3 active:bg-gray-100 disabled:opacity-20"
         >
           <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
             <polyline points="8,4 14,10 8,16" />
@@ -239,7 +239,7 @@ export default function CalendarGrid({
         />
 
         <div
-          className="grid grid-cols-7 gap-[2px] rounded-[24px] border px-2.5 py-2"
+          className="grid grid-cols-7 gap-[2px] rounded-[24px] border px-2.5 py-2.5"
           style={{
             ...contentStyle,
             backgroundColor: "var(--color-surface)",
@@ -249,7 +249,7 @@ export default function CalendarGrid({
         >
           <div className="col-span-7">
             <div
-              className="mb-0.5 grid grid-cols-7 text-center text-[11px] font-medium"
+              className="mb-1 grid grid-cols-7 text-center text-xs font-medium"
               style={{ color: "var(--color-text-secondary)" }}
             >
               {WEEKDAYS.map((d, i) => (
@@ -276,6 +276,16 @@ export default function CalendarGrid({
                 const hasUndecided = daySummary?.hasUndecided ?? false;
                 const isHot = daySummary?.isHot ?? false;
 
+                if (!inMonth) {
+                  return (
+                    <div
+                      key={dateStr}
+                      aria-hidden="true"
+                      className="min-h-[46px] rounded-lg"
+                    />
+                  );
+                }
+
                 return (
                   <button
                     key={dateStr}
@@ -284,16 +294,16 @@ export default function CalendarGrid({
                       router.push(`/calendar/${dateStr}${groupId ? `?group=${groupId}` : ""}`);
                     }}
                     disabled={isPast}
-                    className="relative flex flex-col items-center rounded-lg py-1.5 transition-colors active:bg-gray-100"
+                    className="relative flex flex-col items-center rounded-lg py-2 transition-colors active:bg-gray-100"
                     style={{
-                      opacity: inMonth ? (isPast ? 0.35 : 1) : isPast ? 0.15 : 0.3,
+                      opacity: isPast ? 0.35 : 1,
                     }}
                   >
                     {(() => {
                       const today = isToday(day);
                       return (
                         <span
-                          className="flex h-6 w-6 items-center justify-center rounded-full text-[13px]"
+                          className="flex h-7 w-7 items-center justify-center rounded-full text-sm"
                           style={{
                             backgroundColor: today ? "var(--color-today)" : isHot ? "var(--color-hot)" : "transparent",
                             color: today || isHot ? "white" : undefined,
@@ -305,22 +315,22 @@ export default function CalendarGrid({
                       );
                     })()}
 
-                    <div className="mt-0.5 flex items-center gap-[2px]">
+                    <div className="mt-1 flex items-center gap-[3px]">
                       {selfFree && (
                         <div
-                          className="h-1.5 w-1.5 rounded-full"
+                          className="h-2 w-2 rounded-full"
                           style={{ backgroundColor: "var(--color-free-self)" }}
                         />
                       )}
                       {friendFree && (
                         <div
-                          className="h-1.5 w-1.5 rounded-full"
+                          className="h-2 w-2 rounded-full"
                           style={{ backgroundColor: "var(--color-free-friend)" }}
                         />
                       )}
                       {hasUndecided && (
                         <div
-                          className="h-1.5 w-1.5 rounded-full border"
+                          className="h-2 w-2 rounded-full border"
                           style={{
                             borderColor: "var(--color-text-secondary)",
                             backgroundColor: "transparent",
