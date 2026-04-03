@@ -54,6 +54,7 @@ export default function GroupsComposerSection({
 
       {activeMode === "create" ? (
         <div
+          data-testid="groups-create-panel"
           className="rounded-xl border p-4 space-y-3"
           style={{
             backgroundColor: "var(--color-surface)",
@@ -107,6 +108,7 @@ export default function GroupsComposerSection({
 
       {activeMode === "join" ? (
         <div
+          data-testid="groups-join-panel"
           className="rounded-xl border p-4 space-y-3"
           style={{
             backgroundColor: "var(--color-surface)",

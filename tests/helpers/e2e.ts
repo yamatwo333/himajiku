@@ -10,6 +10,10 @@ export const TEST_NOW = new Date(
 );
 
 export async function signIn(page: Page) {
+  await signInAs(page, E2E_USER_ID);
+}
+
+export async function signInAs(page: Page, userId: string) {
   await page.addInitScript(() => {
     window.localStorage.clear();
     window.sessionStorage.clear();
@@ -18,7 +22,7 @@ export async function signIn(page: Page) {
   await page.context().addCookies([
     {
       name: AUTH_COOKIE_NAME,
-      value: E2E_USER_ID,
+      value: userId,
       url: BASE_URL,
     },
   ]);

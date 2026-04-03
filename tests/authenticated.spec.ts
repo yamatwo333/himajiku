@@ -9,6 +9,7 @@ import {
   performSwipe,
   readStubClipboard,
   signIn,
+  signInAs,
   stubClipboard,
 } from "./helpers/e2e";
 
@@ -277,6 +278,17 @@ test.describe("authenticated smoke flows", () => {
     await expect(page.getByText("LINEグループと連携すると、ヒマな人が集まった時に自動で通知が届きます。")).toBeVisible();
     await expect(page.getByRole("button", { name: "LINE連携コードを発行" })).toBeVisible();
     await expect(page.getByRole("button", { name: "連携を解除する" })).toHaveCount(0);
+  });
+
+  test("non-owner sees linked LINE status without owner controls", async ({ page }) => {
+    await signInAs(page, "e2e-friend-1");
+    await page.goto(`/groups/${E2E_LINKED_GROUP_ID}`);
+
+    await expect(page.getByText("連携済み")).toBeVisible();
+    await expect(page.getByText("条件を満たすと、連携先のLINEグループに通知が届きます。")).toBeVisible();
+    await expect(page.getByText("※ 管理者のみ連携設定を変更できます")).toBeVisible();
+    await expect(page.getByRole("button", { name: "連携を解除する" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "LINE連携コードを発行" })).toHaveCount(0);
   });
 
   test("group detail page can copy invite codes", async ({ page }) => {

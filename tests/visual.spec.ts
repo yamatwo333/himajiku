@@ -88,6 +88,22 @@ test.describe("visual regression", () => {
     await expectVisualSnapshot(page.getByTestId("groups-page-content"), "groups-page.png");
   });
 
+  test("groups create form stays stable", async ({ page }) => {
+    await gotoStablePage(page, "/groups");
+
+    await page.getByRole("button", { name: "グループを作成" }).first().click();
+    await expect(page.getByTestId("groups-create-panel")).toBeVisible();
+    await expectVisualSnapshot(page.getByTestId("groups-create-panel"), "groups-create-panel.png");
+  });
+
+  test("groups join form stays stable", async ({ page }) => {
+    await gotoStablePage(page, "/groups");
+
+    await page.getByRole("button", { name: "招待コードで参加" }).click();
+    await expect(page.getByTestId("groups-join-panel")).toBeVisible();
+    await expectVisualSnapshot(page.getByTestId("groups-join-panel"), "groups-join-panel.png");
+  });
+
   test("group detail page layout stays stable", async ({ page }) => {
     await gotoStablePage(page, `/groups/${E2E_GROUP_ID}`);
 
