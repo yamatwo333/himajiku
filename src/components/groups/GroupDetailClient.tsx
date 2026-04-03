@@ -263,47 +263,49 @@ export default function GroupDetailClient({
       />
 
       <div className="space-y-6 px-4 pt-5 pb-8" data-testid="group-detail-content">
-        <button
-          onClick={handleOpenCalendar}
-          className="w-full rounded-xl px-4 py-3.5 text-sm font-bold text-white shadow-sm transition-transform active:scale-[0.98]"
-          style={{
-            backgroundColor: "var(--color-primary)",
-          }}
-        >
-          このグループのカレンダーを見る
-        </button>
+        <div data-testid="group-detail-visual" className="space-y-6">
+          <button
+            onClick={handleOpenCalendar}
+            className="w-full rounded-xl px-4 py-3.5 text-sm font-bold text-white shadow-sm transition-transform active:scale-[0.98]"
+            style={{
+              backgroundColor: "var(--color-primary)",
+            }}
+          >
+            このグループのカレンダーを見る
+          </button>
 
-        <GroupInviteSection
-          group={group}
-          copied={copied}
-          copiedUrl={copiedUrl}
-          onCopyCode={handleCopyCode}
-          onCopyUrl={handleCopyUrl}
-          onShare={handleShare}
-        />
+          <GroupInviteSection
+            group={group}
+            copied={copied}
+            copiedUrl={copiedUrl}
+            onCopyCode={handleCopyCode}
+            onCopyUrl={handleCopyUrl}
+            onShare={handleShare}
+          />
 
-        <GroupMembersSection
-          members={members}
-          ownerId={group.created_by}
-          currentUserId={currentUserId}
-          isOwner={isOwner}
-          transferTarget={transferTarget}
-          transferring={transferring}
-          onToggleTransferTarget={(memberId) =>
-            setTransferTarget((current) => (current === memberId ? null : memberId))
-          }
-          onCancelTransfer={() => setTransferTarget(null)}
-          onConfirmTransfer={handleTransfer}
-        />
+          <GroupMembersSection
+            members={members}
+            ownerId={group.created_by}
+            currentUserId={currentUserId}
+            isOwner={isOwner}
+            transferTarget={transferTarget}
+            transferring={transferring}
+            onToggleTransferTarget={(memberId) =>
+              setTransferTarget((current) => (current === memberId ? null : memberId))
+            }
+            onCancelTransfer={() => setTransferTarget(null)}
+            onConfirmTransfer={handleTransfer}
+          />
 
-        <GroupSettingsSection
-          isOwner={isOwner}
-          groupName={group.name}
-          editName={editName}
-          notifyThreshold={notifyThreshold}
-          onEditNameChange={handleEditNameChange}
-          onNotifyThresholdChange={handleNotifyThresholdChange}
-        />
+          <GroupSettingsSection
+            isOwner={isOwner}
+            groupName={group.name}
+            editName={editName}
+            notifyThreshold={notifyThreshold}
+            onEditNameChange={handleEditNameChange}
+            onNotifyThresholdChange={handleNotifyThresholdChange}
+          />
+        </div>
 
         <GroupLineLinkSection
           isOwner={isOwner}

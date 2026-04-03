@@ -70,15 +70,7 @@ test.describe("visual regression", () => {
     await gotoStablePage(page, `/groups/${E2E_GROUP_ID}`);
 
     await expect(page.getByText("友達を招待")).toBeVisible();
-    await hideWithVisualStyle(
-      page,
-      [
-        '[data-testid="group-detail-content"] > :nth-child(n+5) {',
-        "  display: none !important;",
-        "}",
-      ].join("\n")
-    );
-    await expectVisualSnapshot(page.getByTestId("group-detail-content"), "group-detail-page.png");
+    await expectVisualSnapshot(page.getByTestId("group-detail-visual"), "group-detail-page.png");
   });
 
   test("day detail page layout stays stable", async ({ page }) => {

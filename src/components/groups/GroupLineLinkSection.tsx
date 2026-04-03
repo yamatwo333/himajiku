@@ -31,6 +31,7 @@ export default function GroupLineLinkSection({
   if (!isOwner) {
     return (
       <section
+        data-testid="group-line-link-section"
         className="rounded-2xl border p-4 space-y-3"
         style={{
           borderColor: "var(--color-border)",
@@ -72,6 +73,7 @@ export default function GroupLineLinkSection({
 
   return (
     <section
+      data-testid="group-line-link-section"
       className="rounded-2xl border p-4 space-y-3"
       style={{
         borderColor: "var(--color-border)",

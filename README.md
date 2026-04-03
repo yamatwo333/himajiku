@@ -56,7 +56,8 @@ npm run test:e2e
 ## CI
 
 - GitHub Actions の `CI` workflow が `push` / `pull_request` ごとに `lint` `build` `test:e2e` を実行します
-- CI が落ちたときは run の `playwright-artifacts` から `playwright-report/` と `test-results/` を開くと、失敗スクリーンショットや trace を確認できます
+- CI が落ちたときは run の `Summary` から `Artifacts` にある `playwright-artifacts` を開くと、`playwright-report/` と `test-results/` の中身を確認できます
+- artifact は `Run E2E smoke tests` が落ちたときだけ upload されるので、スクリーンショットや trace を見たいときは失敗 run を開いてください
 
 ## データベース
 

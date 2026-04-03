@@ -190,6 +190,11 @@ test.describe("authenticated smoke flows", () => {
 
     const transferRequest = await transferRequestPromise;
     expect(transferRequest.postDataJSON()).toEqual({ new_owner_id: "e2e-friend-1" });
+    await expect(page.getByRole("button", { name: "管理者にする" })).toHaveCount(0);
+    await expect(page.getByRole("combobox")).toHaveCount(0);
+    await expect(page.getByText("※ 管理者のみ変更できます")).toBeVisible();
+    await expect(page.getByText("※ 管理者のみ連携設定を変更できます")).toBeVisible();
+    await expect(page.getByRole("button", { name: "LINE連携コードを発行" })).toHaveCount(0);
   });
 
   test("group detail page can leave a group", async ({ page }) => {
@@ -203,10 +208,16 @@ test.describe("authenticated smoke flows", () => {
 
     await page.goto(`/groups/${E2E_GROUP_ID}`);
 
+    const leaveRequestPromise = page.waitForRequest(`**/api/groups/${E2E_GROUP_ID}/leave`);
     await page.getByRole("button", { name: "グループを退出" }).click();
     await page.getByRole("button", { name: "退出する" }).click();
 
+    const leaveRequest = await leaveRequestPromise;
+    expect(leaveRequest.method()).toBe("POST");
     await expect(page).toHaveURL(/\/groups$/);
+    await expect(page.getByRole("heading", { name: "グループ" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "グループを作成" }).first()).toBeVisible();
+    await expect(page.getByText("テストグループ")).toBeVisible();
   });
 
   test("single-member group can be deleted", async ({ page }) => {
@@ -227,10 +238,16 @@ test.describe("authenticated smoke flows", () => {
 
     await page.goto(`/groups/${soloGroupId}`);
 
+    const deleteRequestPromise = page.waitForRequest(`**/api/groups/${soloGroupId}`);
     await page.getByRole("button", { name: "グループを削除" }).click();
     await page.getByRole("button", { name: "削除する" }).click();
 
+    const deleteRequest = await deleteRequestPromise;
+    expect(deleteRequest.method()).toBe("DELETE");
     await expect(page).toHaveURL(/\/groups$/);
+    await expect(page.getByRole("heading", { name: "グループ" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "グループを作成" }).first()).toBeVisible();
+    await expect(page.getByText("ひとりグループ")).toHaveCount(0);
   });
 
   test("day detail page can save availability and return to calendar", async ({

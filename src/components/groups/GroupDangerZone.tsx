@@ -24,7 +24,7 @@ export default function GroupDangerZone({
   const shouldDeleteGroup = isOwner && memberCount <= 1;
 
   return (
-    <section>
+    <section data-testid="group-danger-zone">
       {showConfirm ? (
         <div className="rounded-xl border border-red-200 bg-red-50 p-4 space-y-3">
           <p className="text-sm text-red-600">
