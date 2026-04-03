@@ -262,7 +262,7 @@ export default function GroupDetailClient({
         }
       />
 
-      <div className="space-y-6 px-4 pt-5 pb-8">
+      <div className="space-y-6 px-4 pt-5 pb-8" data-testid="group-detail-content">
         <button
           onClick={handleOpenCalendar}
           className="w-full rounded-xl px-4 py-3.5 text-sm font-bold text-white shadow-sm transition-transform active:scale-[0.98]"

@@ -31,7 +31,7 @@ export default async function ProfilePage() {
     <div>
       <PageHeader title="マイページ" />
 
-      <div className="space-y-6 px-4 pt-6">
+      <div className="space-y-6 px-4 pt-6" data-testid="profile-page-content">
         <ProfileSummaryCard
           displayName={profile?.display_name || "ユーザー"}
           avatarUrl={profile?.avatar_url || null}

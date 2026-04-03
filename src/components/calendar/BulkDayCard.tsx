@@ -2,6 +2,7 @@ import TimeSlotPicker from "@/components/TimeSlotPicker";
 import { hasFreeTimeSlots, isUndecidedOnly, type TimeSlot } from "@/lib/types";
 
 interface BulkDayCardProps {
+  testId?: string;
   dayLabel: string;
   selectedSlots: TimeSlot[];
   comment: string;
@@ -11,6 +12,7 @@ interface BulkDayCardProps {
 }
 
 export default function BulkDayCard({
+  testId,
   dayLabel,
   selectedSlots,
   comment,
@@ -24,6 +26,7 @@ export default function BulkDayCard({
 
   return (
     <div
+      data-testid={testId}
       className="rounded-xl border p-3"
       style={{
         backgroundColor: "var(--color-surface)",

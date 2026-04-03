@@ -41,6 +41,7 @@ export default function ProfileShareCard({ appUrl }: ProfileShareCardProps) {
 
   return (
     <section
+      data-testid="profile-share-card"
       className="rounded-xl border p-4"
       style={{
         backgroundColor: "var(--color-surface)",

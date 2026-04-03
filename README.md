@@ -48,7 +48,9 @@ npm run test:e2e
 
 - `playwright.config.ts` では E2E 実行時だけ `E2E_AUTH_BYPASS=1` を自動で付与しています
 - E2E では日付を固定しており、`calendar` / `bulk` / `profile` の visual regression も `npm run test:e2e` に含まれます
-- visual snapshot を更新する場合は `npm run test:e2e:update-snapshots` を使ってください
+- visual snapshot を更新する場合は `npm run test:e2e:update-snapshots` を実行し、意図した UI 変更だけが `tests/__screenshots__/` に出ていることを確認してください
+- 変更前の安全確認は `npm run lint && npm run build && npm run test:e2e` の順がおすすめです
+- CI では Linux 上で同じ visual regression を走らせるので、snapshot 更新後は GitHub Actions の結果まで確認すると安心です
 - 手動で `npm run dev` を立てて E2E を流す場合は、同じ値を環境変数に設定してください
 
 ## CI

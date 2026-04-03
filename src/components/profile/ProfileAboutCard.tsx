@@ -4,6 +4,7 @@ import { CHARACTER_ASSETS } from "@/lib/characters";
 export default function ProfileAboutCard() {
   return (
     <section
+      data-testid="profile-about-card"
       className="rounded-xl border p-4"
       style={{
         backgroundColor: "var(--color-surface)",

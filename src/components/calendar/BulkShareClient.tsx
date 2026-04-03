@@ -295,7 +295,7 @@ export default function BulkShareClient({
   };
 
   return (
-    <div className="flex min-h-dvh flex-col">
+    <div className="flex min-h-dvh flex-col" data-testid="bulk-page-content">
       <PageHeader title="ヒマな日をまとめてシェア" onBack={handleBack} />
 
       <div className="flex-1 px-4 pt-5 pb-32">
@@ -368,6 +368,7 @@ export default function BulkShareClient({
                   return (
                     <BulkDayCard
                       key={dateStr}
+                      testId={`bulk-day-card-${dateStr}`}
                       dayLabel={dayLabel}
                       selectedSlots={entry?.timeSlots ?? []}
                       comment={entry?.comment ?? ""}

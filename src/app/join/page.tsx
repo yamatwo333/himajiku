@@ -25,6 +25,7 @@ function JoinErrorCard({
 }) {
   return (
     <div
+      data-testid="join-error-card"
       role="alert"
       aria-live="assertive"
       className="w-full max-w-sm rounded-2xl border px-5 py-6 text-center"
@@ -118,7 +119,7 @@ function JoinContent() {
       )}
 
       {status === "success" && (
-        <div className="w-full max-w-sm text-center">
+        <div className="w-full max-w-sm text-center" data-testid="join-success-card">
           <CharacterSticker
             src={CHARACTER_ASSETS.joinSuccess.src}
             alt={CHARACTER_ASSETS.joinSuccess.alt}

@@ -343,69 +343,71 @@ export default function CalendarPageClient({
         </div>
       ) : null}
 
-      <CalendarGroupSelector
-        groups={groups}
-        selectedGroupId={selectedGroupId}
-        onChange={(nextGroupId) => {
-          setSelectedGroupId(nextGroupId);
-          persistSelectedGroupId(nextGroupId);
-          syncCalendarUrl(nextGroupId, currentMonth);
-        }}
-      />
+      <div data-testid="calendar-page-content">
+        <CalendarGroupSelector
+          groups={groups}
+          selectedGroupId={selectedGroupId}
+          onChange={(nextGroupId) => {
+            setSelectedGroupId(nextGroupId);
+            persistSelectedGroupId(nextGroupId);
+            syncCalendarUrl(nextGroupId, currentMonth);
+          }}
+        />
 
-      <div className="pt-3">
-        {availabilitiesLoading ? (
-          <PageSpinner />
-        ) : (
-          <>
-            {groups.length === 0 && (
-              <CalendarNoGroupState onOpenGroups={() => router.push("/groups")} />
-            )}
-            <CalendarGrid
-              availabilities={availabilities}
-              onMonthChange={handleMonthChange}
-              groupId={selectedGroupId}
-              notifyThreshold={selectedGroup?.notify_threshold ?? 2}
-              currentUserId={currentUserId}
-              initialMonth={currentMonth}
-            />
-          </>
-        )}
-      </div>
+        <div className="pt-3">
+          {availabilitiesLoading ? (
+            <PageSpinner />
+          ) : (
+            <>
+              {groups.length === 0 && (
+                <CalendarNoGroupState onOpenGroups={() => router.push("/groups")} />
+              )}
+              <CalendarGrid
+                availabilities={availabilities}
+                onMonthChange={handleMonthChange}
+                groupId={selectedGroupId}
+                notifyThreshold={selectedGroup?.notify_threshold ?? 2}
+                currentUserId={currentUserId}
+                initialMonth={currentMonth}
+              />
+            </>
+          )}
+        </div>
 
-      <div className="space-y-3 px-4 pt-4 pb-8">
-        <button
-          onClick={() => router.push("/calendar/bulk")}
-          className="w-full rounded-xl px-4 py-3.5 text-sm font-bold text-white shadow-sm transition-transform active:scale-[0.98]"
-          style={{ backgroundColor: "var(--color-primary)" }}
-        >
-          ヒマな日をまとめてシェア
-        </button>
+        <div className="space-y-3 px-4 pt-4 pb-8">
+          <button
+            onClick={() => router.push("/calendar/bulk")}
+            className="w-full rounded-xl px-4 py-3.5 text-sm font-bold text-white shadow-sm transition-transform active:scale-[0.98]"
+            style={{ backgroundColor: "var(--color-primary)" }}
+          >
+            ヒマな日をまとめてシェア
+          </button>
 
-        {selectedGroupId ? (
-          <div className="flex justify-center">
-            <button
-              onClick={() => router.push(`/groups/${selectedGroupId}`)}
-              className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-bold transition-transform active:scale-[0.98]"
-              style={{ color: "var(--color-primary)" }}
-            >
-              <span>このグループの設定を見る</span>
-              <svg
-                width="14"
-                height="14"
-                viewBox="0 0 20 20"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
+          {selectedGroupId ? (
+            <div className="flex justify-center">
+              <button
+                onClick={() => router.push(`/groups/${selectedGroupId}`)}
+                className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-bold transition-transform active:scale-[0.98]"
+                style={{ color: "var(--color-primary)" }}
               >
-                <path d="M4 10h12" />
-                <path d="m10 4 6 6-6 6" />
-              </svg>
-            </button>
-          </div>
-        ) : null}
+                <span>このグループの設定を見る</span>
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 20 20"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M4 10h12" />
+                  <path d="m10 4 6 6-6 6" />
+                </svg>
+              </button>
+            </div>
+          ) : null}
+        </div>
       </div>
     </div>
   );

@@ -100,7 +100,7 @@ export default function GroupsPageClient({
     <div>
       <PageHeader title="グループ" />
 
-      <div className="space-y-4 px-4 pt-4 pb-8">
+      <div className="space-y-4 px-4 pt-4 pb-8" data-testid="groups-page-content">
         <GroupsComposerSection
           activeMode={activeMode}
           groupName={newGroupName}

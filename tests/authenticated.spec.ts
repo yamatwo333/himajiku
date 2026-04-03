@@ -188,6 +188,10 @@ test.describe("authenticated smoke flows", () => {
     const monthLabel = page.getByTestId("bulk-month-label");
     const currentMonthLabel = format(startOfMonth(TEST_NOW), "yyyy年 M月");
     const nextMonthLabel = format(addMonths(startOfMonth(TEST_NOW), 1), "yyyy年 M月");
+    const nextMonthFirstDate = format(
+      startOfMonth(addMonths(startOfMonth(TEST_NOW), 1)),
+      "yyyy-MM-dd"
+    );
     const existingCommentInput = page.locator('input[value="既存のまとめてシェア"]');
 
     await expect(monthLabel).toHaveText(currentMonthLabel);
@@ -197,9 +201,8 @@ test.describe("authenticated smoke flows", () => {
 
     await expect(monthLabel).toHaveText(nextMonthLabel);
     const nextMonthAfternoonButton = page
-      .locator("button:not([disabled])")
-      .filter({ hasText: "午後" })
-      .first();
+      .getByTestId(`bulk-day-card-${nextMonthFirstDate}`)
+      .getByRole("button", { name: "午後" });
     await expect(nextMonthAfternoonButton).toBeVisible();
     await nextMonthAfternoonButton.click();
     await page.getByPlaceholder("ひとこと").fill("来月の入力");
